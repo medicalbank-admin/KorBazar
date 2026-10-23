@@ -28,10 +28,14 @@ export default function About() {
           <li><strong>Local Focus:</strong> We are starting city-by-city, ensuring delivery is fast and relationships are local.</li>
         </ul>
 
-        <div className="pt-8 text-center">
-          <Link to="/sell-with-us" className="inline-block bg-brand text-white font-bold py-3 px-8 rounded-xl hover:bg-brand/90 transition-colors">
-            Join as a Seller Today
-          </Link>
+        <div className="pt-8 flex flex-col md:flex-row justify-center gap-4">
+  <Link to="/sell-with-us" className="inline-block bg-brand text-white font-bold py-3 px-8 rounded-xl hover:bg-brand/90 transition-colors">
+    Join as a Seller Today
+  </Link>
+  <a href="https://wa.me/923390251147" target="_blank" rel="noreferrer" className="inline-block bg-white text-dark border border-gray-200 font-bold py-3 px-8 rounded-xl hover:bg-gray-50 transition-colors">
+    Chat with Support
+  </a>
+</div>
         </div>
       </div>
     </div>
