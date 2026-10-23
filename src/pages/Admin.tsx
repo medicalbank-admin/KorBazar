@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CheckCircle, XCircle, Clock, X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard } from 'lucide-react';
+import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard } from 'lucide-react';
 
 export default function Admin() {
   const [sellers, setSellers] = useState<any[]>([]);
@@ -69,8 +69,7 @@ export default function Admin() {
 
   const pendingSellers = sellers.filter(s => s.status === 'pending_verification');
   const totalRevenue = orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + o.total, 0);
-
-  return (
+    return (
     <div className="max-w-7xl mx-auto px-4 py-8 pb-24 relative">
       <h1 className="text-3xl font-bold text-dark mb-8">Admin Master Control</h1>
       
@@ -89,7 +88,7 @@ export default function Admin() {
         <button onClick={() => setActiveTab('sellers')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'sellers' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Users size={18}/> Manage Sellers</button>
         <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'orders' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShoppingBag size={18}/> All Orders</button>
         <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'products' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Package size={18}/> All Products</button>
-        <button onClick={() => setActiveTab('verification')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'verification' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShieldAlert size={18}/> Pending Approvals ({pendingSellers.length})</button>
+        <button onClick={() => setActiveTab('verification')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'verification' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShieldAlert size={18}/> Pending ({pendingSellers.length})</button>
       </div>
 
       {loading ? (
@@ -97,7 +96,6 @@ export default function Admin() {
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           
-          {/* OVERVIEW TAB */}
           {activeTab === 'overview' && (
             <div>
               <h2 className="text-xl font-bold text-dark mb-6">Platform Overview</h2>
@@ -116,13 +114,12 @@ export default function Admin() {
                 </div>
                 <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center">
                   <p className="text-3xl font-extrabold text-alert">Rs. {totalRevenue}</p>
-                  <p className="text-sm font-semibold text-gray-500 uppercase mt-1">Total Delivered Rev.</p>
+                  <p className="text-sm font-semibold text-gray-500 uppercase mt-1">Total Rev.</p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* SELLERS TAB (FREEZE & FEES) */}
           {activeTab === 'sellers' && (
             <div>
               <h2 className="text-xl font-bold text-dark mb-4">Manage Sellers</h2>
@@ -132,7 +129,7 @@ export default function Admin() {
                     <tr className="border-b border-gray-200 text-sm text-gray-500">
                       <th className="p-3">Store</th>
                       <th className="p-3">Status</th>
-                      <th className="p-3">Monthly Fee</th>
+                      <th className="p-3">Fee</th>
                       <th className="p-3">Actions</th>
                     </tr>
                   </thead>
@@ -150,7 +147,7 @@ export default function Admin() {
                         </td>
                         <td className="p-3">
                           <button onClick={() => toggleFreeze(seller.id, seller.isFrozen)} className={`px-4 py-1.5 rounded-lg font-bold text-sm text-white ${seller.isFrozen ? 'bg-brand' : 'bg-alert'}`}>
-                            {seller.isFrozen ? 'Unfreeze' : 'Freeze Store'}
+                            {seller.isFrozen ? 'Unfreeze' : 'Freeze'}
                           </button>
                         </td>
                       </tr>
@@ -161,7 +158,6 @@ export default function Admin() {
             </div>
           )}
 
-          {/* ORDERS TAB */}
           {activeTab === 'orders' && (
             <div>
               <h2 className="text-xl font-bold text-dark mb-4">Global Orders Log</h2>
@@ -179,7 +175,6 @@ export default function Admin() {
             </div>
           )}
 
-          {/* PRODUCTS TAB (PREMIUM TOGGLE) */}
           {activeTab === 'products' && (
             <div>
               <h2 className="text-xl font-bold text-dark mb-4">All Products</h2>
@@ -200,7 +195,6 @@ export default function Admin() {
             </div>
           )}
 
-          {/* VERIFICATION TAB */}
           {activeTab === 'verification' && (
             <div>
               <h2 className="text-xl font-bold text-dark mb-4">Pending Sellers</h2>
@@ -226,4 +220,4 @@ export default function Admin() {
       )}
     </div>
   );
-                                                                                                                                                }
+    }
