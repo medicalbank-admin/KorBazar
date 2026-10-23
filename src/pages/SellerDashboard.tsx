@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { doc, getDoc, updateDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook, Instagram, Globe, ShieldAlert } from 'lucide-react';
+import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook, Instagram, Globe, ShieldAlert, Star, CreditCard } from 'lucide-react';
 
 const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -33,7 +33,7 @@ export default function SellerDashboard() {
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'store' | 'profile'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'store' | 'subscription' | 'profile'>('orders');
   
   const [storeBio, setStoreBio] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
@@ -41,7 +41,6 @@ export default function SellerDashboard() {
   const [socialLinks, setSocialLinks] = useState({ facebook: '', instagram: '', tiktok: '' });
   const [storeMsg, setStoreMsg] = useState('');
 
-  // Product Form State
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [productDescription, setProductDescription] = useState('');
@@ -118,7 +117,6 @@ export default function SellerDashboard() {
         price: Number(price), 
         deliveryFee: Number(productDeliveryFee) || 0,
         category,
-        isPremium: false, 
         images: imageUrls, 
         image: imageUrls[0],
         createdAt: new Date().toISOString()
@@ -165,7 +163,7 @@ export default function SellerDashboard() {
           <ShieldAlert size={64} className="text-alert mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-alert mb-2">Store Frozen</h2>
           <p className="text-gray-700 mb-6">Your store has been temporarily frozen by the Admin. This is usually due to pending monthly fees. Please contact KorBazar support on WhatsApp to resolve this and unfreeze your store.</p>
-          <a href="https://wa.me/923390251147" target="_blank" rel="noreferrer" className="bg-alert text-white px-6 py-3 rounded-xl font-bold inline-block">Contact Admin</a>
+          <a href="https://wa.me/923000000000" target="_blank" rel="noreferrer" className="bg-alert text-white px-6 py-3 rounded-xl font-bold inline-block">Contact Admin</a>
         </div>
       </div>
     );
@@ -174,7 +172,7 @@ export default function SellerDashboard() {
   const pendingOrders = orders.filter(o => o.status === 'new' || o.status === 'accepted' || o.status === 'dispatched').length;
   const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
   const cancelledOrders = orders.filter(o => o.status === 'cancelled' || o.status === 'rejected').length;
-    return (
+      return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
@@ -205,6 +203,7 @@ export default function SellerDashboard() {
         <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'orders' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Package size={18}/> Orders</button>
         <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'products' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><PlusCircle size={18}/> Products</button>
         <button onClick={() => setActiveTab('store')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'store' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Store size={18}/> Settings</button>
+        <button onClick={() => setActiveTab('subscription')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'subscription' ? 'bg-yellow-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Star size={18}/> Subscription</button>
         <button onClick={() => setActiveTab('profile')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'profile' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><User size={18}/> Profile</button>
       </div>
 
@@ -369,6 +368,39 @@ export default function SellerDashboard() {
             </div>
           )}
 
+          {/* NEW SUBSCRIPTION TAB */}
+          {activeTab === 'subscription' && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
+              <h2 className="text-xl font-bold text-dark mb-6 flex items-center gap-2"><CreditCard /> Subscription Plan</h2>
+              
+              <div className={`border rounded-2xl p-6 ${store.plan === 'premium' ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-200'}`}>
+                <div className="flex items-center gap-3 mb-2">
+                  <Star size={28} className={store.plan === 'premium' ? 'text-yellow-500 fill-yellow-500' : 'text-gray-400'} />
+                  <h3 className="text-2xl font-bold text-dark capitalize">{store.plan || 'standard'} Plan</h3>
+                </div>
+                
+                {store.plan === 'premium' ? (
+                  <div className="mt-4">
+                    <p className="text-gray-700 text-sm mb-4">Your store is currently featured on the Homepage and highlighted to buyers after checkout. Keep providing great service!</p>
+                    <span className="inline-block bg-yellow-500 text-white px-4 py-2 rounded-lg font-bold text-sm">Active Premium Status</span>
+                  </div>
+                ) : (
+                  <div className="mt-4">
+                    <p className="text-gray-700 text-sm mb-4">Upgrade to Premium to feature your products on the Homepage and show them to buyers right after they place an order. Get more visibility and sales!</p>
+                    <a 
+                      href={`https://wa.me/923000000000?text=${encodeURIComponent(`Assalam-o-Alaikum, I want to upgrade my store "${store.storeName}" to the Premium plan on KorBazar.`)}`} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="inline-block bg-dark text-white font-bold py-3 px-6 rounded-xl hover:bg-black transition-colors"
+                    >
+                      Contact Admin to Upgrade
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'profile' && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
               <h2 className="text-xl font-bold text-dark mb-4">My Profile</h2>
@@ -384,4 +416,4 @@ export default function SellerDashboard() {
       )}
     </div>
   );
-                                                               }
+                  }
