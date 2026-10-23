@@ -264,3 +264,111 @@ return (
               ))}
             </div>
           )}
+{activeTab === 'sellers' && (
+            <div>
+              <h2 className="text-xl font-bold text-dark mb-4">Manage Sellers</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-sm text-gray-500">
+                      <th className="p-3">Store Info</th>
+                      <th className="p-3">Status & Fee</th>
+                      <th className="p-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {approvedSellers.map(seller => (
+                      <tr key={seller.id} className="border-b border-gray-100">
+                        <td className="p-3">
+                          <p className="font-bold text-dark">{seller.storeName}</p>
+                          <p className="text-xs text-gray-500">{seller.fullName} | {seller.phone}</p>
+                        </td>
+                        <td className="p-3 flex flex-col gap-2 items-start">
+                          {seller.isFrozen ? <span className="text-alert font-bold text-xs bg-red-50 px-2 py-1 rounded">FROZEN</span> : <span className="text-brand font-bold text-xs bg-green-50 px-2 py-1 rounded">ACTIVE</span>}
+                          <button onClick={() => toggleFeeStatus(seller.id, seller.feeStatus)} className={`px-3 py-1 rounded-lg text-xs font-bold border ${seller.feeStatus === 'paid' ? 'border-brand text-brand bg-green-50' : 'border-yellow-500 text-yellow-600 bg-yellow-50'}`}>
+                            Fee: {seller.feeStatus === 'paid' ? 'PAID' : 'PENDING'}
+                          </button>
+                        </td>
+                        <td className="p-3 text-right space-x-2 whitespace-nowrap">
+                          <button onClick={() => handleOpenEdit(seller)} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100" title="Edit Store"><Edit3 size={16} /></button>
+                          <button onClick={() => window.open(`#/store/${seller.id}`, '_blank')} className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200" title="View Public Store"><ExternalLink size={16} /></button>
+                          <button onClick={() => toggleFreeze(seller.id, seller.isFrozen)} className={`p-2 rounded-lg text-white ${seller.isFrozen ? 'bg-brand' : 'bg-yellow-500'}`} title={seller.isFrozen ? 'Unfreeze' : 'Freeze'}>
+                            {seller.isFrozen ? <CheckCircle size={16} /> : <ShieldAlert size={16} />}
+                          </button>
+                          <button onClick={() => handleDeleteStore(seller.id)} className="p-2 bg-red-50 text-alert rounded-lg hover:bg-red-100" title="Delete Store Completely"><Trash2 size={16} /></button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'orders' && (
+            <div>
+              <h2 className="text-xl font-bold text-dark mb-4">Global Orders Log</h2>
+              <div className="space-y-3">
+                {orders.map(order => (
+                  <div key={order.id} className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 border border-gray-100 rounded-xl bg-gray-50 gap-4">
+                    <div>
+                      <p className="font-bold text-dark">#{order.trackingToken.slice(0,6).toUpperCase()} - {order.storeName}</p>
+                      <p className="text-sm text-gray-500">{order.buyerName} | {order.buyerPhone} | {order.paymentMethod}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <p className="font-bold text-brand">Rs. {order.total}</p>
+                      <select 
+                        value={order.status} 
+                        onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                        className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-semibold focus:outline-none focus:border-brand"
+                      >
+                        <option value="new">New</option>
+                        <option value="accepted">Accepted</option>
+                        <option value="dispatched">Dispatched</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
+                        <option value="rejected">Rejected</option>
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'products' && (
+            <div>
+              <h2 className="text-xl font-bold text-dark mb-4">All Platform Products</h2>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {products.map(p => {
+                  const seller = sellers.find(s => s.id === p.sellerId);
+                  const isPremiumSeller = seller?.plan === 'premium';
+                  return (
+                    <div key={p.id} className="flex flex-col bg-gray-50 p-4 rounded-xl border border-gray-100">
+                      <div className="flex items-center gap-3 mb-3">
+                        <img src={p.image} alt={p.title} className="w-16 h-16 object-cover rounded-lg" />
+                        <div className="flex-grow">
+                          <h4 className="font-bold text-dark line-clamp-1">{p.title}</h4>
+                          <p className="text-xs text-gray-500 truncate">{p.storeName}</p>
+                          <p className="text-sm font-bold text-brand mt-1">Rs. {p.price}</p>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center mt-auto border-t border-gray-200 pt-3">
+                        <span className={`px-2 py-1 rounded text-[10px] font-bold ${isPremiumSeller ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200 text-gray-600'}`}>
+                          {isPremiumSeller ? 'Premium Store' : 'Standard Store'}
+                        </span>
+                        <button onClick={() => handleDeleteProduct(p.id)} className="text-alert p-1.5 hover:bg-red-50 rounded-md" title="Delete Product">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
