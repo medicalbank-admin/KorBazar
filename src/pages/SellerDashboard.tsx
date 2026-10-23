@@ -321,4 +321,59 @@ export default function SellerDashboard() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Store Address</label>
-    
+                  <input type="text" value={storeAddress} onChange={e => setStoreAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Store Bio</label>
+                  <textarea value={storeBio} onChange={e => setStoreBio(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Fee (Rs.)</label>
+                    <input type="number" value={deliveryFee} onChange={e => setDeliveryFee(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. 150" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Accounts (JazzCash/Easypaisa)</label>
+                    <input type="text" value={paymentAccounts} onChange={e => setPaymentAccounts(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. JazzCash: 03001234567 (Name)" />
+                  </div>
+                </div>
+                
+                <div className="pt-2 border-t border-gray-100">
+                  <h3 className="font-semibold text-dark mb-3">Social Media Links</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Facebook size={20} className="text-blue-600" />
+                      <input type="url" placeholder="Facebook Page URL" value={socialLinks.facebook} onChange={e => setSocialLinks({...socialLinks, facebook: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Instagram size={20} className="text-pink-600" />
+                      <input type="url" placeholder="Instagram Profile URL" value={socialLinks.instagram} onChange={e => setSocialLinks({...socialLinks, instagram: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Globe size={20} className="text-dark" />
+                      <input type="url" placeholder="TikTok Profile URL" value={socialLinks.tiktok} onChange={e => setSocialLinks({...socialLinks, tiktok: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
+                    </div>
+                  </div>
+                </div>
+
+                <button type="submit" className="bg-brand text-white font-bold py-3.5 px-8 rounded-xl hover:bg-brand/90 shadow-md mt-4">Save Settings</button>
+              </form>
+            </div>
+          )}
+
+          {activeTab === 'profile' && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
+              <h2 className="text-xl font-bold text-dark mb-4">My Profile</h2>
+              <div className="space-y-4 text-gray-700">
+                <p><span className="font-semibold text-dark">Full Name:</span> {store.fullName}</p>
+                <p><span className="font-semibold text-dark">CNIC:</span> {store.cnicNumber}</p>
+                <p><span className="font-semibold text-dark">Phone:</span> {store.phone}</p>
+                <p><span className="font-semibold text-dark">City:</span> {store.city}, {store.area}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+                    }
