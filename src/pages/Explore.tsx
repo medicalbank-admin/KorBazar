@@ -14,10 +14,22 @@ export default function Explore() {
 
   useEffect(() => {
     const fetchProducts = async () => {
-      const querySnapshot = await getDocs(collection(db, 'products'));
-      const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setProducts(productsData);
-      setLoading(false);
+      try {
+        const querySnapshot = await getDocs(collection(db, 'products'));
+        const allProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        const sellersSnap = await getDocs(collection(db, 'sellers'));
+        const activeSellerIds = sellersSnap.docs
+          .filter(d => d.data().status === 'approved' && !d.data().isFrozen)
+          .map(d => d.id);
+
+        const activeProducts = allProducts.filter(p => activeSellerIds.includes(p.sellerId));
+        setProducts(activeProducts);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchProducts();
   }, []);
@@ -78,4 +90,4 @@ export default function Explore() {
       </div>
     </div>
   );
-                  }
+}
