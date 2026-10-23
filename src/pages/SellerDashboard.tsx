@@ -141,7 +141,7 @@ export default function SellerDashboard() {
       paymentInstructions = `\nPlease send the payment via ${order.paymentMethod} to:\n${store.paymentAccounts || '[Seller needs to set account details]'}\n`;
     }
 
-    const text = `Assalam-o-Alaikum ${order.buyerName},\n\nYour order from ${store.storeName} has been CONFIRMED ✅\n\nOrder ID: #${order.trackingToken.slice(0,8).toUpperCase()}\n\nSubtotal: Rs. ${order.subtotal || order.total}\nDelivery Fee: Rs. ${order.deliveryFee || 0}\n*Total Bill: Rs. ${order.total}*\n\nPayment Method: ${order.paymentMethod}\n${paymentInstructions}\nTrack your order here:\nhttps://medicalbank-admin.github.io/KorBazar/#/track/${order.trackingToken}\n\nThank you for supporting a local seller!\n— ${store.storeName} via KorBazar`;
+    const text = `Assalam-o-Alaikum ${order.buyerName},\n\nYour order from ${store.storeName} has been CONFIRMED.\n\nOrder ID: #${order.trackingToken.slice(0,8).toUpperCase()}\n\nSubtotal: Rs. ${order.subtotal || order.total}\nDelivery Fee: Rs. ${order.deliveryFee || 0}\nTotal Bill: Rs. ${order.total}\n\nPayment Method: ${order.paymentMethod}\n${paymentInstructions}\nTrack your order here:\nhttps://medicalbank-admin.github.io/KorBazar/#/track/${order.trackingToken}\n\nThank you for supporting a local seller!\n- ${store.storeName} via KorBazar`;
     
     const cleanNumber = order.buyerWhatsapp.replace(/^0/, '');
     window.open(`https://wa.me/92${cleanNumber}?text=${encodeURIComponent(text)}`, '_blank');
@@ -158,7 +158,7 @@ export default function SellerDashboard() {
           <ShieldAlert size={64} className="text-alert mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-alert mb-2">Store Frozen</h2>
           <p className="text-gray-700 mb-6">Your store has been temporarily frozen by the Admin. This is usually due to pending monthly fees. Please contact KorBazar support on WhatsApp to resolve this and unfreeze your store.</p>
-          <a href="https://wa.me/923000000000" target="_blank" className="bg-alert text-white px-6 py-3 rounded-xl font-bold inline-block">Contact Admin</a>
+          <a href="https://wa.me/923000000000" target="_blank" rel="noreferrer" className="bg-alert text-white px-6 py-3 rounded-xl font-bold inline-block">Contact Admin</a>
         </div>
       </div>
     );
@@ -257,57 +257,57 @@ export default function SellerDashboard() {
 
           {activeTab === 'products' && (
              <div className="grid lg:grid-cols-2 gap-8">
-             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-               <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><PlusCircle size={20}/> Add New Product</h2>
-               {productMsg && <div className={`p-3 rounded-lg text-sm mb-4 ${productMsg.includes('Error') ? 'bg-red-50 text-alert' : 'bg-green-50 text-brand'}`}>{productMsg}</div>}
-               
-               <form onSubmit={handleAddProduct} className="space-y-4">
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Product Title</label>
-                   <input type="text" required value={title} onChange={e => setTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-                 </div>
-                 <div className="grid grid-cols-2 gap-4">
+               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                 <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><PlusCircle size={20}/> Add New Product</h2>
+                 {productMsg && <div className={`p-3 rounded-lg text-sm mb-4 ${productMsg.includes('Error') ? 'bg-red-50 text-alert' : 'bg-green-50 text-brand'}`}>{productMsg}</div>}
+                 
+                 <form onSubmit={handleAddProduct} className="space-y-4">
                    <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">Price (PKR)</label>
-                     <input type="number" required value={price} onChange={e => setPrice(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+                     <label className="block text-sm font-medium text-gray-700 mb-1">Product Title</label>
+                     <input type="text" required value={title} onChange={e => setTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
                    </div>
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                     <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
-                       <option>Cakes & Bakes</option>
-                       <option>Handmade Jewelry</option>
-                       <option>Crafts & Decor</option>
-                       <option>Embroidered Items</option>
-                       <option>Candles</option>
-                       <option>Gift Hampers</option>
-                     </select>
-                   </div>
-                 </div>
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Product Images (Max 3)</label>
-                   <input id="product-images" type="file" multiple accept="image/*" required onChange={e => setProductImages(e.target.files)} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20" />
-                 </div>
-                 <button type="submit" disabled={uploading} className="w-full bg-brand text-white font-bold py-3.5 rounded-xl hover:bg-brand/90 shadow-md disabled:bg-gray-400">
-                   {uploading ? 'Saving...' : 'Save Product'}
-                 </button>
-               </form>
-             </div>
-
-             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-               <h2 className="text-xl font-bold text-dark mb-4">Your Listed Products ({products.length})</h2>
-               <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                 {products.length === 0 ? <p className="text-gray-500 text-sm">No products listed yet.</p> : products.map(p => (
-                   <div key={p.id} className="flex gap-4 items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
-                     <img src={p.image} alt={p.title} className="w-16 h-16 object-cover rounded-lg" />
-                     <div className="flex-grow">
-                       <h4 className="font-bold text-dark">{p.title}</h4>
-                       <p className="text-sm text-brand font-semibold">Rs. {p.price}</p>
+                   <div className="grid grid-cols-2 gap-4">
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-1">Price (PKR)</label>
+                       <input type="number" required value={price} onChange={e => setPrice(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+                     </div>
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                       <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
+                         <option>Cakes & Bakes</option>
+                         <option>Handmade Jewelry</option>
+                         <option>Crafts & Decor</option>
+                         <option>Embroidered Items</option>
+                         <option>Candles</option>
+                         <option>Gift Hampers</option>
+                       </select>
                      </div>
                    </div>
-                 ))}
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-1">Product Images (Max 3)</label>
+                     <input id="product-images" type="file" multiple accept="image/*" required onChange={e => setProductImages(e.target.files)} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20" />
+                   </div>
+                   <button type="submit" disabled={uploading} className="w-full bg-brand text-white font-bold py-3.5 rounded-xl hover:bg-brand/90 shadow-md disabled:bg-gray-400">
+                     {uploading ? 'Saving...' : 'Save Product'}
+                   </button>
+                 </form>
+               </div>
+
+               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                 <h2 className="text-xl font-bold text-dark mb-4">Your Listed Products ({products.length})</h2>
+                 <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                   {products.length === 0 ? <p className="text-gray-500 text-sm">No products listed yet.</p> : products.map(p => (
+                     <div key={p.id} className="flex gap-4 items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
+                       <img src={p.image} alt={p.title} className="w-16 h-16 object-cover rounded-lg" />
+                       <div className="flex-grow">
+                         <h4 className="font-bold text-dark">{p.title}</h4>
+                         <p className="text-sm text-brand font-semibold">Rs. {p.price}</p>
+                       </div>
+                     </div>
+                   ))}
+                 </div>
                </div>
              </div>
-           </div>
           )}
 
           {activeTab === 'store' && (
@@ -321,4 +321,4 @@ export default function SellerDashboard() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Store Address</label>
-                  <input type="text" value={storeAddress} onChange={e => setStoreAddress(e.target.value)} className="w
+    
