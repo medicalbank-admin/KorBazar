@@ -4,10 +4,12 @@ import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firesto
 import { db } from '../firebase';
 import { CheckCircle2, ChevronLeft, MessageCircle, ShoppingCart, Truck, Star } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useHistory } from '../context/HistoryContext';
 
 export default function ProductDetails() {
   const { id } = useParams();
   const { addToCart } = useCart();
+  const { addToHistory } = useHistory();
   
   const [product, setProduct] = useState<any>(null);
   const [seller, setSeller] = useState<any>(null);
@@ -25,6 +27,7 @@ export default function ProductDetails() {
       if (docSnap.exists()) {
         const prodData = { id: docSnap.id, ...docSnap.data() } as any;
         setProduct(prodData);
+        addToHistory(prodData);
 
         const sellerRef = doc(db, 'sellers', prodData.sellerId);
         const sellerSnap = await getDoc(sellerRef);
