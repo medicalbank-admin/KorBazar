@@ -16,7 +16,7 @@ export default function Explore() {
     const fetchProducts = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'products'));
-        const allProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const allProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
         
         const sellersSnap = await getDocs(collection(db, 'sellers'));
         const activeSellerIds = sellersSnap.docs
