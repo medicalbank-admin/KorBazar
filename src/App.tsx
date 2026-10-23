@@ -16,16 +16,12 @@ import TrackOrder from './pages/TrackOrder';
 import BuyerOrders from './pages/BuyerOrders';
 import Profile from './pages/Profile';
 import Favorites from './pages/Favorites';
+import About from './pages/About';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { FavoritesProvider } from './context/FavoritesContext';
-
-const Placeholder = ({ title }: { title: string }) => (
-  <div className="max-w-7xl mx-auto px-4 py-24 text-center pb-24">
-    <h1 className="text-3xl font-bold text-dark mb-4">{title}</h1>
-    <p className="text-gray-500">This page is under construction.</p>
-  </div>
-);
 
 export default function App() {
   return (
@@ -55,19 +51,21 @@ export default function App() {
 
                   <Route path="/orders" element={<BuyerOrders />} />
                   <Route path="/profile" element={<Profile />} />
-                  <Route path="/about" element={<Placeholder title="About KorBazar" />} />
-                  <Route path="/terms" element={<Placeholder title="Terms & Conditions" />} />
-                  <Route path="/privacy" element={<Placeholder title="Privacy Policy" />} />
+                  
+                  {/* Static Pages */}
+                  <Route path="/about" element={<About />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/privacy" element={<Privacy />} />
                 </Routes>
               </main>
               <footer className="bg-white border-t border-gray-100 py-8 text-center text-sm text-gray-500 pb-24 md:pb-8">
                 <p className="font-semibold text-dark text-lg mb-2">KorBazar</p>
                 <p className="mb-4">Khpal Kor, Khpal Bazar.</p>
                 <div className="flex justify-center gap-6">
-  <a href="#/terms" className="hover:text-brand">Terms</a>
-  <a href="#/privacy" className="hover:text-brand">Privacy</a>
-  <a href="#/about" className="hover:text-brand">About</a>
-</div>
+                  <a href="#/terms" className="hover:text-brand">Terms</a>
+                  <a href="#/privacy" className="hover:text-brand">Privacy</a>
+                  <a href="#/about" className="hover:text-brand">About</a>
+                </div>
                 <p className="mt-6 text-xs text-gray-400">© 2024 KorBazar. All rights reserved.</p>
               </footer>
             </div>
