@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom'; // <-- Link removed here
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { CheckCircle2, Clock, Package, Truck, MessageCircle } from 'lucide-react';
@@ -27,7 +27,7 @@ export default function TrackOrder() {
     fetchOrder();
   }, [token]);
 
-  if (loading) return <div className="p-12 text-center">Loading order...</div>;
+  if (loading) return <div className="p-12 text-center text-dark">Loading order...</div>;
   if (!order) return <div className="p-12 text-center text-alert">Order not found. Please check your link.</div>;
 
   const steps = [
@@ -40,7 +40,8 @@ export default function TrackOrder() {
   const currentStepIndex = steps.findIndex(s => s.id === order.status);
 
   const whatsappText = `Assalam-o-Alaikum ${order.buyerName}, this is ${seller?.storeName}. Your order #${order.trackingToken.slice(0,6)} is confirmed! Total: Rs. ${order.total}.`;
-  const waLink = `https://wa.me/92${seller?.whatsappNumber?.replace(/^0/, '')}?text=${encodeURIComponent(whatsappText)}`;
+  const cleanNumber = seller?.whatsappNumber?.replace(/^0/, '');
+  const waLink = `https://wa.me/92${cleanNumber}?text=${encodeURIComponent(whatsappText)}`;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-12 pb-24">
