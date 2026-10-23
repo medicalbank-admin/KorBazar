@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket } from 'lucide-react';
+import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket, TrendingUp, Banknote, PieChart } from 'lucide-react';
 
 export default function Admin() {
   const [sellers, setSellers] = useState<any[]>([]);
@@ -10,18 +10,14 @@ export default function Admin() {
   const [categories, setCategories] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'promotions' | 'orders' | 'products' | 'categories' | 'coupons' | 'verification'>('overview');
+  
+  const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'promotions' | 'orders' | 'products' | 'categories' | 'coupons' | 'verification' | 'finance'>('overview');
+  
   const [viewImage, setViewImage] = useState<string | null>(null);
-
-  // Edit Seller State
   const [editingSeller, setEditingSeller] = useState<any>(null);
   const [editForm, setEditForm] = useState({ fullName: '', phone: '', storeName: '', bio: '', address: '' });
   const [saveMsg, setSaveMsg] = useState('');
-
-  // Category State
   const [newCategoryName, setNewCategoryName] = useState('');
-
-  // Coupon State
   const [newCoupon, setNewCoupon] = useState({ code: '', discount: '', minAmount: '' });
   const [couponMsg, setCouponMsg] = useState('');
 
@@ -145,7 +141,7 @@ export default function Admin() {
   };
 
   const handleDeleteCoupon = async (id: string) => {
-    if(window.confirm("Delete this coupon? Buyers will no longer be able to use it.")) {
+    if(window.confirm("Delete this coupon?")) {
       await deleteDoc(doc(db, 'coupons', id));
       fetchData();
     }
@@ -153,13 +149,7 @@ export default function Admin() {
 
   const handleOpenEdit = (seller: any) => {
     setEditingSeller(seller);
-    setEditForm({ 
-      fullName: seller.fullName || '', 
-      phone: seller.phone || '', 
-      storeName: seller.storeName || '', 
-      bio: seller.bio || '', 
-      address: seller.storeAddress || '' 
-    });
+    setEditForm({ fullName: seller.fullName || '', phone: seller.phone || '', storeName: seller.storeName || '', bio: seller.bio || '', address: seller.storeAddress || '' });
   };
 
   const handleSaveEdit = async () => {
@@ -167,11 +157,7 @@ export default function Admin() {
     setSaveMsg('Saving...');
     try {
       await updateDoc(doc(db, 'sellers', editingSeller.id), {
-        fullName: editForm.fullName,
-        phone: editForm.phone,
-        storeName: editForm.storeName,
-        bio: editForm.bio,
-        storeAddress: editForm.address
+        fullName: editForm.fullName, phone: editForm.phone, storeName: editForm.storeName, bio: editForm.bio, storeAddress: editForm.address
       });
       setSaveMsg('Saved successfully!');
       fetchData();
@@ -182,161 +168,239 @@ export default function Admin() {
   const pendingSellers = sellers.filter(s => s.status === 'pending_verification');
   const approvedSellers = sellers.filter(s => s.status === 'approved');
   const premiumSellers = approvedSellers.filter(s => s.plan === 'premium');
-  const totalRevenue = orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + o.total, 0);
-
+  
+  const totalGMV = orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + o.total, 0);
+  const deliveredOrdersCount = orders.filter(o => o.status === 'delivered').length;
+  const paidSellersCount = approvedSellers.filter(s => s.feeStatus === 'paid').length;
+  const unpaidSellersCount = approvedSellers.filter(s => s.feeStatus !== 'paid').length;
+  
+  const STANDARD_FEE = 1000;
+  const PREMIUM_FEE = 2000;
+  const monthlySubRevenue = (approvedSellers.length - premiumSellers.length) * STANDARD_FEE;
+  const premiumSubRevenue = premiumSellers.length * PREMIUM_FEE;
+  const totalExpectedRevenue = monthlySubRevenue + premiumSubRevenue;
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 pb-24 relative">
-      <h1 className="text-3xl font-bold text-dark mb-8">Admin Master Control</h1>
-      
-      {viewImage && (
-        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
-          <div className="relative max-w-2xl w-full">
-            <button onClick={() => setViewImage(null)} className="absolute -top-12 right-0 text-white bg-red-500 rounded-full p-2"><X size={24} /></button>
-            <img src={viewImage} alt="Full Size" className="w-full h-auto rounded-xl" />
-          </div>
+  <div className="max-w-7xl mx-auto px-4 py-8 pb-24 relative">
+    <h1 className="text-3xl font-bold text-dark mb-8">Admin Master Control</h1>
+    
+    {viewImage && (
+      <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+        <div className="relative max-w-2xl w-full">
+          <button onClick={() => setViewImage(null)} className="absolute -top-12 right-0 text-white bg-red-500 rounded-full p-2"><X size={24} /></button>
+          <img src={viewImage} alt="Full Size" className="w-full h-auto rounded-xl" />
         </div>
-      )}
-
-      {editingSeller && (
-        <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 relative">
-            <button onClick={() => setEditingSeller(null)} className="absolute top-4 right-4 text-gray-400 hover:text-alert"><X size={24} /></button>
-            <h2 className="text-xl font-bold text-dark mb-4">Edit Store Details</h2>
-            {saveMsg && <div className="bg-green-50 text-brand p-2 rounded-lg text-sm mb-4 text-center font-bold">{saveMsg}</div>}
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Store Name</label>
-                <input type="text" value={editForm.storeName} onChange={e => setEditForm({...editForm, storeName: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Owner Full Name</label>
-                <input type="text" value={editForm.fullName} onChange={e => setEditForm({...editForm, fullName: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Phone Number</label>
-                <input type="tel" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Store Address</label>
-                <input type="text" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Store Bio</label>
-                <textarea value={editForm.bio} onChange={e => setEditForm({...editForm, bio: e.target.value})} rows={3} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" />
-              </div>
-              <button onClick={handleSaveEdit} className="w-full bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand/90 shadow-md flex items-center justify-center gap-2">
-                <Save size={18} /> Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="flex overflow-x-auto gap-2 mb-6 border-b border-gray-200 pb-2 scrollbar-hide">
-        <button onClick={() => setActiveTab('overview')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'overview' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><LayoutDashboard size={18}/> Overview</button>
-        <button onClick={() => setActiveTab('sellers')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'sellers' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Users size={18}/> Sellers</button>
-        <button onClick={() => setActiveTab('promotions')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'promotions' ? 'bg-yellow-500 text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Star size={18}/> Premium</button>
-        <button onClick={() => setActiveTab('coupons')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'coupons' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Ticket size={18}/> Coupons</button>
-        <button onClick={() => setActiveTab('categories')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'categories' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Tag size={18}/> Categories</button>
-        <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'orders' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShoppingBag size={18}/> Orders</button>
-        <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'products' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Package size={18}/> Products</button>
-        <button onClick={() => setActiveTab('verification')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'verification' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShieldAlert size={18}/> Pending ({pendingSellers.length})</button>
       </div>
+    )}
 
-      {loading ? (
-        <div className="p-8 text-center text-gray-500">Loading platform data...</div>
-      ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          
-          {activeTab === 'overview' && (
+    {editingSeller && (
+      <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 relative">
+          <button onClick={() => setEditingSeller(null)} className="absolute top-4 right-4 text-gray-400 hover:text-alert"><X size={24} /></button>
+          <h2 className="text-xl font-bold text-dark mb-4">Edit Store Details</h2>
+          {saveMsg && <div className="bg-green-50 text-brand p-2 rounded-lg text-sm mb-4 text-center font-bold">{saveMsg}</div>}
+          <div className="space-y-4">
             <div>
-              <h2 className="text-xl font-bold text-dark mb-6">Platform Overview</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center">
-                  <p className="text-3xl font-extrabold text-dark">{approvedSellers.length}</p>
-                  <p className="text-sm font-semibold text-gray-500 uppercase mt-1">Active Stores</p>
-                </div>
-                <div className="bg-yellow-50 p-6 rounded-2xl border border-yellow-100 text-center">
-                  <p className="text-3xl font-extrabold text-yellow-600">{premiumSellers.length}</p>
-                  <p className="text-sm font-semibold text-yellow-700 uppercase mt-1">Premium Stores</p>
-                </div>
-                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center">
-                  <p className="text-3xl font-extrabold text-blue-600">{orders.length}</p>
-                  <p className="text-sm font-semibold text-gray-500 uppercase mt-1">Total Orders</p>
-                </div>
-                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center">
-                  <p className="text-3xl font-extrabold text-alert">Rs. {totalRevenue}</p>
-                  <p className="text-sm font-semibold text-gray-500 uppercase mt-1">Total Rev.</p>
-                </div>
+              <label className="block text-xs font-bold text-gray-500 mb-1">Store Name</label>
+              <input type="text" value={editForm.storeName} onChange={e => setEditForm({...editForm, storeName: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1">Owner Full Name</label>
+              <input type="text" value={editForm.fullName} onChange={e => setEditForm({...editForm, fullName: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1">Phone Number</label>
+              <input type="tel" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1">Store Address</label>
+              <input type="text" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1">Store Bio</label>
+              <textarea value={editForm.bio} onChange={e => setEditForm({...editForm, bio: e.target.value})} rows={3} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" />
+            </div>
+            <button onClick={handleSaveEdit} className="w-full bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand/90 shadow-md flex items-center justify-center gap-2">
+              <Save size={18} /> Save Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    <div className="flex overflow-x-auto gap-2 mb-6 border-b border-gray-200 pb-2 scrollbar-hide">
+      <button onClick={() => setActiveTab('overview')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'overview' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><LayoutDashboard size={18}/> Overview</button>
+      <button onClick={() => setActiveTab('finance')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'finance' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Banknote size={18}/> Finance</button>
+      <button onClick={() => setActiveTab('sellers')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'sellers' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Users size={18}/> Sellers</button>
+      <button onClick={() => setActiveTab('promotions')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'promotions' ? 'bg-yellow-500 text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Star size={18}/> Premium</button>
+      <button onClick={() => setActiveTab('coupons')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'coupons' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Ticket size={18}/> Coupons</button>
+      <button onClick={() => setActiveTab('categories')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'categories' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Tag size={18}/> Categories</button>
+      <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'orders' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShoppingBag size={18}/> Orders</button>
+      <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'products' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Package size={18}/> Products</button>
+      <button onClick={() => setActiveTab('verification')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'verification' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShieldAlert size={18}/> Pending ({pendingSellers.length})</button>
+    </div>
+
+    {loading ? (
+      <div className="p-8 text-center text-gray-500">Loading platform data...</div>
+    ) : (
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        
+        {activeTab === 'overview' && (
+          <div>
+            <h2 className="text-xl font-bold text-dark mb-6">Platform Overview</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center">
+                <p className="text-3xl font-extrabold text-dark">{approvedSellers.length}</p>
+                <p className="text-sm font-semibold text-gray-500 uppercase mt-1">Active Stores</p>
+              </div>
+              <div className="bg-yellow-50 p-6 rounded-2xl border border-yellow-100 text-center">
+                <p className="text-3xl font-extrabold text-yellow-600">{premiumSellers.length}</p>
+                <p className="text-sm font-semibold text-yellow-700 uppercase mt-1">Premium Stores</p>
+              </div>
+              <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center">
+                <p className="text-3xl font-extrabold text-blue-600">{orders.length}</p>
+                <p className="text-sm font-semibold text-gray-500 uppercase mt-1">Total Orders</p>
+              </div>
+              <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center">
+                <p className="text-3xl font-extrabold text-alert">Rs. {totalGMV}</p>
+                <p className="text-sm font-semibold text-gray-500 uppercase mt-1">Total Delivered Rev.</p>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {activeTab === 'coupons' && (
-            <div>
-              <h2 className="text-xl font-bold text-dark mb-6">Manage Coupons</h2>
-              {couponMsg && <div className="bg-green-50 text-brand p-3 rounded-lg text-sm mb-4 max-w-2xl font-bold">{couponMsg}</div>}
-              
-              <form onSubmit={handleAddCoupon} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 max-w-4xl bg-gray-50 p-4 rounded-xl border border-gray-100">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1">Coupon Code</label>
-                  <input type="text" required value={newCoupon.code} onChange={e => setNewCoupon({...newCoupon, code: e.target.value})} placeholder="E.g. EID2024" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:outline-none uppercase" />
+        {activeTab === 'finance' && (
+          <div>
+            <h2 className="text-xl font-bold text-dark mb-6">Financial Dashboard</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-gradient-to-br from-brand to-green-700 text-white p-6 rounded-3xl shadow-md">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <p className="text-green-100 font-semibold uppercase text-xs tracking-wider mb-1">Platform Revenue</p>
+                    <h3 className="text-3xl font-extrabold">Rs. {totalExpectedRevenue}</h3>
+                  </div>
+                  <Banknote size={32} className="text-green-200 opacity-50" />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1">Discount (Rs.)</label>
-                  <input type="number" required value={newCoupon.discount} onChange={e => setNewCoupon({...newCoupon, discount: e.target.value})} placeholder="100" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:outline-none" />
+                <p className="text-sm text-green-100 mb-4">Expected monthly revenue from subscriptions.</p>
+                <div className="bg-white/20 p-3 rounded-xl text-sm flex justify-between">
+                  <span>Standard: {approvedSellers.length - premiumSellers.length} x Rs. {STANDARD_FEE}</span>
+                  <span>Premium: {premiumSellers.length} x Rs. {PREMIUM_FEE}</span>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1">Min Order (Rs.)</label>
-                  <input type="number" value={newCoupon.minAmount} onChange={e => setNewCoupon({...newCoupon, minAmount: e.target.value})} placeholder="0" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:outline-none" />
+              </div>
+              <div className="bg-gray-50 p-6 rounded-3xl border border-gray-200 shadow-sm">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <p className="text-gray-500 font-semibold uppercase text-xs tracking-wider mb-1">Total GMV (Delivered)</p>
+                    <h3 className="text-3xl font-extrabold text-dark">Rs. {totalGMV}</h3>
+                  </div>
+                  <TrendingUp size={32} className="text-brand opacity-30" />
                 </div>
-                <div className="flex items-end">
-                  <button type="submit" className="w-full bg-brand text-white font-bold py-2.5 rounded-xl hover:bg-brand/90 shadow-sm flex items-center justify-center gap-2">
-                    <Plus size={18} /> Create
+                <p className="text-sm text-gray-600">Total money transacted on the platform from {deliveredOrdersCount} delivered orders.</p>
+              </div>
+              <div className="bg-gray-50 p-6 rounded-3xl border border-gray-200 shadow-sm">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <p className="text-gray-500 font-semibold uppercase text-xs tracking-wider mb-1">Fee Collection Status</p>
+                    <h3 className="text-3xl font-extrabold text-dark">{paidSellersCount} <span className="text-lg text-gray-400">/ {approvedSellers.length}</span></h3>
+                  </div>
+                  <PieChart size={32} className="text-yellow-500 opacity-50" />
+                </div>
+                <p className="text-sm text-gray-600 mb-4">Sellers who have paid their fee this month.</p>
+                {unpaidSellersCount > 0 ? (
+                  <div className="bg-red-50 text-alert text-sm font-bold p-2 rounded-lg text-center">{unpaidSellersCount} sellers have pending fees!</div>
+                ) : (
+                  <div className="bg-green-50 text-brand text-sm font-bold p-2 rounded-lg text-center">All fees are up to date!</div>
+                )}
+              </div>
+            </div>
+            <h3 className="font-bold text-lg text-dark mb-4 border-t border-gray-100 pt-6">Recent Delivered Orders</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-200 text-sm text-gray-500">
+                    <th className="p-3">Order ID</th>
+                    <th className="p-3">Store</th>
+                    <th className="p-3">Payment Method</th>
+                    <th className="p-3 text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.filter(o => o.status === 'delivered').slice(0, 10).map(order => (
+                    <tr key={order.id} className="border-b border-gray-100">
+                      <td className="p-3 text-sm font-bold text-dark">#{order.trackingToken.slice(0,6).toUpperCase()}</td>
+                      <td className="p-3 text-sm text-gray-600">{order.storeName}</td>
+                      <td className="p-3"><span className="text-xs font-bold uppercase bg-gray-100 px-2 py-1 rounded">{order.paymentMethod}</span></td>
+                      <td className="p-3 text-right font-bold text-brand">Rs. {order.total}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'coupons' && (
+          <div>
+            <h2 className="text-xl font-bold text-dark mb-6">Manage Coupons</h2>
+            {couponMsg && <div className="bg-green-50 text-brand p-3 rounded-lg text-sm mb-4 max-w-2xl font-bold">{couponMsg}</div>}
+            
+            <form onSubmit={handleAddCoupon} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 max-w-4xl bg-gray-50 p-4 rounded-xl border border-gray-100">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Coupon Code</label>
+                <input type="text" required value={newCoupon.code} onChange={e => setNewCoupon({...newCoupon, code: e.target.value})} placeholder="E.g. EID2024" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:outline-none uppercase" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Discount (Rs.)</label>
+                <input type="number" required value={newCoupon.discount} onChange={e => setNewCoupon({...newCoupon, discount: e.target.value})} placeholder="100" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Min Order (Rs.)</label>
+                <input type="number" value={newCoupon.minAmount} onChange={e => setNewCoupon({...newCoupon, minAmount: e.target.value})} placeholder="0" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:outline-none" />
+              </div>
+              <div className="flex items-end">
+                <button type="submit" className="w-full bg-brand text-white font-bold py-2.5 rounded-xl hover:bg-brand/90 shadow-sm flex items-center justify-center gap-2">
+                  <Plus size={18} /> Create
+                </button>
+              </div>
+            </form>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {coupons.map(coupon => (
+                <div key={coupon.id} className="flex justify-between items-center bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
+                  <div>
+                    <p className="font-bold text-dark text-lg uppercase">{coupon.code}</p>
+                    <p className="text-sm text-brand font-bold">Rs. {coupon.discount} OFF</p>
+                    {coupon.minAmount > 0 && <p className="text-xs text-gray-500">Min order: Rs. {coupon.minAmount}</p>}
+                  </div>
+                  <button onClick={() => handleDeleteCoupon(coupon.id)} className="text-alert p-2 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'promotions' && (
+          <div>
+            <h2 className="text-xl font-bold text-dark mb-2">Premium Promotions</h2>
+            <p className="text-sm text-gray-500 mb-6">Toggle the plan to <strong>Premium</strong> for sellers who have paid.</p>
+            <div className="grid md:grid-cols-2 gap-4">
+              {approvedSellers.map(seller => (
+                <div key={seller.id} className="flex justify-between items-center p-4 border border-gray-100 rounded-xl bg-gray-50">
+                  <div>
+                    <h3 className="font-bold text-dark">{seller.storeName}</h3>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${seller.plan === 'premium' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200 text-gray-600'}`}>
+                      {seller.plan === 'premium' ? 'PREMIUM' : 'STANDARD'}
+                    </span>
+                  </div>
+                  <button onClick={() => toggleSubscription(seller.id, seller.plan)} className={`px-4 py-2 rounded-xl font-bold text-sm text-white ${seller.plan === 'premium' ? 'bg-gray-400 hover:bg-gray-500' : 'bg-yellow-500 hover:bg-yellow-600'}`}>
+                    {seller.plan === 'premium' ? 'Remove Premium' : 'Make Premium'}
                   </button>
                 </div>
-              </form>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {coupons.length === 0 ? (
-                  <p className="text-gray-500 col-span-full">No coupons created yet.</p>
-                ) : coupons.map(coupon => (
-                  <div key={coupon.id} className="flex justify-between items-center bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
-                    <div>
-                      <p className="font-bold text-dark text-lg uppercase">{coupon.code}</p>
-                      <p className="text-sm text-brand font-bold">Rs. {coupon.discount} OFF</p>
-                      {coupon.minAmount > 0 && <p className="text-xs text-gray-500">Min order: Rs. {coupon.minAmount}</p>}
-                    </div>
-                    <button onClick={() => handleDeleteCoupon(coupon.id)} className="text-alert p-2 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
-          )}
+          </div>
+        )}
 
-          {activeTab === 'promotions' && (
-            <div>
-              <h2 className="text-xl font-bold text-dark mb-2">Premium Promotions</h2>
-              <p className="text-sm text-gray-500 mb-6">Toggle the plan to <strong>Premium</strong> for sellers who have paid.</p>
-              <div className="grid md:grid-cols-2 gap-4">
-                {approvedSellers.map(seller => (
-                  <div key={seller.id} className="flex justify-between items-center p-4 border border-gray-100 rounded-xl bg-gray-50">
-                    <div>
-                      <h3 className="font-bold text-dark">{seller.storeName}</h3>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded ${seller.plan === 'premium' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200 text-gray-600'}`}>
-                        {seller.plan === 'premium' ? 'PREMIUM' : 'STANDARD'}
-                      </span>
-                    </div>
-                    <button onClick={() => toggleSubscription(seller.id, seller.plan)} className={`px-4 py-2 rounded-xl font-bold text-sm text-white ${seller.plan === 'premium' ? 'bg-gray-400 hover:bg-gray-500' : 'bg-yellow-500 hover:bg-yellow-600'}`}>
-                      {seller.plan === 'premium' ? 'Remove Premium' : 'Make Premium'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'categories' && (
+                  {activeTab === 'categories' && (
             <div>
               <h2 className="text-xl font-bold text-dark mb-6">Manage Categories</h2>
               <form onSubmit={handleAddCategory} className="flex gap-3 mb-8 max-w-lg">
@@ -443,7 +507,8 @@ export default function Admin() {
               </div>
             </div>
           )}
-    {activeTab === 'products' && (
+
+          {activeTab === 'products' && (
             <div>
               <h2 className="text-xl font-bold text-dark mb-4">All Platform Products</h2>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -476,4 +541,4 @@ export default function Admin() {
       )}
     </div>
   );
-}
+        }
