@@ -5,28 +5,39 @@ import { db } from '../firebase';
 import ProductCard from '../components/ProductCard';
 import { useSearchParams } from 'react-router-dom';
 
-const allCategories = ["Cakes & Bakes", "Handmade Jewelry", "Crafts & Decor", "Embroidered Items", "Candles", "Gift Hampers"];
-
 export default function Explore() {
   const [searchParams] = useSearchParams();
   const initialCat = searchParams.get('cat');
 
   const [products, setProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [premiumSellerIds, setPremiumSellerIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCat);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchData = async () => {
       try {
+        const catSnap = await getDocs(collection(db, 'categories'));
+        setCategories(catSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+        const sellersSnap = await getDocs(collection(db, 'sellers'));
+        const activeSellerIds: string[] = [];
+        const premiumIds: string[] = [];
+        
+        sellersSnap.docs.forEach(d => {
+          const data = d.data();
+          if (data.status === 'approved' && !data.isFrozen) {
+            activeSellerIds.push(d.id);
+            if (data.plan === 'premium') premiumIds.push(d.id);
+          }
+        });
+        setPremiumSellerIds(premiumIds);
+
         const querySnapshot = await getDocs(collection(db, 'products'));
         const allProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
         
-        const sellersSnap = await getDocs(collection(db, 'sellers'));
-        const activeSellerIds = sellersSnap.docs
-          .filter(d => d.data().status === 'approved' && !d.data().isFrozen)
-          .map(d => d.id);
-
         const activeProducts = allProducts.filter(p => activeSellerIds.includes(p.sellerId));
         setProducts(activeProducts);
       } catch (error) {
@@ -35,7 +46,7 @@ export default function Explore() {
         setLoading(false);
       }
     };
-    fetchProducts();
+    fetchData();
   }, []);
 
   const filteredProducts = products.filter(p => {
@@ -68,10 +79,10 @@ export default function Explore() {
                 <input type="radio" name="category" checked={selectedCategory === null} onChange={() => setSelectedCategory(null)} className="text-brand focus:ring-brand" />
                 All Categories
               </label>
-              {allCategories.map(cat => (
-                <label key={cat} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                  <input type="radio" name="category" checked={selectedCategory === cat} onChange={() => setSelectedCategory(cat)} className="text-brand focus:ring-brand" />
-                  {cat}
+              {categories.map(cat => (
+                <label key={cat.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input type="radio" name="category" checked={selectedCategory === cat.name} onChange={() => setSelectedCategory(cat.name)} className="text-brand focus:ring-brand" />
+                  {cat.name}
                 </label>
               ))}
             </div>
@@ -86,7 +97,7 @@ export default function Explore() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
               {filteredProducts.map(product => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard key={product.id} product={product} isSellerPremium={premiumSellerIds.includes(product.sellerId)} />
               ))}
             </div>
           )}
