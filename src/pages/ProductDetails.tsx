@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CheckCircle2, ChevronLeft, MessageCircle, ShoppingCart, Truck } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, MessageCircle, ShoppingCart, Truck, Star } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
 export default function ProductDetails() {
@@ -11,6 +11,7 @@ export default function ProductDetails() {
   
   const [product, setProduct] = useState<any>(null);
   const [seller, setSeller] = useState<any>(null);
+  const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const [cartMsg, setCartMsg] = useState('');
@@ -28,6 +29,18 @@ export default function ProductDetails() {
         const sellerRef = doc(db, 'sellers', prodData.sellerId);
         const sellerSnap = await getDoc(sellerRef);
         if (sellerSnap.exists()) setSeller(sellerSnap.data());
+
+        // Fetch reviews for this product
+        // Note: We can't do array-contains on productIds in a simple query if we also order by createdAt, 
+        // so we'll fetch reviews for the store and filter client-side for simplicity.
+        const revQ = query(collection(db, 'reviews'), where('sellerId', '==', prodData.sellerId));
+        const revSnap = await getDocs(revQ);
+        const productReviews = revSnap.docs
+          .map(d => d.data())
+          .filter((r: any) => r.productIds.includes(prodData.id));
+        
+        productReviews.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setReviews(productReviews);
       }
       setLoading(false);
     };
@@ -51,12 +64,15 @@ export default function ProductDetails() {
       image: images[0],
       sellerId: product.sellerId,
       storeName: product.storeName,
-      deliveryFee: product.deliveryFee || 0,
-      description: product.description || ''
+      deliveryFee: product.deliveryFee || 0
     });
     setCartMsg('Added to cart successfully!');
     setTimeout(() => setCartMsg(''), 3000);
   };
+
+  const averageRating = reviews.length > 0 
+    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) 
+    : 'New';
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
@@ -64,7 +80,7 @@ export default function ProductDetails() {
         <ChevronLeft size={20} /> Back to Explore
       </Link>
 
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row">
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row mb-8">
         {/* Images Section */}
         <div className="w-full md:w-1/2 p-4">
           <div className="aspect-square rounded-2xl overflow-hidden bg-gray-50 mb-4">
@@ -90,6 +106,10 @@ export default function ProductDetails() {
             <Link to={`/store/${product.sellerId}`} className="flex items-center gap-1 text-gray-600 hover:text-brand font-medium">
               {product.storeName} <CheckCircle2 size={16} className="text-brand" />
             </Link>
+            <span className="text-gray-300">|</span>
+            <div className="flex items-center gap-1 text-sm font-medium text-dark">
+              <Star size={16} className="text-yellow-400 fill-yellow-400" /> {averageRating}
+            </div>
           </div>
 
           <div className="text-4xl font-extrabold text-dark mb-2">
@@ -126,6 +146,31 @@ export default function ProductDetails() {
           </div>
         </div>
       </div>
+
+      {/* REVIEWS LIST */}
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+        <h2 className="text-2xl font-bold text-dark mb-6">Customer Reviews ({reviews.length})</h2>
+        {reviews.length === 0 ? (
+          <p className="text-gray-500">No reviews yet for this product. Be the first to buy and review it!</p>
+        ) : (
+          <div className="space-y-6">
+            {reviews.map((rev, i) => (
+              <div key={i} className="border-b border-gray-100 pb-4 last:border-0">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex">
+                    {[1,2,3,4,5].map(star => (
+                      <Star key={star} size={16} className={star <= rev.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"} />
+                    ))}
+                  </div>
+                  <span className="font-semibold text-dark text-sm">{rev.buyerName}</span>
+                  <span className="text-xs text-gray-400 ml-auto">{new Date(rev.createdAt).toLocaleDateString()}</span>
+                </div>
+                <p className="text-gray-700 text-sm">{rev.text}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
-}
+                  }
