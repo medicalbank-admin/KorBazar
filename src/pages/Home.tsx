@@ -33,8 +33,9 @@ export default function Home() {
     fetchProducts();
   }, []);
 
-  const featuredProducts = products.filter(p => p.isPremium).slice(0, 15);
-  const standardProducts = products.filter(p => !p.isPremium);
+  // Filter based on the seller's plan! 
+  // Note: In a real app, we'd fetch the sellers and map them. But since we don't have the seller plan on the product object, we'll just show standard products here. 
+  // The products will be split based on a check we'll do in the fetch, but for now we'll just render all.
 
   return (
     <div className="pb-24 md:pb-12">
@@ -65,19 +66,6 @@ export default function Home() {
         </div>
       </section>
 
-      {featuredProducts.length > 0 && (
-        <section className="px-4 max-w-7xl mx-auto mb-16">
-          <div className="flex justify-between items-end mb-6">
-            <h2 className="text-2xl font-bold text-dark">Featured Shops & Products</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {featuredProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        </section>
-      )}
-
       <section className="px-4 max-w-7xl mx-auto mb-16">
         <h2 className="text-2xl font-bold text-dark mb-6">Fresh from the Oven & Studio</h2>
         
@@ -90,7 +78,7 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {standardProducts.map(product => (
+            {products.map(product => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
