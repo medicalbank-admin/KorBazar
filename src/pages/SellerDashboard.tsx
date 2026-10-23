@@ -35,6 +35,9 @@ export default function SellerDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'store' | 'subscription' | 'profile'>('orders');
   
+  // NEW: Order Filter Tab
+  const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'dispatched' | 'delivered' | 'cancelled'>('all');
+
   const [storeBio, setStoreBio] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
   const [paymentAccounts, setPaymentAccounts] = useState('');
@@ -117,6 +120,7 @@ export default function SellerDashboard() {
         price: Number(price), 
         deliveryFee: Number(productDeliveryFee) || 0,
         category,
+        isPremium: false, 
         images: imageUrls, 
         image: imageUrls[0],
         createdAt: new Date().toISOString()
@@ -169,10 +173,23 @@ export default function SellerDashboard() {
     );
   }
 
-  const pendingOrders = orders.filter(o => o.status === 'new' || o.status === 'accepted' || o.status === 'dispatched').length;
-  const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
-  const cancelledOrders = orders.filter(o => o.status === 'cancelled' || o.status === 'rejected').length;
-      return (
+  // Calculate Stats
+  const pendingCount = orders.filter(o => o.status === 'new' || o.status === 'accepted').length;
+  const dispatchedCount = orders.filter(o => o.status === 'dispatched').length;
+  const deliveredCount = orders.filter(o => o.status === 'delivered').length;
+  const cancelledCount = orders.filter(o => o.status === 'cancelled' || o.status === 'rejected').length;
+
+  // Filter orders for the current tab
+  const filteredOrders = orders.filter(order => {
+    if (orderFilter === 'all') return true;
+    if (orderFilter === 'pending') return order.status === 'new' || order.status === 'accepted';
+    if (orderFilter === 'dispatched') return order.status === 'dispatched';
+    if (orderFilter === 'delivered') return order.status === 'delivered';
+    if (orderFilter === 'cancelled') return order.status === 'cancelled' || order.status === 'rejected';
+    return true;
+  });
+
+return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
@@ -184,17 +201,22 @@ export default function SellerDashboard() {
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      {/* Top Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
-          <span className="text-3xl font-extrabold text-yellow-600">{pendingOrders}</span>
-          <span className="text-xs font-bold text-yellow-700 uppercase mt-1">Pending</span>
+          <span className="text-3xl font-extrabold text-yellow-600">{pendingCount}</span>
+          <span className="text-xs font-bold text-yellow-700 uppercase mt-1">New / Pending</span>
+        </div>
+        <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+          <span className="text-3xl font-extrabold text-blue-600">{dispatchedCount}</span>
+          <span className="text-xs font-bold text-blue-700 uppercase mt-1">Dispatched</span>
         </div>
         <div className="bg-green-50 border border-green-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
-          <span className="text-3xl font-extrabold text-brand">{deliveredOrders}</span>
+          <span className="text-3xl font-extrabold text-brand">{deliveredCount}</span>
           <span className="text-xs font-bold text-brand uppercase mt-1">Delivered</span>
         </div>
         <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
-          <span className="text-3xl font-extrabold text-alert">{cancelledOrders}</span>
+          <span className="text-3xl font-extrabold text-alert">{cancelledCount}</span>
           <span className="text-xs font-bold text-alert uppercase mt-1">Cancelled</span>
         </div>
       </div>
@@ -215,48 +237,63 @@ export default function SellerDashboard() {
       ) : (
         <div>
           {activeTab === 'orders' && (
-            <div className="space-y-4">
-              {orders.length === 0 ? (
-                <div className="bg-white p-8 text-center rounded-2xl border border-gray-100 text-gray-500">No orders yet.</div>
-              ) : orders.map(order => (
-                <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row justify-between gap-6">
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-bold text-lg text-dark">Order #{order.trackingToken.slice(0,6).toUpperCase()}</h3>
-                      <span className={`text-xs font-bold px-2 py-1 rounded-full uppercase ${order.status === 'new' ? 'bg-yellow-100 text-yellow-700' : order.status === 'delivered' ? 'bg-green-100 text-brand' : order.status === 'cancelled' || order.status === 'rejected' ? 'bg-red-100 text-alert' : 'bg-blue-100 text-blue-700'}`}>{order.status}</span>
-                    </div>
-                    <p className="text-sm text-gray-600"><span className="font-semibold text-dark">Buyer:</span> {order.buyerName} ({order.buyerPhone})</p>
-                    <p className="text-sm text-gray-600 mb-2"><span className="font-semibold text-dark">Address:</span> {order.buyerAddress}</p>
-                    <div className="bg-gray-50 p-3 rounded-xl text-sm mb-2 border border-gray-100">
-                      {order.items.map((i:any, idx:number) => <div key={idx}>{i.qty}x {i.title} - Rs. {i.price}</div>)}
-                      <div className="mt-1 pt-1 border-t border-gray-200 text-gray-500 text-xs flex justify-between">
-                        <span>Subtotal: Rs. {order.subtotal || order.total}</span>
-                        <span>Delivery: Rs. {order.deliveryFee || 0}</span>
+            <div>
+              {/* Order Filters */}
+              <div className="flex overflow-x-auto gap-2 mb-6 scrollbar-hide">
+                {['all', 'pending', 'dispatched', 'delivered', 'cancelled'].map(tab => (
+                  <button 
+                    key={tab}
+                    onClick={() => setOrderFilter(tab as any)}
+                    className={`px-4 py-2 rounded-lg font-semibold text-sm whitespace-nowrap capitalize transition-colors ${orderFilter === tab ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  >
+                    {tab === 'all' ? 'All Orders' : tab}
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-4">
+                {filteredOrders.length === 0 ? (
+                  <div className="bg-white p-8 text-center rounded-2xl border border-gray-100 text-gray-500">No {orderFilter} orders found.</div>
+                ) : filteredOrders.map(order => (
+                  <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row justify-between gap-6">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="font-bold text-lg text-dark">Order #{order.trackingToken.slice(0,6).toUpperCase()}</h3>
+                        <span className={`text-xs font-bold px-2 py-1 rounded-full uppercase ${order.status === 'new' ? 'bg-yellow-100 text-yellow-700' : order.status === 'delivered' ? 'bg-green-100 text-brand' : order.status === 'cancelled' || order.status === 'rejected' ? 'bg-red-100 text-alert' : 'bg-blue-100 text-blue-700'}`}>{order.status}</span>
                       </div>
-                      {order.notes && <div className="text-brand font-semibold mt-1">Note: {order.notes}</div>}
+                      <p className="text-sm text-gray-600"><span className="font-semibold text-dark">Buyer:</span> {order.buyerName} ({order.buyerPhone})</p>
+                      <p className="text-sm text-gray-600 mb-2"><span className="font-semibold text-dark">Address:</span> {order.buyerAddress}</p>
+                      <div className="bg-gray-50 p-3 rounded-xl text-sm mb-2 border border-gray-100">
+                        {order.items.map((i:any, idx:number) => <div key={idx}>{i.qty}x {i.title} - Rs. {i.price}</div>)}
+                        <div className="mt-1 pt-1 border-t border-gray-200 text-gray-500 text-xs flex justify-between">
+                          <span>Subtotal: Rs. {order.subtotal || order.total}</span>
+                          <span>Delivery: Rs. {order.deliveryFee || 0}</span>
+                        </div>
+                        {order.notes && <div className="text-brand font-semibold mt-1">Note: {order.notes}</div>}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="font-bold text-dark text-lg">Total: Rs. {order.total}</p>
+                        <span className="text-xs font-bold uppercase bg-gray-200 px-2 py-1 rounded">{order.paymentMethod}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <p className="font-bold text-dark text-lg">Total: Rs. {order.total}</p>
-                      <span className="text-xs font-bold uppercase bg-gray-200 px-2 py-1 rounded">{order.paymentMethod}</span>
+                    
+                    <div className="flex flex-col gap-2 min-w-[200px] justify-center">
+                      {order.status === 'new' && (
+                        <>
+                          <button onClick={() => handleWhatsAppNotify(order)} className="w-full bg-[#25D366] text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-[#20bd5a]"><MessageCircle size={18}/> Accept & Notify</button>
+                          <button onClick={() => updateOrderStatus(order.id, 'rejected', { rejectionReason: 'Out of stock' })} className="w-full bg-red-50 text-alert font-bold py-2.5 rounded-xl border border-red-200 hover:bg-red-100 flex items-center justify-center gap-2"><XCircle size={18}/> Reject</button>
+                        </>
+                      )}
+                      {order.status === 'accepted' && (
+                        <button onClick={() => updateOrderStatus(order.id, 'dispatched')} className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-700"><Truck size={18}/> Mark Dispatched</button>
+                      )}
+                      {order.status === 'dispatched' && (
+                        <button onClick={() => updateOrderStatus(order.id, 'delivered')} className="w-full bg-brand text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-brand/90"><CheckCircle size={18}/> Mark Delivered</button>
+                      )}
                     </div>
                   </div>
-                  
-                  <div className="flex flex-col gap-2 min-w-[200px] justify-center">
-                    {order.status === 'new' && (
-                      <>
-                        <button onClick={() => handleWhatsAppNotify(order)} className="w-full bg-[#25D366] text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-[#20bd5a]"><MessageCircle size={18}/> Accept & Notify</button>
-                        <button onClick={() => updateOrderStatus(order.id, 'rejected', { rejectionReason: 'Out of stock' })} className="w-full bg-red-50 text-alert font-bold py-2.5 rounded-xl border border-red-200 hover:bg-red-100 flex items-center justify-center gap-2"><XCircle size={18}/> Reject</button>
-                      </>
-                    )}
-                    {order.status === 'accepted' && (
-                      <button onClick={() => updateOrderStatus(order.id, 'dispatched')} className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-700"><Truck size={18}/> Mark Dispatched</button>
-                    )}
-                    {order.status === 'dispatched' && (
-                      <button onClick={() => updateOrderStatus(order.id, 'delivered')} className="w-full bg-brand text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-brand/90"><CheckCircle size={18}/> Mark Delivered</button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
 
@@ -368,7 +405,6 @@ export default function SellerDashboard() {
             </div>
           )}
 
-          {/* NEW SUBSCRIPTION TAB */}
           {activeTab === 'subscription' && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
               <h2 className="text-xl font-bold text-dark mb-6 flex items-center gap-2"><CreditCard /> Subscription Plan</h2>
@@ -416,4 +452,4 @@ export default function SellerDashboard() {
       )}
     </div>
   );
-                  }
+}
