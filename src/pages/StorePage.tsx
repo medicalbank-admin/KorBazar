@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import ProductCard from '../components/ProductCard';
-import { CheckCircle2, MapPin, Facebook, Instagram, Globe, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, MapPin, Facebook, Instagram, Globe, ShieldCheck, ShieldAlert, Crown } from 'lucide-react';
 
 export default function StorePage() {
   const { id } = useParams();
@@ -39,8 +39,8 @@ export default function StorePage() {
     fetchStoreData();
   }, [id]);
 
-  if (loading) return <div className="p-12 text-center text-dark">Loading store...</div>;
-  if (!store) return <div className="p-12 text-center text-dark">Store not found.</div>;
+  if (loading) return <div className="p-12 text-center text-dark font-bold">Loading store...</div>;
+  if (!store) return <div className="p-12 text-center text-dark font-bold">Store not found.</div>;
 
   if (store.isFrozen) {
     return (
@@ -61,9 +61,17 @@ export default function StorePage() {
           {store.storeName.charAt(0)}
         </div>
         <div className="flex-grow text-center md:text-left">
-          <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+          
+          {/* PREMIUM vs STANDARD BADGE LOGIC */}
+          <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 mb-2">
             <h1 className="text-3xl font-bold text-dark">{store.storeName}</h1>
-            {store.status === 'approved' && <CheckCircle2 className="text-brand" size={24} />}
+            {store.plan === 'premium' ? (
+              <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 border border-yellow-200">
+                <Crown size={16} className="fill-yellow-500 text-yellow-500" /> Premium Seller
+              </span>
+            ) : store.status === 'approved' ? (
+              <CheckCircle2 className="text-brand" size={24} />
+            ) : null}
           </div>
           
           <p className="text-gray-600 mb-4 max-w-2xl">{store.bio || "Welcome to my store!"}</p>
