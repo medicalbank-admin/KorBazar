@@ -3,7 +3,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBe3nY5-DQwqzmtaqjQ7FfYyQ-TnIld_PU",
+  apiKey: "AIzaSyBe3nY5-DQwgzmtagrO7FtYY0-Tnild_PU",
   authDomain: "korbazar-cd6a9.firebaseapp.com",
   projectId: "korbazar-cd6a9",
   storageBucket: "korbazar-cd6a9.firebasestorage.app",
