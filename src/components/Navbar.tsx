@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, ShoppingCart, User, Package, LayoutDashboard, ShieldCheck } from 'lucide-react';
+import { Home, Search, ShoppingCart, User, Package, LayoutDashboard, ShieldCheck, Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
@@ -56,48 +56,46 @@ export default function Navbar() {
 
       {/* Mobile Bottom Nav */}
       <nav className="md:hidden fixed bottom-0 w-full bg-white border-t border-gray-100 flex justify-around items-center py-2 z-50 pb-safe">
-        <Link to="/" className={`flex flex-col items-center p-2 ${location.pathname === '/' ? 'text-brand' : 'text-gray-500'}`}>
+        <Link to="/" className={`flex flex-col items-center p-1 ${location.pathname === '/' ? 'text-brand' : 'text-gray-500'}`}>
           <Home size={20} /> <span className="text-[10px] mt-1 font-medium">Home</span>
         </Link>
-        <Link to="/explore" className={`flex flex-col items-center p-2 ${location.pathname === '/explore' ? 'text-brand' : 'text-gray-500'}`}>
+        <Link to="/explore" className={`flex flex-col items-center p-1 ${location.pathname === '/explore' ? 'text-brand' : 'text-gray-500'}`}>
           <Search size={20} /> <span className="text-[10px] mt-1 font-medium">Explore</span>
         </Link>
 
         {userRole === 'seller' ? (
           <>
-            <Link to="/seller/dashboard" className={`flex flex-col items-center p-2 ${location.pathname === '/seller/dashboard' ? 'text-brand' : 'text-gray-500'}`}>
+            <Link to="/seller/dashboard" className={`flex flex-col items-center p-1 ${location.pathname === '/seller/dashboard' ? 'text-brand' : 'text-gray-500'}`}>
               <LayoutDashboard size={20} /> <span className="text-[10px] mt-1 font-medium">Dashboard</span>
             </Link>
-            <Link to="/orders" className={`flex flex-col items-center p-2 ${location.pathname === '/orders' ? 'text-brand' : 'text-gray-500'}`}>
+            <Link to="/orders" className={`flex flex-col items-center p-1 ${location.pathname === '/orders' ? 'text-brand' : 'text-gray-500'}`}>
               <Package size={20} /> <span className="text-[10px] mt-1 font-medium">Orders</span>
-            </Link>
-            <Link to="/profile" className={`flex flex-col items-center p-2 ${location.pathname === '/profile' ? 'text-brand' : 'text-gray-500'}`}>
-              <User size={20} /> <span className="text-[10px] mt-1 font-medium">Profile</span>
             </Link>
           </>
         ) : userRole === 'admin' ? (
           <>
-            <Link to="/admin" className={`flex flex-col items-center p-2 ${location.pathname === '/admin' ? 'text-brand' : 'text-gray-500'}`}>
+            <Link to="/admin" className={`flex flex-col items-center p-1 ${location.pathname === '/admin' ? 'text-brand' : 'text-gray-500'}`}>
               <ShieldCheck size={20} /> <span className="text-[10px] mt-1 font-medium">Admin</span>
-            </Link>
-            <Link to="/profile" className={`flex flex-col items-center p-2 ${location.pathname === '/profile' ? 'text-brand' : 'text-gray-500'}`}>
-              <User size={20} /> <span className="text-[10px] mt-1 font-medium">Profile</span>
             </Link>
           </>
         ) : (
           <>
-            <Link to="/cart" className={`flex flex-col items-center p-2 ${location.pathname === '/cart' ? 'text-brand' : 'text-gray-500'}`}>
+            <Link to="/cart" className={`flex flex-col items-center p-1 ${location.pathname === '/cart' ? 'text-brand' : 'text-gray-500'}`}>
               <ShoppingCart size={20} /> <span className="text-[10px] mt-1 font-medium">Cart</span>
             </Link>
-            <Link to="/orders" className={`flex flex-col items-center p-2 ${location.pathname === '/orders' ? 'text-brand' : 'text-gray-500'}`}>
-              <Package size={20} /> <span className="text-[10px] mt-1 font-medium">Orders</span>
+            <Link to="/favorites" className={`flex flex-col items-center p-1 ${location.pathname === '/favorites' ? 'text-brand' : 'text-gray-500'}`}>
+              <Heart size={20} /> <span className="text-[10px] mt-1 font-medium">Saved</span>
             </Link>
-            <Link to="/profile" className={`flex flex-col items-center p-2 ${location.pathname === '/profile' ? 'text-brand' : 'text-gray-500'}`}>
-              <User size={20} /> <span className="text-[10px] mt-1 font-medium">Profile</span>
+            <Link to="/orders" className={`flex flex-col items-center p-1 ${location.pathname === '/orders' ? 'text-brand' : 'text-gray-500'}`}>
+              <Package size={20} /> <span className="text-[10px] mt-1 font-medium">Orders</span>
             </Link>
           </>
         )}
+        
+        <Link to="/profile" className={`flex flex-col items-center p-1 ${location.pathname === '/profile' ? 'text-brand' : 'text-gray-500'}`}>
+          <User size={20} /> <span className="text-[10px] mt-1 font-medium">Profile</span>
+        </Link>
       </nav>
     </>
   );
-              }
+}
