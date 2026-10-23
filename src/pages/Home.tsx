@@ -1,10 +1,35 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { mockProducts, categories } from '../mockData';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
 import ProductCard from '../components/ProductCard';
 
+const categories = ["Cakes & Bakes", "Handmade Jewelry", "Crafts & Decor", "Embroidered Items", "Candles", "Gift Hampers"];
+
 export default function Home() {
-  const premiumProducts = mockProducts.filter(p => p.isPremium);
-  const standardProducts = mockProducts.filter(p => !p.isPremium);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'products'));
+        const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Sort newest first
+        productsData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setProducts(productsData);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  // For now, we will show the newest 15 products in Featured, and the rest in "More"
+  const featuredProducts = products.slice(0, 15);
+  const standardProducts = products.slice(15);
 
   return (
     <div className="pb-24 md:pb-12">
@@ -37,29 +62,41 @@ export default function Home() {
 
       <section className="px-4 max-w-7xl mx-auto mb-16">
         <div className="flex justify-between items-end mb-6">
-          <h2 className="text-2xl font-bold text-dark">Featured Shops & Products</h2>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-          {premiumProducts.map(product => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      </section>
-
-      <section className="px-4 max-w-7xl mx-auto mb-16">
-        <h2 className="text-2xl font-bold text-dark mb-6">More from Charsadda</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-          {standardProducts.map(product => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+          <h2 className="text-2xl font-bold text-dark">Fresh from the Oven & Studio</h2>
         </div>
         
-        <div className="mt-12 text-center">
-          <Link to="/explore" className="inline-block w-full md:w-auto bg-dark text-white px-12 py-4 rounded-full font-bold text-lg hover:bg-black transition-all">
-            Explore All Shops & Products
-          </Link>
-        </div>
+        {loading ? (
+          <div className="text-center py-12 text-gray-500">Loading products...</div>
+        ) : products.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
+            <p className="text-gray-500 mb-4">No products listed yet. Be the first!</p>
+            <Link to="/sell-with-us" className="bg-brand text-white px-6 py-2 rounded-xl font-semibold">Start Selling</Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            {featuredProducts.map(product => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
       </section>
+
+      {standardProducts.length > 0 && (
+        <section className="px-4 max-w-7xl mx-auto mb-16">
+          <h2 className="text-2xl font-bold text-dark mb-6">More from Charsadda</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            {standardProducts.map(product => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+          
+          <div className="mt-12 text-center">
+            <Link to="/explore" className="inline-block w-full md:w-auto bg-dark text-white px-12 py-4 rounded-full font-bold text-lg hover:bg-black transition-all">
+              Explore All Shops & Products
+            </Link>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
