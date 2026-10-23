@@ -37,13 +37,15 @@ export default function SellerDashboard() {
   
   const [storeBio, setStoreBio] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
-  const [deliveryFee, setDeliveryFee] = useState('');
   const [paymentAccounts, setPaymentAccounts] = useState('');
   const [socialLinks, setSocialLinks] = useState({ facebook: '', instagram: '', tiktok: '' });
   const [storeMsg, setStoreMsg] = useState('');
 
+  // Product Form State
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
+  const [productDescription, setProductDescription] = useState('');
+  const [productDeliveryFee, setProductDeliveryFee] = useState('');
   const [category, setCategory] = useState('Cakes & Bakes');
   const [productImages, setProductImages] = useState<FileList | null>(null);
   const [productMsg, setProductMsg] = useState('');
@@ -58,7 +60,6 @@ export default function SellerDashboard() {
         setStore(data);
         setStoreBio(data.bio || '');
         setStoreAddress(data.storeAddress || '');
-        setDeliveryFee(data.deliveryFee || '0');
         setPaymentAccounts(data.paymentAccounts || '');
         setSocialLinks(data.socialLinks || { facebook: '', instagram: '', tiktok: '' });
       }
@@ -88,7 +89,6 @@ export default function SellerDashboard() {
     await updateDoc(doc(db, 'sellers', currentUser.uid), {
       bio: storeBio,
       storeAddress: storeAddress,
-      deliveryFee: Number(deliveryFee),
       paymentAccounts: paymentAccounts,
       socialLinks: socialLinks
     });
@@ -111,16 +111,23 @@ export default function SellerDashboard() {
       }
 
       const newProduct = {
-        sellerId: currentUser.uid, storeName: store.storeName,
-        title, price: Number(price), category,
-        isPremium: false, images: imageUrls, image: imageUrls[0],
+        sellerId: currentUser.uid, 
+        storeName: store.storeName,
+        title, 
+        description: productDescription,
+        price: Number(price), 
+        deliveryFee: Number(productDeliveryFee) || 0,
+        category,
+        isPremium: false, 
+        images: imageUrls, 
+        image: imageUrls[0],
         createdAt: new Date().toISOString()
       };
 
       const docRef = await addDoc(collection(db, 'products'), newProduct);
       setProducts([{ id: docRef.id, ...newProduct }, ...products]);
       setProductMsg('Product added successfully!');
-      setTitle(''); setPrice(''); setProductImages(null);
+      setTitle(''); setPrice(''); setProductDescription(''); setProductDeliveryFee(''); setProductImages(null);
       (document.getElementById('product-images') as HTMLInputElement).value = '';
       setTimeout(() => setProductMsg(''), 3000);
     } catch (error) {
@@ -141,7 +148,7 @@ export default function SellerDashboard() {
       paymentInstructions = `\nPlease send the payment via ${order.paymentMethod} to:\n${store.paymentAccounts || '[Seller needs to set account details]'}\n`;
     }
 
-    const text = `Assalam-o-Alaikum ${order.buyerName},\n\nYour order from ${store.storeName} has been CONFIRMED.\n\nOrder ID: #${order.trackingToken.slice(0,8).toUpperCase()}\n\nSubtotal: Rs. ${order.subtotal || order.total}\nDelivery Fee: Rs. ${order.deliveryFee || 0}\nTotal Bill: Rs. ${order.total}\n\nPayment Method: ${order.paymentMethod}\n${paymentInstructions}\nTrack your order here:\nhttps://medicalbank-admin.github.io/KorBazar/#/track/${order.trackingToken}\n\nThank you for supporting a local seller!\n- ${store.storeName} via KorBazar`;
+    const text = `Assalam-o-Alaikum ${order.buyerName},\n\nYour order from ${store.storeName} has been CONFIRMED.\n\nOrder ID: #${order.trackingToken.slice(0,8).toUpperCase()}\n\nSubtotal: Rs. ${order.subtotal || order.total}\nDelivery Fees: Rs. ${order.deliveryFee || 0}\nTotal Bill: Rs. ${order.total}\n\nPayment Method: ${order.paymentMethod}\n${paymentInstructions}\nTrack your order here:\nhttps://medicalbank-admin.github.io/KorBazar/#/track/${order.trackingToken}\n\nThank you for supporting a local seller!\n- ${store.storeName} via KorBazar`;
     
     const cleanNumber = order.buyerWhatsapp.replace(/^0/, '');
     window.open(`https://wa.me/92${cleanNumber}?text=${encodeURIComponent(text)}`, '_blank');
@@ -167,8 +174,7 @@ export default function SellerDashboard() {
   const pendingOrders = orders.filter(o => o.status === 'new' || o.status === 'accepted' || o.status === 'dispatched').length;
   const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
   const cancelledOrders = orders.filter(o => o.status === 'cancelled' || o.status === 'rejected').length;
-
-  return (
+    return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
@@ -176,7 +182,7 @@ export default function SellerDashboard() {
           <p className="text-gray-500 font-medium">Professional Seller Dashboard</p>
         </div>
         {store.status === 'approved' && (
-          <a href={`#/store/${currentUser?.uid}`} target="_blank" rel="noreferrer" className="bg-dark text-white px-6 py-2 rounded-xl font-semibold hover:bg-black transition-colors">View Public Store &rarr;</a>
+          <a href={`#/store/${currentUser?.uid}`} target="_blank" rel="noreferrer" className="bg-dark text-white px-6 py-2 rounded-xl font-semibold hover:bg-black transition-colors">View Public Store</a>
         )}
       </div>
 
@@ -266,10 +272,18 @@ export default function SellerDashboard() {
                      <label className="block text-sm font-medium text-gray-700 mb-1">Product Title</label>
                      <input type="text" required value={title} onChange={e => setTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
                    </div>
-                   <div className="grid grid-cols-2 gap-4">
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-1">Product Description</label>
+                     <textarea required value={productDescription} onChange={e => setProductDescription(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="Describe the item, size, materials, etc." />
+                   </div>
+                   <div className="grid grid-cols-3 gap-4">
                      <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-1">Price (PKR)</label>
+                       <label className="block text-sm font-medium text-gray-700 mb-1">Price (Rs.)</label>
                        <input type="number" required value={price} onChange={e => setPrice(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+                     </div>
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Fee (Rs.)</label>
+                       <input type="number" required value={productDeliveryFee} onChange={e => setProductDeliveryFee(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
                      </div>
                      <div>
                        <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
@@ -301,7 +315,7 @@ export default function SellerDashboard() {
                        <img src={p.image} alt={p.title} className="w-16 h-16 object-cover rounded-lg" />
                        <div className="flex-grow">
                          <h4 className="font-bold text-dark">{p.title}</h4>
-                         <p className="text-sm text-brand font-semibold">Rs. {p.price}</p>
+                         <p className="text-sm text-brand font-semibold">Rs. {p.price} <span className="text-gray-400 text-xs ml-2">+ Rs. {p.deliveryFee || 0} Delivery</span></p>
                        </div>
                      </div>
                    ))}
@@ -327,15 +341,9 @@ export default function SellerDashboard() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Store Bio</label>
                   <textarea value={storeBio} onChange={e => setStoreBio(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Fee (Rs.)</label>
-                    <input type="number" value={deliveryFee} onChange={e => setDeliveryFee(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. 150" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Accounts (JazzCash/Easypaisa)</label>
-                    <input type="text" value={paymentAccounts} onChange={e => setPaymentAccounts(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. JazzCash: 03001234567 (Name)" />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Accounts</label>
+                  <input type="text" value={paymentAccounts} onChange={e => setPaymentAccounts(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. JazzCash: 03001234567" />
                 </div>
                 
                 <div className="pt-2 border-t border-gray-100">
@@ -343,15 +351,15 @@ export default function SellerDashboard() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Facebook size={20} className="text-blue-600" />
-                      <input type="url" placeholder="Facebook Page URL" value={socialLinks.facebook} onChange={e => setSocialLinks({...socialLinks, facebook: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
+                      <input type="url" placeholder="Facebook URL" value={socialLinks.facebook} onChange={e => setSocialLinks({...socialLinks, facebook: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
                     </div>
                     <div className="flex items-center gap-2">
                       <Instagram size={20} className="text-pink-600" />
-                      <input type="url" placeholder="Instagram Profile URL" value={socialLinks.instagram} onChange={e => setSocialLinks({...socialLinks, instagram: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
+                      <input type="url" placeholder="Instagram URL" value={socialLinks.instagram} onChange={e => setSocialLinks({...socialLinks, instagram: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
                     </div>
                     <div className="flex items-center gap-2">
                       <Globe size={20} className="text-dark" />
-                      <input type="url" placeholder="TikTok Profile URL" value={socialLinks.tiktok} onChange={e => setSocialLinks({...socialLinks, tiktok: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
+                      <input type="url" placeholder="TikTok URL" value={socialLinks.tiktok} onChange={e => setSocialLinks({...socialLinks, tiktok: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
                     </div>
                   </div>
                 </div>
@@ -376,4 +384,4 @@ export default function SellerDashboard() {
       )}
     </div>
   );
-                    }
+                                                               }
