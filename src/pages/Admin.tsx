@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CheckCircle, XCircle, Clock } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, X } from 'lucide-react';
 
 export default function Admin() {
   const [sellers, setSellers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
+  const [viewImage, setViewImage] = useState<string | null>(null);
 
   const fetchSellers = async () => {
     setLoading(true);
     try {
       const querySnapshot = await getDocs(collection(db, 'sellers'));
       const sellersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      // Sort newest first
       sellersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setSellers(sellersData);
     } catch (error) {
@@ -45,9 +45,19 @@ export default function Admin() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 pb-24">
+    <div className="max-w-7xl mx-auto px-4 py-8 pb-24 relative">
       <h1 className="text-3xl font-bold text-dark mb-8">Admin Dashboard</h1>
       
+      {/* Image Viewer Modal */}
+      {viewImage && (
+        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+          <div className="relative max-w-2xl w-full">
+            <button onClick={() => setViewImage(null)} className="absolute -top-12 right-0 text-white bg-red-500 rounded-full p-2"><X size={24} /></button>
+            <img src={viewImage} alt="CNIC" className="w-full h-auto rounded-xl" />
+          </div>
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex gap-4 mb-6 border-b border-gray-200">
         <button 
@@ -74,7 +84,6 @@ export default function Admin() {
             {filteredSellers.map((seller) => (
               <div key={seller.id} className="p-6 flex flex-col md:flex-row md:items-start justify-between gap-6">
                 
-                {/* Seller Info */}
                 <div className="flex-grow">
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="font-bold text-xl text-dark">{seller.storeName}</h3>
@@ -93,14 +102,13 @@ export default function Admin() {
                   {seller.rejectionReason && <p className="text-sm text-alert mt-2"><span className="font-semibold">Reason:</span> {seller.rejectionReason}</p>}
                 </div>
 
-                {/* CNIC Images & Actions */}
                 <div className="flex flex-col gap-4 md:items-end">
                   <div className="flex gap-2">
                     {seller.cnicFrontUrl && (
-                      <a href={seller.cnicFrontUrl} target="_blank" rel="noreferrer" className="text-sm bg-gray-100 px-3 py-1 rounded-lg hover:bg-gray-200">View CNIC Front</a>
+                      <button onClick={() => setViewImage(seller.cnicFrontUrl)} className="text-sm bg-gray-100 px-3 py-1 rounded-lg hover:bg-gray-200 font-semibold text-dark">View CNIC Front</button>
                     )}
                     {seller.cnicBackUrl && (
-                      <a href={seller.cnicBackUrl} target="_blank" rel="noreferrer" className="text-sm bg-gray-100 px-3 py-1 rounded-lg hover:bg-gray-200">View CNIC Back</a>
+                      <button onClick={() => setViewImage(seller.cnicBackUrl)} className="text-sm bg-gray-100 px-3 py-1 rounded-lg hover:bg-gray-200 font-semibold text-dark">View CNIC Back</button>
                     )}
                   </div>
                   
@@ -122,4 +130,4 @@ export default function Admin() {
       </div>
     </div>
   );
-                                  }
+}
