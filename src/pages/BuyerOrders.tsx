@@ -39,14 +39,30 @@ export default function BuyerOrders() {
     };
     fetchOrders();
   }, [currentUser]);
+  
+const handleCancelOrder = async (order: any) => {
+  if(window.confirm('Are you sure you want to cancel this order? You will be redirected to WhatsApp to notify the seller.')) {
+    try {
+      // 1. Update status in Firestore
+      await updateDoc(doc(db, 'orders', order.id), { 
+        status: 'cancelled',
+        cancelledBy: 'buyer',
+        cancelledAt: new Date().toISOString()
+      });
 
-  const handleCancelOrder = (order: any) => {
-    if(window.confirm('Are you sure you want to cancel this order? You will be redirected to WhatsApp to notify the seller.')) {
+      // 2. Open WhatsApp to notify seller
       const text = `Assalam-o-Alaikum ${order.storeName},\n\nI would like to CANCEL my order #${order.trackingToken.slice(0,8).toUpperCase()} placed on KorBazar.\n\nReason: (Please type your reason here)\n\nThank you.`;
       const cleanNumber = order.sellerWhatsapp?.replace(/^0/, '') || '';
       window.open(`https://wa.me/92${cleanNumber}?text=${encodeURIComponent(text)}`, '_blank');
+      
+      // 3. Refresh orders list to show updated status
+      setOrders(orders.map(o => o.id === order.id ? { ...o, status: 'cancelled' } : o));
+    } catch (error) {
+      console.error("Error cancelling order:", error);
+      alert("Failed to update order status.");
     }
-  };
+  }
+};
 
   if (!currentUser) return <div className="p-12 text-center text-dark">Please log in to view your orders.</div>;
   if (loading) return <div className="p-12 text-center text-dark">Loading orders...</div>;
