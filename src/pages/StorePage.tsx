@@ -4,6 +4,7 @@ import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firesto
 import { db } from '../firebase';
 import ProductCard from '../components/ProductCard';
 import { CheckCircle2, MapPin, Facebook, Instagram, Globe, ShieldCheck, ShieldAlert, Crown } from 'lucide-react';
+import ReportModal from '../components/ReportModal';
 
 export default function StorePage() {
   const { id } = useParams();
@@ -11,7 +12,8 @@ export default function StorePage() {
   const [products, setProducts] = useState<any[]>([]);
   const [stats, setStats] = useState({ delivered: 0, cancelled: 0 });
   const [loading, setLoading] = useState(true);
-
+const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  
   useEffect(() => {
     const fetchStoreData = async () => {
       if (!id) return;
@@ -98,7 +100,22 @@ export default function StorePage() {
           <div className="text-center">
             <p className="text-2xl font-bold text-alert">{stats.cancelled}</p>
             <p className="text-xs text-gray-500 font-semibold uppercase">Cancelled</p>
+            
           </div>
+          {/* REPORT BUTTON */}
+<div className="w-full text-center mt-6">
+  <button onClick={() => setIsReportModalOpen(true)} className="text-gray-400 hover:text-alert text-xs font-semibold underline">
+    Report this Store
+  </button>
+</div>
+
+<ReportModal 
+  isOpen={isReportModalOpen} 
+  onClose={() => setIsReportModalOpen(false)} 
+  targetId={id || ''} 
+  targetType="store" 
+  targetName={store.storeName} 
+/>
         </div>
       </div>
 
