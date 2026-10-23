@@ -35,12 +35,10 @@ export default function SellerDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'store' | 'profile'>('orders');
   
-  // Store Edit State
   const [storeBio, setStoreBio] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
   const [storeMsg, setStoreMsg] = useState('');
 
-  // Product Form State
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('Cakes & Bakes');
@@ -48,34 +46,38 @@ export default function SellerDashboard() {
   const [productMsg, setProductMsg] = useState('');
   const [uploading, setUploading] = useState(false);
 
-  const fetchData = async () => {
-    if (!currentUser) return;
-    
-    // Fetch Store Data
-    const docSnap = await getDoc(doc(db, 'sellers', currentUser.uid));
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      setStore(data);
-      setStoreBio(data.bio || '');
-      setStoreAddress(data.storeAddress || '');
-    }
-
-    // Fetch Products
-    const prodQ = query(collection(db, 'products'), where('sellerId', '==', currentUser.uid));
-    const prodSnap = await getDocs(prodQ);
-    setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-
-    // Fetch Orders
-    const orderQ = query(collection(db, 'orders'), where('sellerId', '==', currentUser.uid));
-    const orderSnap = await getDocs(orderQ);
-    const ordersData = orderSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    ordersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    setOrders(ordersData);
-
-    setLoading(false);
-  };
-
   useEffect(() => {
+    const fetchData = async () => {
+      if (!currentUser) {
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        const docSnap = await getDoc(doc(db, 'sellers', currentUser.uid));
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setStore(data);
+          setStoreBio(data.bio || '');
+          setStoreAddress(data.storeAddress || '');
+        }
+
+        const prodQ = query(collection(db, 'products'), where('sellerId', '==', currentUser.uid));
+        const prodSnap = await getDocs(prodQ);
+        setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+        const orderQ = query(collection(db, 'orders'), where('sellerId', '==', currentUser.uid));
+        const orderSnap = await getDocs(orderQ);
+        const ordersData = orderSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        ordersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setOrders(ordersData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
     fetchData();
   }, [currentUser]);
 
@@ -83,10 +85,7 @@ export default function SellerDashboard() {
     e.preventDefault();
     if (!currentUser) return;
     setStoreMsg('Saving...');
-    await updateDoc(doc(db, 'sellers', currentUser.uid), {
-      bio: storeBio,
-      storeAddress: storeAddress
-    });
+    await updateDoc(doc(db, 'sellers', currentUser.uid), { bio: storeBio, storeAddress: storeAddress });
     setStoreMsg('Store updated successfully!');
     setTimeout(() => setStoreMsg(''), 3000);
   };
@@ -110,24 +109,18 @@ export default function SellerDashboard() {
       const newProduct = {
         sellerId: currentUser.uid,
         storeName: store.storeName,
-        title,
-        price: Number(price),
-        category,
-        isPremium: false,
-        images: imageUrls,
-        image: imageUrls[0],
+        title, price: Number(price), category,
+        isPremium: false, images: imageUrls, image: imageUrls[0],
         createdAt: new Date().toISOString()
       };
 
       const docRef = await addDoc(collection(db, 'products'), newProduct);
       setProducts([{ id: docRef.id, ...newProduct }, ...products]);
-      
       setProductMsg('Product added successfully!');
       setTitle(''); setPrice(''); setProductImages(null);
       (document.getElementById('product-images') as HTMLInputElement).value = '';
       setTimeout(() => setProductMsg(''), 3000);
     } catch (error) {
-      console.error(error);
       setProductMsg('Error adding product.');
     } finally {
       setUploading(false);
@@ -136,7 +129,12 @@ export default function SellerDashboard() {
 
   const updateOrderStatus = async (orderId: string, newStatus: string, extraData = {}) => {
     await updateDoc(doc(db, 'orders', orderId), { status: newStatus, ...extraData });
-    fetchData();
+    // Refresh orders
+    const orderQ = query(collection(db, 'orders'), where('sellerId', '==', currentUser?.uid));
+    const orderSnap = await getDocs(orderQ);
+    const ordersData = orderSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    ordersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    setOrders(ordersData);
   };
 
   const handleWhatsAppNotify = (order: any) => {
@@ -147,7 +145,7 @@ export default function SellerDashboard() {
   };
 
   if (loading) return <div className="p-8 text-center">Loading dashboard...</div>;
-  if (!store) return <div className="p-8 text-center">Store profile not found.</div>;
+  if (!store) return <div className="p-8 text-center text-alert">You are not registered as a seller. Please log in with a Seller account or click "Sell with Us" to register.</div>;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
@@ -161,7 +159,6 @@ export default function SellerDashboard() {
         )}
       </div>
 
-      {/* Tabs */}
       <div className="flex overflow-x-auto gap-2 mb-8 border-b border-gray-200 pb-2 scrollbar-hide">
         <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'orders' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Package size={18}/> Orders</button>
         <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'products' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><PlusCircle size={18}/> Products</button>
@@ -176,7 +173,6 @@ export default function SellerDashboard() {
         </div>
       ) : (
         <div>
-          {/* ORDERS TAB */}
           {activeTab === 'orders' && (
             <div className="space-y-4">
               {orders.length === 0 ? (
@@ -216,7 +212,6 @@ export default function SellerDashboard() {
             </div>
           )}
 
-          {/* PRODUCTS TAB */}
           {activeTab === 'products' && (
             <div className="grid lg:grid-cols-2 gap-8">
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -272,7 +267,6 @@ export default function SellerDashboard() {
             </div>
           )}
 
-          {/* STORE TAB */}
           {activeTab === 'store' && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
               <h2 className="text-xl font-bold text-dark mb-4">Edit Store Information</h2>
@@ -295,7 +289,6 @@ export default function SellerDashboard() {
             </div>
           )}
 
-          {/* PROFILE TAB */}
           {activeTab === 'profile' && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
               <h2 className="text-xl font-bold text-dark mb-4">My Profile</h2>
@@ -313,4 +306,4 @@ export default function SellerDashboard() {
       )}
     </div>
   );
-}
+        }
