@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom';
-import { CheckCircle2, Star } from 'lucide-react';
+import { CheckCircle2, Star, Heart } from 'lucide-react';
+import { useFavorites } from '../context/FavoritesContext';
 
 export default function ProductCard({ product }: { product: any }) {
-  // Use the first image from the array, or a fallback
+  const { toggleFavorite, isFavorite } = useFavorites();
   const displayImage = product.images?.[0] || product.image || 'https://placehold.co/400x400?text=No+Image';
 
   return (
-    <Link to={`/product/${product.id}`} className="group bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col border border-gray-100">
+    <Link to={`/product/${product.id}`} className="group bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col border border-gray-100 relative">
       <div className="relative aspect-square overflow-hidden bg-gray-50">
         <img src={displayImage} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         {product.isPremium && (
@@ -14,6 +15,12 @@ export default function ProductCard({ product }: { product: any }) {
             Featured
           </span>
         )}
+        <button 
+          onClick={(e) => { e.preventDefault(); toggleFavorite(product.id); }}
+          className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white text-gray-500 hover:text-red-500 transition-colors shadow-sm"
+        >
+          <Heart size={18} className={isFavorite(product.id) ? "fill-red-500 text-red-500" : ""} />
+        </button>
       </div>
       <div className="p-4 flex flex-col flex-grow">
         <h3 className="font-semibold text-dark line-clamp-1">{product.title}</h3>
