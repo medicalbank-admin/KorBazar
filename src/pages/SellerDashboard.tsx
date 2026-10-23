@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { doc, getDoc, updateDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook, Instagram, Globe } from 'lucide-react';
+import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook, Instagram, Globe, ShieldAlert } from 'lucide-react';
 
 const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -153,6 +153,19 @@ export default function SellerDashboard() {
   if (loading) return <div className="p-8 text-center text-dark">Loading dashboard...</div>;
   if (!store) return <div className="p-8 text-center text-alert">You are not registered as a seller.</div>;
 
+  if (store.isFrozen) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4">
+        <div className="bg-red-50 border border-red-200 p-8 rounded-3xl text-center max-w-md">
+          <ShieldAlert size={64} className="text-alert mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-alert mb-2">Store Frozen</h2>
+          <p className="text-gray-700 mb-6">Your store has been temporarily frozen by the Admin. This is usually due to pending monthly fees. Please contact KorBazar support on WhatsApp to resolve this and unfreeze your store.</p>
+          <a href="https://wa.me/923000000000" target="_blank" className="bg-alert text-white px-6 py-3 rounded-xl font-bold inline-block">Contact Admin</a>
+        </div>
+      </div>
+    );
+  }
+
   // Calculate Stats
   const pendingOrders = orders.filter(o => o.status === 'new' || o.status === 'accepted' || o.status === 'dispatched').length;
   const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
@@ -247,7 +260,6 @@ export default function SellerDashboard() {
           )}
 
           {activeTab === 'products' && (
-             /* ... (Keep existing Products code exactly the same) ... */
              <div className="grid lg:grid-cols-2 gap-8">
              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><PlusCircle size={20}/> Add New Product</h2>
@@ -313,12 +325,4 @@ export default function SellerDashboard() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Store Address</label>
-                  <input type="text" value={storeAddress} onChange={e => setStoreAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Store Bio</label>
-                  <textarea value={storeBio} onChange={e => setStoreBio(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 
+                  <input ty
