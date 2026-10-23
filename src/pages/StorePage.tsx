@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import ProductCard from '../components/ProductCard';
-import { CheckCircle2, MapPin, Facebook, Instagram, Globe, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, MapPin, Facebook, Instagram, Globe, ShieldCheck, ShieldAlert } from 'lucide-react';
 
 export default function StorePage() {
   const { id } = useParams();
@@ -23,7 +23,6 @@ export default function StorePage() {
       const prodSnap = await getDocs(q);
       setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-      // Fetch order stats
       const orderQ = query(collection(db, 'orders'), where('sellerId', '==', id));
       const orderSnap = await getDocs(orderQ);
       let delivered = 0;
@@ -43,9 +42,20 @@ export default function StorePage() {
   if (loading) return <div className="p-12 text-center text-dark">Loading store...</div>;
   if (!store) return <div className="p-12 text-center text-dark">Store not found.</div>;
 
+  if (store.isFrozen) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4">
+        <div className="bg-red-50 border border-red-200 p-8 rounded-3xl text-center max-w-md">
+          <ShieldAlert size={64} className="text-alert mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-alert mb-2">Store Temporarily Unavailable</h2>
+          <p className="text-gray-700">This store has been temporarily frozen by the administration. Please check back later.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 pb-24">
-      {/* Store Header */}
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 mb-8 flex flex-col md:flex-row items-center md:items-start gap-8">
         <div className="w-32 h-32 bg-brand/10 rounded-full flex items-center justify-center text-brand font-bold text-5xl flex-shrink-0">
           {store.storeName.charAt(0)}
@@ -71,7 +81,6 @@ export default function StorePage() {
           </div>
         </div>
         
-        {/* Stats Badge */}
         <div className="flex md:flex-col gap-4 bg-gray-50 p-4 rounded-2xl flex-shrink-0">
           <div className="text-center">
             <p className="text-2xl font-bold text-brand">{stats.delivered}</p>
