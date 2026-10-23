@@ -14,10 +14,17 @@ export default function Home() {
     const fetchProducts = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'products'));
-        const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // Sort newest first
-        productsData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setProducts(productsData);
+        const allProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        const sellersSnap = await getDocs(collection(db, 'sellers'));
+        const activeSellerIds = sellersSnap.docs
+          .filter(d => d.data().status === 'approved' && !d.data().isFrozen)
+          .map(d => d.id);
+
+        const activeProducts = allProducts.filter(p => activeSellerIds.includes(p.sellerId));
+        
+        activeProducts.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setProducts(activeProducts);
       } catch (error) {
         console.error("Error fetching products:", error);
       } finally {
@@ -27,9 +34,8 @@ export default function Home() {
     fetchProducts();
   }, []);
 
-  // For now, we will show the newest 15 products in Featured, and the rest in "More"
-  const featuredProducts = products.slice(0, 15);
-  const standardProducts = products.slice(15);
+  const featuredProducts = products.filter(p => p.isPremium).slice(0, 15);
+  const standardProducts = products.filter(p => !p.isPremium);
 
   return (
     <div className="pb-24 md:pb-12">
@@ -60,10 +66,21 @@ export default function Home() {
         </div>
       </section>
 
+      {featuredProducts.length > 0 && (
+        <section className="px-4 max-w-7xl mx-auto mb-16">
+          <div className="flex justify-between items-end mb-6">
+            <h2 className="text-2xl font-bold text-dark">Featured Shops & Products</h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            {featuredProducts.map(product => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="px-4 max-w-7xl mx-auto mb-16">
-        <div className="flex justify-between items-end mb-6">
-          <h2 className="text-2xl font-bold text-dark">Fresh from the Oven & Studio</h2>
-        </div>
+        <h2 className="text-2xl font-bold text-dark mb-6">Fresh from the Oven & Studio</h2>
         
         {loading ? (
           <div className="text-center py-12 text-gray-500">Loading products...</div>
@@ -74,29 +91,18 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {featuredProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {standardProducts.length > 0 && (
-        <section className="px-4 max-w-7xl mx-auto mb-16">
-          <h2 className="text-2xl font-bold text-dark mb-6">More from Charsadda</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
             {standardProducts.map(product => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
-          
-          <div className="mt-12 text-center">
-            <Link to="/explore" className="inline-block w-full md:w-auto bg-dark text-white px-12 py-4 rounded-full font-bold text-lg hover:bg-black transition-all">
-              Explore All Shops & Products
-            </Link>
-          </div>
-        </section>
-      )}
+        )}
+        
+        <div className="mt-12 text-center">
+          <Link to="/explore" className="inline-block w-full md:w-auto bg-dark text-white px-12 py-4 rounded-full font-bold text-lg hover:bg-black transition-all">
+            Explore All Shops & Products
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
