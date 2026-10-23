@@ -8,6 +8,8 @@ import SellWithUs from './pages/SellWithUs';
 import SellerPending from './pages/SellerPending';
 import Admin from './pages/Admin';
 import SellerDashboard from './pages/SellerDashboard';
+import ProductDetail from './pages/ProductDetail';
+import StorePage from './pages/StorePage';
 import { AuthProvider } from './context/AuthContext';
 
 const Placeholder = ({ title }: { title: string }) => (
@@ -27,6 +29,8 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/explore" element={<Explore />} />
+              <Route path="/product/:id" element={<ProductDetail />} />
+              <Route path="/store/:id" element={<StorePage />} />
               
               {/* Auth Routes */}
               <Route path="/login" element={<Login />} />
@@ -34,16 +38,11 @@ export default function App() {
               <Route path="/sell-with-us" element={<SellWithUs />} />
               <Route path="/sell-with-us/pending" element={<SellerPending />} />
               <Route path="/admin" element={<Admin />} />
-
-              {/* Seller Routes */}
               <Route path="/seller/dashboard" element={<SellerDashboard />} />
 
-              {/* Placeholder Routes */}
               <Route path="/about" element={<Placeholder title="About KorBazar" />} />
               <Route path="/terms" element={<Placeholder title="Terms & Conditions" />} />
               <Route path="/privacy" element={<Placeholder title="Privacy Policy" />} />
-              <Route path="/store/:id" element={<Placeholder title="Store Page" />} />
-              <Route path="/product/:id" element={<Placeholder title="Product Details" />} />
               <Route path="/cart" element={<Placeholder title="Shopping Cart" />} />
               <Route path="/checkout" element={<Placeholder title="Checkout" />} />
               <Route path="/orders" element={<Placeholder title="My Orders" />} />
