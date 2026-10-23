@@ -22,7 +22,6 @@ export default function Home() {
           .map(d => d.id);
 
         const activeProducts = allProducts.filter(p => activeSellerIds.includes(p.sellerId));
-        
         activeProducts.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setProducts(activeProducts);
       } catch (error) {
@@ -59,9 +58,9 @@ export default function Home() {
       <section className="px-4 max-w-7xl mx-auto mb-12">
         <div className="flex overflow-x-auto gap-3 pb-4 scrollbar-hide">
           {categories.map((cat, i) => (
-            <button key={i} className="whitespace-nowrap px-5 py-2 rounded-full bg-white border border-gray-200 text-sm font-medium hover:border-brand hover:text-brand transition-colors">
+            <Link to={`/explore?cat=${encodeURIComponent(cat)}`} key={i} className="whitespace-nowrap px-5 py-2 rounded-full bg-white border border-gray-200 text-sm font-medium hover:border-brand hover:text-brand transition-colors">
               {cat}
-            </button>
+            </Link>
           ))}
         </div>
       </section>
