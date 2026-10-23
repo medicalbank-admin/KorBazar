@@ -1,8 +1,33 @@
+import { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
-import { mockProducts } from '../mockData';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
 import ProductCard from '../components/ProductCard';
 
+const allCategories = ["Cakes & Bakes", "Handmade Jewelry", "Crafts & Decor", "Embroidered Items", "Candles", "Gift Hampers"];
+
 export default function Explore() {
+  const [products, setProducts] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      const querySnapshot = await getDocs(collection(db, 'products'));
+      const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setProducts(productsData);
+      setLoading(false);
+    };
+    fetchProducts();
+  }, []);
+
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase()) || p.storeName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory ? p.category === selectedCategory : true;
+    return matchesSearch && matchesCategory;
+  });
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 pb-24 md:pb-8">
       <div className="relative mb-8">
@@ -11,7 +36,9 @@ export default function Explore() {
         </div>
         <input 
           type="text" 
-          placeholder="Search products, stores, or categories..." 
+          placeholder="Search products or stores..." 
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
           className="w-full pl-11 pr-4 py-4 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand shadow-sm text-lg"
         />
       </div>
@@ -19,50 +46,36 @@ export default function Explore() {
       <div className="flex flex-col md:flex-row gap-8">
         <aside className="w-full md:w-64 flex-shrink-0">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="font-bold text-lg mb-4 text-dark">Filters</h3>
-            
-            <div className="mb-6">
-              <h4 className="font-semibold mb-3 text-sm text-gray-500 uppercase tracking-wide">Category</h4>
-              <div className="space-y-2">
-                {['Cakes & Bakes', 'Handmade Jewelry', 'Crafts & Decor'].map(cat => (
-                  <label key={cat} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                    <input type="checkbox" className="rounded text-brand focus:ring-brand" />
-                    {cat}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h4 className="font-semibold mb-3 text-sm text-gray-500 uppercase tracking-wide">Price Range</h4>
-              <input type="range" className="w-full accent-brand" />
-              <div className="flex justify-between text-xs text-gray-500 mt-2">
-                <span>Rs. 0</span>
-                <span>Rs. 5000+</span>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer font-medium">
-                <input type="checkbox" className="rounded text-brand focus:ring-brand" />
-                Premium/Featured only
+            <h3 className="font-bold text-lg mb-4 text-dark">Categories</h3>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input type="radio" name="category" checked={selectedCategory === null} onChange={() => setSelectedCategory(null)} className="text-brand focus:ring-brand" />
+                All Categories
               </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer font-medium">
-                <input type="checkbox" className="rounded text-brand focus:ring-brand" />
-                Delivery Available
-              </label>
+              {allCategories.map(cat => (
+                <label key={cat} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input type="radio" name="category" checked={selectedCategory === cat} onChange={() => setSelectedCategory(cat)} className="text-brand focus:ring-brand" />
+                  {cat}
+                </label>
+              ))}
             </div>
           </div>
         </aside>
 
         <main className="flex-grow">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:g-6">
-            {mockProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          {loading ? (
+             <div className="text-center py-12 text-gray-500">Loading...</div>
+          ) : filteredProducts.length === 0 ? (
+             <div className="text-center py-12 text-gray-500 bg-white rounded-2xl border border-gray-100">No products found matching your search.</div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+              {filteredProducts.map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          )}
         </main>
       </div>
     </div>
   );
-}
+                  }
