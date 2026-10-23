@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
+import { Ticket, X } from 'lucide-react';
 
 export default function Checkout() {
   const { cart, cartTotal, cartDeliveryFee, clearCart } = useCart();
@@ -17,15 +18,20 @@ export default function Checkout() {
   });
   const [paymentMethod, setPaymentMethod] = useState('COD');
 
-  // MOVED THIS HERE SO THE JSX CAN SEE IT
-  const finalTotal = cartTotal + cartDeliveryFee;
+  // Coupon State
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [couponMsg, setCouponMsg] = useState('');
+  const [couponError, setCouponError] = useState('');
+  const [isApplying, setIsApplying] = useState(false);
+
+  // Calculate Total
+  const discountAmount = appliedCoupon ? appliedCoupon.discount : 0;
+  const finalTotal = Math.max(0, cartTotal + cartDeliveryFee - discountAmount);
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!currentUser) {
-        setFetchingAddress(false);
-        return;
-      }
+      if (!currentUser) { setFetchingAddress(false); return; }
       try {
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
         if (userDoc.exists()) {
@@ -37,14 +43,47 @@ export default function Checkout() {
             address: data.defaultAddress || ''
           }));
         }
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setFetchingAddress(false);
-      }
+      } catch (error) { console.error(error); } 
+      finally { setFetchingAddress(false); }
     };
     fetchUserData();
   }, [currentUser]);
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setIsApplying(true);
+    setCouponError('');
+    setCouponMsg('');
+
+    try {
+      const q = query(collection(db, 'coupons'), where('code', '==', couponCode.toUpperCase().trim()));
+      const snap = await getDocs(q);
+      
+      if (snap.empty) {
+        setCouponError('Invalid coupon code.');
+      } else {
+        const couponData = { id: snap.docs[0].id, ...snap.docs[0].data() } as any;
+        
+        if (couponData.minAmount && cartTotal < couponData.minAmount) {
+          setCouponError(`Minimum order for this coupon is Rs. ${couponData.minAmount}`);
+        } else {
+          setAppliedCoupon(couponData);
+          setCouponMsg(`Coupon applied! Rs. ${couponData.discount} off.`);
+          setCouponCode('');
+        }
+      }
+    } catch (error) {
+      setCouponError('Failed to apply coupon.');
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponMsg('');
+    setCouponError('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +111,8 @@ export default function Checkout() {
         })),
         subtotal: cartTotal,
         deliveryFee: cartDeliveryFee,
+        couponCode: appliedCoupon ? appliedCoupon.code : null,
+        discountAmount: discountAmount,
         total: finalTotal,
         paymentMethod: paymentMethod,
         status: 'new',
@@ -92,7 +133,7 @@ export default function Checkout() {
 
   if (cart.length === 0) return null;
   if (fetchingAddress) return <div className="p-12 text-center text-brand font-bold">Loading details...</div>;
-return (
+    return (
     <div className="max-w-3xl mx-auto px-4 py-8 pb-24">
       <h1 className="text-3xl font-bold text-dark mb-6">Checkout</h1>
       
@@ -138,16 +179,53 @@ return (
           )}
         </div>
 
+        {/* COUPON SECTION */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <h2 className="font-bold text-lg text-dark mb-4 flex items-center gap-2"><Ticket size={20} className="text-brand"/> Have a Coupon?</h2>
+          
+          {!appliedCoupon ? (
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                value={couponCode} 
+                onChange={e => setCouponCode(e.target.value)} 
+                placeholder="Enter code (e.g. EID2024)" 
+                className="flex-grow px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none uppercase" 
+              />
+              <button type="button" onClick={handleApplyCoupon} disabled={isApplying} className="bg-dark text-white px-6 py-3 rounded-xl font-bold hover:bg-black transition-colors disabled:bg-gray-400">
+                {isApplying ? '...' : 'Apply'}
+              </button>
+            </div>
+          ) : (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex justify-between items-center">
+              <div>
+                <p className="font-bold text-brand">{appliedCoupon.code}</p>
+                <p className="text-sm text-green-700">You saved Rs. {appliedCoupon.discount}!</p>
+              </div>
+              <button type="button" onClick={handleRemoveCoupon} className="text-alert p-2 hover:bg-red-100 rounded-lg"><X size={20}/></button>
+            </div>
+          )}
+          
+          {couponError && <p className="text-alert text-sm mt-2 font-semibold">{couponError}</p>}
+          {couponMsg && <p className="text-brand text-sm mt-2 font-semibold">{couponMsg}</p>}
+        </div>
+
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <div className="flex justify-between text-gray-600 mb-2">
             <span>Subtotal</span>
             <span>Rs. {cartTotal}</span>
           </div>
-          <div className="flex justify-between text-gray-600 mb-4">
+          <div className="flex justify-between text-gray-600 mb-2">
             <span>Delivery Fees</span>
             <span>Rs. {cartDeliveryFee}</span>
           </div>
-          <div className="flex justify-between font-bold text-xl text-dark border-t border-gray-100 pt-4">
+          {appliedCoupon && (
+            <div className="flex justify-between text-brand font-bold mb-2">
+              <span>Discount ({appliedCoupon.code})</span>
+              <span>- Rs. {discountAmount}</span>
+            </div>
+          )}
+          <div className="flex justify-between font-bold text-xl text-dark border-t border-gray-100 pt-4 mt-2">
             <span>Total</span>
             <span>Rs. {finalTotal}</span>
           </div>
@@ -159,4 +237,4 @@ return (
       </form>
     </div>
   );
-}
+            }
