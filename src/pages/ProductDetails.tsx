@@ -2,14 +2,18 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CheckCircle2, ChevronLeft, MessageCircle } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, MessageCircle, ShoppingCart } from 'lucide-react';
+import { useCart } from '../context/CartContext';
 
-export default function ProductDetail() {
+export default function ProductDetails() {
   const { id } = useParams();
+  const { addToCart } = useCart();
+  
   const [product, setProduct] = useState<any>(null);
   const [seller, setSeller] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
+  const [cartMsg, setCartMsg] = useState('');
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -31,13 +35,28 @@ export default function ProductDetail() {
     fetchProduct();
   }, [id]);
 
-  if (loading) return <div className="p-12 text-center">Loading product...</div>;
-  if (!product) return <div className="p-12 text-center">Product not found.</div>;
+  if (loading) return <div className="p-12 text-center text-dark">Loading product...</div>;
+  if (!product) return <div className="p-12 text-center text-dark">Product not found.</div>;
 
   const images = product.images?.length > 0 ? product.images : [product.image];
 
-  const whatsappMessage = `Assalam-o-Alaikum, I am interested in buying "${product.title}" (Rs. ${product.price}) from KorBazar.`;
-  const whatsappLink = `https://wa.me/92${seller?.whatsappNumber?.replace(/^0/, '')}?text=${encodeURIComponent(whatsappMessage)}`;
+  // WhatsApp link for pre-sale questions
+  const whatsappMessage = `Assalam-o-Alaikum, I have a question about "${product.title}" (Rs. ${product.price}) on KorBazar.`;
+  const cleanNumber = seller?.whatsappNumber?.replace(/^0/, '');
+  const whatsappLink = `https://wa.me/92${cleanNumber}?text=${encodeURIComponent(whatsappMessage)}`;
+
+  const handleAddToCart = () => {
+    addToCart({
+      productId: product.id,
+      title: product.title,
+      price: product.price,
+      image: images[0],
+      sellerId: product.sellerId,
+      storeName: product.storeName
+    });
+    setCartMsg('Added to cart successfully!');
+    setTimeout(() => setCartMsg(''), 3000);
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
@@ -80,13 +99,29 @@ export default function ProductDetail() {
           <div className="bg-gray-50 rounded-2xl p-6 mb-8">
             <h3 className="font-semibold text-dark mb-2">About this item</h3>
             <p className="text-gray-600 text-sm leading-relaxed">
-              This item is handmade with love in Charsadda. Contact the seller directly on WhatsApp to discuss delivery, payment, and customization.
+              This item is handmade with love in Charsadda. Add it to your cart to checkout, or contact the seller directly if you have questions or need customization.
             </p>
           </div>
 
-          <a href={whatsappLink} target="_blank" rel="noreferrer" className="mt-auto w-full bg-[#25D366] text-white font-bold text-lg py-4 rounded-xl hover:bg-[#20bd5a] transition-colors flex items-center justify-center gap-2 shadow-md">
-            <MessageCircle size={24} /> Order on WhatsApp
-          </a>
+          {cartMsg && (
+            <div className="bg-green-50 text-brand p-3 rounded-xl mb-4 text-center font-semibold">
+              {cartMsg}
+            </div>
+          )}
+
+          <div className="mt-auto space-y-3">
+            <button 
+              onClick={handleAddToCart} 
+              className="w-full bg-brand text-white font-bold text-lg py-4 rounded-xl hover:bg-brand/90 transition-colors flex items-center justify-center gap-2 shadow-md"
+            >
+              <ShoppingCart size={22} /> Add to Cart
+            </button>
+            
+            <a href={whatsappLink} target="_blank" rel="noreferrer" className="w-full bg-white text-dark border-2 border-[#25D366] font-bold text-lg py-4 rounded-xl hover:bg-[#25D366]/10 transition-colors flex items-center justify-center gap-2">
+              <MessageCircle size={22} className="text-[#25D366]" /> Ask Seller on WhatsApp
+            </a>
+          </div>
+          
           <p className="text-center text-xs text-gray-400 mt-4">Cash on Delivery / Seller Arranged Delivery</p>
         </div>
       </div>
