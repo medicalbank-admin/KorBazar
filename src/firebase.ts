@@ -3,12 +3,13 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBe3nY5-DQwqzmtaqjQ7FfYyQ-TnIld_PU",
+  authDomain: "korbazar-cd6a9.firebaseapp.com",
+  projectId: "korbazar-cd6a9",
+  storageBucket: "korbazar-cd6a9.firebasestorage.app",
+  messagingSenderId: "703514108271",
+  appId: "1:703514108271:web:b6f974da284ee1c9b8089a",
+  measurementId: "G-1BEPWHKHZQ"
 };
 
 const app = initializeApp(firebaseConfig);
