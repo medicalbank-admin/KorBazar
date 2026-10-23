@@ -10,10 +10,11 @@ export default function About() {
 
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 md:p-12 space-y-6 text-gray-700 leading-relaxed">
         <p>
-          <strong>KorBazar</strong> was born from a simple observation: the small cities of Pakistan are filled with incredible talent, but the creators lack a trusted digital platform to sell their goods.
+          <strong>KorBazar</strong> was born from a simple observation: the small cities of Pakistan are filled with incredible talent, but creators lack a trusted digital platform to sell their goods.
         </p>
+        
         <p>
-          We saw brilliant women in Charsadda baking stunning cakes, creating beautiful handmade jewelry, and embroidering traditional crafts, yet they were restricted to selling only to their immediate neighbors or relying on chaotic WhatsApp groups.
+          We saw brilliant women in Charsadda baking stunning cakes, creating beautiful handmade jewelry, and embroidering traditional crafts. Yet, they were restricted to selling only to their neighbors or relying on chaotic WhatsApp groups.
         </p>
         
         <h2 className="text-2xl font-bold text-dark pt-4">Our Mission</h2>
@@ -24,18 +25,17 @@ export default function About() {
         <h2 className="text-2xl font-bold text-dark pt-4">Why Trust Us?</h2>
         <ul className="list-disc pl-5 space-y-2">
           <li><strong>CNIC Verified:</strong> We manually verify every single seller using their National Identity Card before they can list a product.</li>
-          <li><strong>Direct Communication:</strong> Buyers can chat directly with sellers on WhatsApp for custom orders or questions.</li>
+          <li><strong>Direct Communication:</strong> Buyers can chat directly with sellers on WhatsApp for custom orders.</li>
           <li><strong>Local Focus:</strong> We are starting city-by-city, ensuring delivery is fast and relationships are local.</li>
         </ul>
 
         <div className="pt-8 flex flex-col md:flex-row justify-center gap-4">
-  <Link to="/sell-with-us" className="inline-block bg-brand text-white font-bold py-3 px-8 rounded-xl hover:bg-brand/90 transition-colors">
-    Join as a Seller Today
-  </Link>
-  <a href="https://wa.me/923390251147" target="_blank" rel="noreferrer" className="inline-block bg-white text-dark border border-gray-200 font-bold py-3 px-8 rounded-xl hover:bg-gray-50 transition-colors">
-    Chat with Support
-  </a>
-</div>
+          <Link to="/sell-with-us" className="inline-block text-center bg-brand text-white font-bold py-3 px-8 rounded-xl hover:bg-brand/90 transition-colors">
+            Join as a Seller Today
+          </Link>
+          <a href="https://wa.me/923390251147" target="_blank" rel="noreferrer" className="inline-block text-center bg-white text-dark border border-gray-200 font-bold py-3 px-8 rounded-xl hover:bg-gray-50 transition-colors">
+            Chat with Support
+          </a>
         </div>
       </div>
     </div>
