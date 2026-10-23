@@ -5,6 +5,8 @@ import Explore from './pages/Explore';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import SellWithUs from './pages/SellWithUs';
+import SellerPending from './pages/SellerPending';
+import Admin from './pages/Admin';
 import { AuthProvider } from './context/AuthContext';
 
 const Placeholder = ({ title }: { title: string }) => (
@@ -29,7 +31,8 @@ export default function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/sell-with-us" element={<SellWithUs />} />
-              <Route path="/sell-with-us/pending" element={<Placeholder title="Application Under Review" />} />
+              <Route path="/sell-with-us/pending" element={<SellerPending />} />
+              <Route path="/admin" element={<Admin />} />
 
               <Route path="/about" element={<Placeholder title="About KorBazar" />} />
               <Route path="/terms" element={<Placeholder title="Terms & Conditions" />} />
@@ -41,7 +44,6 @@ export default function App() {
               <Route path="/orders" element={<Placeholder title="My Orders" />} />
               <Route path="/profile" element={<Placeholder title="My Profile" />} />
               <Route path="/seller/dashboard" element={<Placeholder title="Seller Dashboard" />} />
-              <Route path="/admin" element={<Placeholder title="Admin Dashboard" />} />
               <Route path="/track/:token" element={<Placeholder title="Track Order" />} />
             </Routes>
           </main>
