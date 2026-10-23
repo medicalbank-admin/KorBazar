@@ -6,7 +6,6 @@ import { auth, db } from '../firebase';
 import { signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
-// ONLY THE USED ICONS ARE IMPORTED HERE:
 import { LogOut, Shield, Store, Phone, ChevronRight, Edit3, Check, HelpCircle, LayoutDashboard, MapPin, Lock, Package, Wallet, Bell, Truck, RotateCcw, FileText } from 'lucide-react';
 
 export default function Profile() {
@@ -115,7 +114,8 @@ export default function Profile() {
   const shippedOrders = buyerOrders.filter(o => o.status === 'accepted' || o.status === 'dispatched').length;
   const deliveredOrders = buyerOrders.filter(o => o.status === 'delivered').length;
   const cancelledOrders = buyerOrders.filter(o => o.status === 'cancelled' || o.status === 'rejected').length;
-  if (loading) return <div className="p-12 text-center text-brand font-bold">Loading account...</div>;
+
+if (loading) return <div className="p-12 text-center text-brand font-bold">Loading account...</div>;
   if (!currentUser) return <div className="p-12 text-center text-alert font-bold">Please log in.</div>;
 
   return (
@@ -168,7 +168,8 @@ export default function Profile() {
             </div>
             
             <div className="grid grid-cols-5 gap-2 text-center">
-              <Link to="/orders" className="flex flex-col items-center hover:opacity-80 transition-opacity">
+              {/* UPDATED LINKS HERE */}
+              <Link to="/orders?tab=pending" className="flex flex-col items-center hover:opacity-80 transition-opacity">
                 <div className="relative mb-2">
                   <Wallet size={28} className="text-brand" />
                   {pendingOrders > 0 && <span className="absolute -top-2 -right-2 bg-alert text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">{pendingOrders}</span>}
@@ -176,7 +177,7 @@ export default function Profile() {
                 <span className="text-[11px] md:text-xs font-medium text-gray-600">To Pay /<br/>Pending</span>
               </Link>
               
-              <Link to="/orders" className="flex flex-col items-center hover:opacity-80 transition-opacity">
+              <Link to="/orders?tab=shipped" className="flex flex-col items-center hover:opacity-80 transition-opacity">
                 <div className="relative mb-2">
                   <Package size={28} className="text-brand" />
                   {shippedOrders > 0 && <span className="absolute -top-2 -right-2 bg-alert text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">{shippedOrders}</span>}
@@ -184,7 +185,7 @@ export default function Profile() {
                 <span className="text-[11px] md:text-xs font-medium text-gray-600">To Ship /<br/>Receive</span>
               </Link>
               
-              <Link to="/orders" className="flex flex-col items-center hover:opacity-80 transition-opacity">
+              <Link to="/orders?tab=delivered" className="flex flex-col items-center hover:opacity-80 transition-opacity">
                 <div className="relative mb-2">
                   <FileText size={28} className="text-brand" />
                   {deliveredOrders > 0 && <span className="absolute -top-2 -right-2 bg-alert text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">{deliveredOrders}</span>}
@@ -192,14 +193,14 @@ export default function Profile() {
                 <span className="text-[11px] md:text-xs font-medium text-gray-600">To<br/>Review</span>
               </Link>
               
-              <Link to="/orders" className="flex flex-col items-center hover:opacity-80 transition-opacity">
+              <Link to="/orders?tab=delivered" className="flex flex-col items-center hover:opacity-80 transition-opacity">
                 <div className="relative mb-2">
                   <Truck size={28} className="text-brand" />
                 </div>
                 <span className="text-[11px] md:text-xs font-medium text-gray-600">Delivered</span>
               </Link>
               
-              <Link to="/orders" className="flex flex-col items-center hover:opacity-80 transition-opacity">
+              <Link to="/orders?tab=cancelled" className="flex flex-col items-center hover:opacity-80 transition-opacity">
                 <div className="relative mb-2">
                   <RotateCcw size={28} className="text-brand" />
                   {cancelledOrders > 0 && <span className="absolute -top-2 -right-2 bg-alert text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">{cancelledOrders}</span>}
