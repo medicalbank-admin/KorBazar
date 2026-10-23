@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 export default function Checkout() {
@@ -10,13 +10,38 @@ export default function Checkout() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [fetchingAddress, setFetchingAddress] = useState(true);
 
   const [formData, setFormData] = useState({
     name: '', phone: '', whatsapp: '', address: '', notes: ''
   });
   const [paymentMethod, setPaymentMethod] = useState('COD');
 
-  const finalTotal = cartTotal + cartDeliveryFee;
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!currentUser) {
+        setFetchingAddress(false);
+        return;
+      }
+      try {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setFormData(prev => ({
+            ...prev,
+            phone: data.mobile || '',
+            whatsapp: data.whatsapp || data.mobile || '',
+            address: data.defaultAddress || '' // Auto-fill the saved address!
+          }));
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setFetchingAddress(false);
+      }
+    };
+    fetchUserData();
+  }, [currentUser]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +50,7 @@ export default function Checkout() {
 
     try {
       const trackingToken = crypto.randomUUID();
+      const finalTotal = cartTotal + cartDeliveryFee;
       
       const orderData = {
         buyerUid: currentUser?.uid || 'guest',
@@ -63,6 +89,7 @@ export default function Checkout() {
   };
 
   if (cart.length === 0) return null;
+  if (fetchingAddress) return <div className="p-12 text-center text-brand font-bold">Loading details...</div>;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 pb-24">
@@ -87,7 +114,7 @@ export default function Checkout() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Full Address</label>
-            <textarea required value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} rows={2} className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" />
+            <textarea required value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} rows={2} className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" placeholder="House #, Street, Area..." />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Order Notes (Optional)</label>
