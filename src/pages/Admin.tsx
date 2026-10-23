@@ -70,7 +70,7 @@ export default function Admin() {
 
   const pendingSellers = sellers.filter(s => s.status === 'pending_verification');
   const totalRevenue = orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + o.total, 0);
-  const premiumSellers = sellers.filter(s => s.plan === 'premium' && s.status === 'approved');
+  
     return (
     <div className="max-w-7xl mx-auto px-4 py-8 pb-24 relative">
       <h1 className="text-3xl font-bold text-dark mb-8">Admin Master Control</h1>
