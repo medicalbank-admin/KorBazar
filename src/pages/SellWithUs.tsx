@@ -2,7 +2,11 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db } from '../firebase';
+import { getStorage } from 'firebase/storage';
+
+const storage = getStorage();
 
 export default function SellWithUs() {
   const [step, setStep] = useState(1);
@@ -17,10 +21,16 @@ export default function SellWithUs() {
     storeName: '', storeType: 'online_only', storeAddress: '', city: 'Charsadda', area: '', bio: ''
   });
 
+  const [cnicFront, setCnicFront] = useState<File | null>(null);
+  const [cnicBack, setCnicBack] = useState<File | null>(null);
+
   const handleNext = () => {
     if (step === 1) {
       if (!formData.agreeTerms) return setError('You must agree to the Terms & Conditions.');
       if (formData.password !== formData.confirmPassword) return setError('Passwords do not match.');
+    }
+    if (step === 2) {
+      if (!cnicFront || !cnicBack) return setError('Please upload both CNIC front and back images.');
     }
     setError('');
     setStep(step + 1);
@@ -36,15 +46,30 @@ export default function SellWithUs() {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const uid = userCredential.user.uid;
 
-      // 2. Save to users collection
+      // 2. Upload CNIC Images to Firebase Storage
+      let frontUrl = '';
+      let backUrl = '';
+      
+      if (cnicFront && cnicBack) {
+        const frontRef = ref(storage, `cnic/${uid}/front`);
+        const backRef = ref(storage, `cnic/${uid}/back`);
+        
+        await uploadBytes(frontRef, cnicFront);
+        await uploadBytes(backRef, cnicBack);
+        
+        frontUrl = await getDownloadURL(frontRef);
+        backUrl = await getDownloadURL(backRef);
+      }
+
+      // 3. Save to users collection
       await setDoc(doc(db, 'users', uid), {
         email: formData.email, mobile: formData.mobile, role: 'seller', createdAt: new Date().toISOString()
       });
 
-      // 3. Save to sellers collection
+      // 4. Save to sellers collection with CNIC URLs
       await setDoc(doc(db, 'sellers', uid), {
         fullName: formData.fullName, dob: formData.dob, phone: formData.mobile, whatsappNumber: formData.whatsapp,
-        cnicNumber: formData.cnicNumber,
+        cnicNumber: formData.cnicNumber, cnicFrontUrl: frontUrl, cnicBackUrl: backUrl,
         storeName: formData.storeName, storeType: formData.storeType, storeAddress: formData.storeAddress,
         city: formData.city, area: formData.area, bio: formData.bio,
         status: 'pending_verification', createdAt: new Date().toISOString()
@@ -52,7 +77,7 @@ export default function SellWithUs() {
 
       navigate('/sell-with-us/pending');
     } catch (err: any) {
-      setError(err.message || 'Failed to register.');
+      setError(err.message || 'Failed to register. Email might already be in use.');
     } finally {
       setLoading(false);
     }
@@ -120,9 +145,18 @@ export default function SellWithUs() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">CNIC Number</label>
                 <input type="text" required placeholder="xxxxx-xxxxxxx-x" value={formData.cnicNumber} onChange={e => setFormData({...formData, cnicNumber: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" />
               </div>
-              <div className="p-4 bg-yellow-50 text-yellow-800 text-sm rounded-xl border border-yellow-200">
-                Note: In the final version, you will upload pictures of your CNIC here. For now, we are saving the text.
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">CNIC Front Image</label>
+                  <input type="file" accept="image/*" required onChange={e => setCnicFront(e.target.files ? e.target.files[0] : null)} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">CNIC Back Image</label>
+                  <input type="file" accept="image/*" required onChange={e => setCnicBack(e.target.files ? e.target.files[0] : null)} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20" />
+                </div>
               </div>
+
               <div className="flex gap-3 mt-4">
                 <button type="button" onClick={() => setStep(1)} className="w-1/3 bg-gray-100 text-dark font-bold py-3.5 rounded-xl hover:bg-gray-200">Back</button>
                 <button type="button" onClick={handleNext} className="w-2/3 bg-brand text-white font-bold py-3.5 rounded-xl hover:bg-brand/90">Next</button>
@@ -167,4 +201,4 @@ export default function SellWithUs() {
       </div>
     </div>
   );
-                }
+                                                                                             }
