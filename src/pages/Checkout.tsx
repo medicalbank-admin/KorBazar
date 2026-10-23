@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 export default function Checkout() {
@@ -10,10 +10,24 @@ export default function Checkout() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [deliveryFee, setDeliveryFee] = useState(0);
 
   const [formData, setFormData] = useState({
     name: '', phone: '', whatsapp: '', address: '', notes: ''
   });
+  const [paymentMethod, setPaymentMethod] = useState('COD');
+
+  useEffect(() => {
+    const fetchDeliveryFee = async () => {
+      if (cart.length > 0) {
+        const sellerSnap = await getDoc(doc(db, 'sellers', cart[0].sellerId));
+        if (sellerSnap.exists() && sellerSnap.data().deliveryFee) {
+          setDeliveryFee(Number(sellerSnap.data().deliveryFee));
+        }
+      }
+    };
+    fetchDeliveryFee();
+  }, [cart]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +36,7 @@ export default function Checkout() {
 
     try {
       const trackingToken = crypto.randomUUID();
+      const finalTotal = cartTotal + deliveryFee;
       
       const orderData = {
         buyerUid: currentUser?.uid || 'guest',
@@ -33,15 +48,16 @@ export default function Checkout() {
         sellerId: cart[0].sellerId,
         storeName: cart[0].storeName,
         items: cart.map(i => ({ productId: i.productId, title: i.title, price: i.price, qty: i.quantity })),
-        total: cartTotal,
-        paymentMethod: 'COD',
+        subtotal: cartTotal,
+        deliveryFee: deliveryFee,
+        total: finalTotal,
+        paymentMethod: paymentMethod,
         status: 'new',
         trackingToken: trackingToken,
         createdAt: new Date().toISOString()
       };
 
       await addDoc(collection(db, 'orders'), orderData);
-      
       clearCart();
       navigate(`/track/${trackingToken}`);
     } catch (error) {
@@ -87,16 +103,38 @@ export default function Checkout() {
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <h2 className="font-bold text-lg text-dark mb-4">Payment Method</h2>
-          <div className="bg-brand/5 border border-brand/20 p-4 rounded-xl flex items-center gap-3">
-            <input type="radio" checked readOnly className="text-brand focus:ring-brand" />
-            <span className="font-semibold text-dark">Cash on Delivery (COD)</span>
+          <div className="space-y-3">
+            {['COD', 'JazzCash', 'Easypaisa'].map(method => (
+              <label key={method} className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === method ? 'border-brand bg-brand/5' : 'border-gray-200'}`}>
+                <input type="radio" name="payment" value={method} checked={paymentMethod === method} onChange={() => setPaymentMethod(method)} className="text-brand focus:ring-brand" />
+                <span className="font-semibold text-dark">{method === 'COD' ? 'Cash on Delivery' : method}</span>
+              </label>
+            ))}
+          </div>
+          {paymentMethod !== 'COD' && (
+            <p className="text-sm text-gray-500 mt-3">You will receive payment instructions on WhatsApp after the seller confirms your order.</p>
+          )}
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="flex justify-between text-gray-600 mb-2">
+            <span>Subtotal</span>
+            <span>Rs. {cartTotal}</span>
+          </div>
+          <div className="flex justify-between text-gray-600 mb-4">
+            <span>Delivery Fee</span>
+            <span>Rs. {deliveryFee}</span>
+          </div>
+          <div className="flex justify-between font-bold text-xl text-dark border-t border-gray-100 pt-4">
+            <span>Total</span>
+            <span>Rs. {cartTotal + deliveryFee}</span>
           </div>
         </div>
 
         <button type="submit" disabled={loading} className="w-full bg-brand text-white font-bold py-4 rounded-xl hover:bg-brand/90 shadow-md disabled:bg-gray-400">
-          {loading ? 'Placing Order...' : `Place Order (Rs. ${cartTotal})`}
+          {loading ? 'Placing Order...' : `Place Order (Rs. ${cartTotal + deliveryFee})`}
         </button>
       </form>
     </div>
   );
-                                                                                          }
+}
