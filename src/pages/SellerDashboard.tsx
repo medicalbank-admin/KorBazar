@@ -286,6 +286,17 @@ export default function SellerDashboard() {
                           <span>Subtotal: Rs. {order.subtotal || order.total}</span>
                           <span>Delivery: Rs. {order.deliveryFee || 0}</span>
                         </div>
+
+                        {order.discountAmount > 0 && (
+  <div className="mt-1 pt-1 border-t border-gray-200 text-brand font-bold text-xs flex justify-between">
+    <span>Discount ({order.couponCode})</span>
+    <span>- Rs. {order.discountAmount}</span>
+  </div>
+)}
+
+
+
+                        
                         {order.notes && <div className="text-brand font-semibold mt-1">Note: {order.notes}</div>}
                       </div>
                       <div className="flex items-center justify-between">
