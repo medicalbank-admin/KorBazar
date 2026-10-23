@@ -64,10 +64,10 @@ export default function App() {
                 <p className="font-semibold text-dark text-lg mb-2">KorBazar</p>
                 <p className="mb-4">Khpal Kor, Khpal Bazar.</p>
                 <div className="flex justify-center gap-6">
-                  <a href="#" className="hover:text-brand">Terms</a>
-                  <a href="#" className="hover:text-brand">Privacy</a>
-                  <a href="#" className="hover:text-brand">Contact</a>
-                </div>
+  <a href="#/terms" className="hover:text-brand">Terms</a>
+  <a href="#/privacy" className="hover:text-brand">Privacy</a>
+  <a href="#/about" className="hover:text-brand">About</a>
+</div>
                 <p className="mt-6 text-xs text-gray-400">© 2024 KorBazar. All rights reserved.</p>
               </footer>
             </div>
