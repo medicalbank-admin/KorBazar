@@ -35,20 +35,22 @@ export default function SellerDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'store' | 'subscription' | 'profile'>('orders');
   
-  // NEW: Order Filter Tab
   const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'dispatched' | 'delivered' | 'cancelled'>('all');
 
+  // Store Edit State
   const [storeBio, setStoreBio] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
   const [paymentAccounts, setPaymentAccounts] = useState('');
   const [socialLinks, setSocialLinks] = useState({ facebook: '', instagram: '', tiktok: '' });
   const [storeMsg, setStoreMsg] = useState('');
 
+  // Product Form State
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [productDescription, setProductDescription] = useState('');
   const [productDeliveryFee, setProductDeliveryFee] = useState('');
-  const [category, setCategory] = useState('Cakes & Bakes');
+  const [category, setCategory] = useState('');
+  const [availableCategories, setAvailableCategories] = useState<any[]>([]);
   const [productImages, setProductImages] = useState<FileList | null>(null);
   const [productMsg, setProductMsg] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -75,6 +77,12 @@ export default function SellerDashboard() {
       const ordersData = orderSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       ordersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setOrders(ordersData);
+
+      const catSnap = await getDocs(collection(db, 'categories'));
+      const cats = catSnap.docs.map(d => d.data().name);
+      setAvailableCategories(cats);
+      if (cats.length > 0 && !category) setCategory(cats[0]);
+
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -173,13 +181,11 @@ export default function SellerDashboard() {
     );
   }
 
-  // Calculate Stats
   const pendingCount = orders.filter(o => o.status === 'new' || o.status === 'accepted').length;
   const dispatchedCount = orders.filter(o => o.status === 'dispatched').length;
   const deliveredCount = orders.filter(o => o.status === 'delivered').length;
   const cancelledCount = orders.filter(o => o.status === 'cancelled' || o.status === 'rejected').length;
 
-  // Filter orders for the current tab
   const filteredOrders = orders.filter(order => {
     if (orderFilter === 'all') return true;
     if (orderFilter === 'pending') return order.status === 'new' || order.status === 'accepted';
@@ -188,8 +194,7 @@ export default function SellerDashboard() {
     if (orderFilter === 'cancelled') return order.status === 'cancelled' || order.status === 'rejected';
     return true;
   });
-
-return (
+    return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
@@ -201,7 +206,6 @@ return (
         )}
       </div>
 
-      {/* Top Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
           <span className="text-3xl font-extrabold text-yellow-600">{pendingCount}</span>
@@ -238,7 +242,6 @@ return (
         <div>
           {activeTab === 'orders' && (
             <div>
-              {/* Order Filters */}
               <div className="flex overflow-x-auto gap-2 mb-6 scrollbar-hide">
                 {['all', 'pending', 'dispatched', 'delivered', 'cancelled'].map(tab => (
                   <button 
@@ -324,12 +327,9 @@ return (
                      <div>
                        <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                        <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
-                         <option>Cakes & Bakes</option>
-                         <option>Handmade Jewelry</option>
-                         <option>Crafts & Decor</option>
-                         <option>Embroidered Items</option>
-                         <option>Candles</option>
-                         <option>Gift Hampers</option>
+                         {availableCategories.map(catName => (
+                           <option key={catName} value={catName}>{catName}</option>
+                         ))}
                        </select>
                      </div>
                    </div>
@@ -445,7 +445,7 @@ return (
                 <p><span className="font-semibold text-dark">CNIC:</span> {store.cnicNumber}</p>
                 <p><span className="font-semibold text-dark">Phone:</span> {store.phone}</p>
                 <p><span className="font-semibold text-dark">City:</span> {store.city}, {store.area}</p>
-              </div>
+            </div>
             </div>
           )}
         </div>
