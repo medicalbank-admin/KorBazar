@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket, TrendingUp, Banknote, Settings } from 'lucide-react';
+import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket, TrendingUp, Banknote, Settings, Flag } from 'lucide-react';
 
 export default function Admin() {
   const [sellers, setSellers] = useState<any[]>([]);
@@ -10,9 +10,9 @@ export default function Admin() {
   const [categories, setCategories] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'promotions' | 'orders' | 'products' | 'categories' | 'coupons' | 'verification' | 'finance'>('overview');
-  
+  const [reports, setReports] = useState<any[]>([]);
+
+  const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'promotions' | 'orders' | 'products' | 'categories' | 'coupons' | 'verification' | 'finance' | 'reports'>('overview');
   const [viewImage, setViewImage] = useState<string | null>(null);
   const [editingSeller, setEditingSeller] = useState<any>(null);
   const [editForm, setEditForm] = useState({ fullName: '', phone: '', storeName: '', bio: '', address: '' });
@@ -46,7 +46,9 @@ export default function Admin() {
 
       const couponSnap = await getDocs(collection(db, 'coupons'));
       setCoupons(couponSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-
+      const reportSnap = await getDocs(collection(db, 'reports'));
+setReports(reportSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      
       // Fetch Platform Settings
       const settingsSnap = await getDoc(doc(db, 'settings', 'platform'));
       if (settingsSnap.exists()) {
@@ -263,6 +265,7 @@ export default function Admin() {
       <button onClick={() => setActiveTab('categories')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'categories' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Tag size={18}/> Categories</button>
       <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'orders' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShoppingBag size={18}/> Orders</button>
       <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'products' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Package size={18}/> Products</button>
+      <button onClick={() => setActiveTab('reports')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'reports' ? 'bg-alert text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Flag size={18}/> Reports ({reports.length})</button>
       <button onClick={() => setActiveTab('verification')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'verification' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShieldAlert size={18}/> Pending ({pendingSellers.length})</button>
     </div>
 
@@ -435,6 +438,34 @@ export default function Admin() {
               </div>
             </div>
           )}
+
+        {activeTab === 'reports' && (
+  <div>
+    <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><Flag className="text-alert"/> Buyer Reports</h2>
+    {reports.length === 0 ? <p className="text-gray-500">No reports yet. The platform is safe!</p> : reports.map(report => (
+      <div key={report.id} className="p-4 border border-red-100 bg-red-50 rounded-xl mb-4 flex flex-col md:flex-row justify-between gap-4">
+        <div>
+          <h3 className="font-bold text-lg text-alert">{report.reason}</h3>
+          <p className="text-sm text-gray-700">Target: <strong>{report.targetName}</strong> ({report.targetType})</p>
+          <p className="text-sm text-gray-600 mt-2 bg-white p-2 rounded-lg border border-red-100">"{report.details}"</p>
+          <p className="text-xs text-gray-500 mt-1">Reported on: {new Date(report.createdAt).toLocaleDateString()}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={async () => {
+            await updateDoc(doc(db, 'reports', report.id), { status: 'resolved' });
+            fetchData();
+          }} className="px-4 py-2 bg-brand text-white rounded-xl font-bold text-sm">Mark Resolved</button>
+          <button onClick={async () => {
+            if(window.confirm("Delete this report?")) {
+              await deleteDoc(doc(db, 'reports', report.id));
+              fetchData();
+            }
+          }} className="p-2 bg-white text-alert rounded-lg border border-red-200"><Trash2 size={18}/></button>
+        </div>
+      </div>
+    ))}
+  </div>
+)}
 
           {activeTab === 'verification' && (
             <div>
