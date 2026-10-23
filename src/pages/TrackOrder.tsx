@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { collection, query, where, getDocs, doc, getDoc, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { CheckCircle2, Clock, Package, Truck, MessageCircle, Star } from 'lucide-react';
