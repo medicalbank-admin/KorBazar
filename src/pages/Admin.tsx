@@ -1,20 +1,24 @@
 import { useEffect, useState } from 'react';
-import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink } from 'lucide-react';
+import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus } from 'lucide-react';
 
 export default function Admin() {
   const [sellers, setSellers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'promotions' | 'orders' | 'products' | 'verification'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'promotions' | 'orders' | 'products' | 'categories' | 'verification'>('overview');
   const [viewImage, setViewImage] = useState<string | null>(null);
 
   // Edit Seller State
   const [editingSeller, setEditingSeller] = useState<any>(null);
   const [editForm, setEditForm] = useState({ fullName: '', phone: '', storeName: '', bio: '', address: '' });
   const [saveMsg, setSaveMsg] = useState('');
+
+  // Category State
+  const [newCategoryName, setNewCategoryName] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
@@ -31,6 +35,9 @@ export default function Admin() {
       const ordersData = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       ordersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setOrders(ordersData);
+
+      const catSnap = await getDocs(collection(db, 'categories'));
+      setCategories(catSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -72,7 +79,7 @@ export default function Admin() {
     await updateDoc(doc(db, 'sellers', id), { plan: newPlan });
     fetchData();
   };
-  
+
   const updateOrderStatus = async (id: string, newStatus: string) => {
     await updateDoc(doc(db, 'orders', id), { status: newStatus });
     fetchData();
@@ -81,23 +88,34 @@ export default function Admin() {
   const handleDeleteStore = async (id: string) => {
     if(window.confirm("WARNING: This will permanently delete the store, their products, and their user profile. This cannot be undone. Are you sure?")) {
       try {
-        // Delete Seller Doc
         await deleteDoc(doc(db, 'sellers', id));
-        // Delete User Doc
         await deleteDoc(doc(db, 'users', id));
-        // Note: In a real app, you would also batch delete all products by this seller here.
         fetchData();
         alert("Store deleted.");
-      } catch (error) {
-        console.error("Error deleting store:", error);
-        alert("Failed to delete store.");
-      }
+      } catch (error) { alert("Failed to delete store."); }
     }
   };
 
   const handleDeleteProduct = async (id: string) => {
-    if(window.confirm("Are you sure you want to delete this product? It will be removed from the platform immediately.")) {
+    if(window.confirm("Are you sure you want to delete this product?")) {
       await deleteDoc(doc(db, 'products', id));
+      fetchData();
+    }
+  };
+
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) return;
+    try {
+      await addDoc(collection(db, 'categories'), { name: newCategoryName.trim(), createdAt: new Date().toISOString() });
+      setNewCategoryName('');
+      fetchData();
+    } catch (error) { alert("Failed to add category."); }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if(window.confirm("Are you sure? Products in this category will still exist, but buyers won't be able to filter by it.")) {
+      await deleteDoc(doc(db, 'categories', id));
       fetchData();
     }
   };
@@ -127,17 +145,14 @@ export default function Admin() {
       setSaveMsg('Saved successfully!');
       fetchData();
       setTimeout(() => { setSaveMsg(''); setEditingSeller(null); }, 1500);
-    } catch (error) {
-      setSaveMsg('Error saving.');
-    }
+    } catch (error) { setSaveMsg('Error saving.'); }
   };
 
   const pendingSellers = sellers.filter(s => s.status === 'pending_verification');
   const approvedSellers = sellers.filter(s => s.status === 'approved');
   const premiumSellers = approvedSellers.filter(s => s.plan === 'premium');
   const totalRevenue = orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + o.total, 0);
-
-return (
+    return (
     <div className="max-w-7xl mx-auto px-4 py-8 pb-24 relative">
       <h1 className="text-3xl font-bold text-dark mb-8">Admin Master Control</h1>
       
@@ -150,14 +165,12 @@ return (
         </div>
       )}
 
-      {/* Edit Seller Modal */}
       {editingSeller && (
         <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 relative">
             <button onClick={() => setEditingSeller(null)} className="absolute top-4 right-4 text-gray-400 hover:text-alert"><X size={24} /></button>
             <h2 className="text-xl font-bold text-dark mb-4">Edit Store Details</h2>
             {saveMsg && <div className="bg-green-50 text-brand p-2 rounded-lg text-sm mb-4 text-center font-bold">{saveMsg}</div>}
-            
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Store Name</label>
@@ -187,11 +200,11 @@ return (
         </div>
       )}
 
-      {/* Tabs */}
       <div className="flex overflow-x-auto gap-2 mb-6 border-b border-gray-200 pb-2 scrollbar-hide">
         <button onClick={() => setActiveTab('overview')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'overview' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><LayoutDashboard size={18}/> Overview</button>
         <button onClick={() => setActiveTab('sellers')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'sellers' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Users size={18}/> Manage Sellers</button>
         <button onClick={() => setActiveTab('promotions')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'promotions' ? 'bg-yellow-500 text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Star size={18}/> Promotions</button>
+        <button onClick={() => setActiveTab('categories')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'categories' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Tag size={18}/> Categories</button>
         <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'orders' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShoppingBag size={18}/> All Orders</button>
         <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'products' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Package size={18}/> All Products</button>
         <button onClick={() => setActiveTab('verification')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'verification' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShieldAlert size={18}/> Pending ({pendingSellers.length})</button>
@@ -229,7 +242,7 @@ return (
           {activeTab === 'promotions' && (
             <div>
               <h2 className="text-xl font-bold text-dark mb-2">Premium Promotions</h2>
-              <p className="text-sm text-gray-500 mb-6">Toggle the plan to <strong>Premium</strong> for sellers who have paid. Their products will appear on the Homepage and Order Success pages.</p>
+              <p className="text-sm text-gray-500 mb-6">Toggle the plan to <strong>Premium</strong> for sellers who have paid.</p>
               <div className="grid md:grid-cols-2 gap-4">
                 {approvedSellers.map(seller => (
                   <div key={seller.id} className="flex justify-between items-center p-4 border border-gray-100 rounded-xl bg-gray-50">
@@ -242,6 +255,34 @@ return (
                     <button onClick={() => toggleSubscription(seller.id, seller.plan)} className={`px-4 py-2 rounded-xl font-bold text-sm text-white ${seller.plan === 'premium' ? 'bg-gray-400 hover:bg-gray-500' : 'bg-yellow-500 hover:bg-yellow-600'}`}>
                       {seller.plan === 'premium' ? 'Remove Premium' : 'Make Premium'}
                     </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'categories' && (
+            <div>
+              <h2 className="text-xl font-bold text-dark mb-6">Manage Categories</h2>
+              <form onSubmit={handleAddCategory} className="flex gap-3 mb-8 max-w-lg">
+                <input 
+                  type="text" 
+                  value={newCategoryName} 
+                  onChange={e => setNewCategoryName(e.target.value)} 
+                  placeholder="e.g. Home Decor, Sweets, etc." 
+                  className="flex-grow px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" 
+                />
+                <button type="submit" className="bg-brand text-white font-bold py-3 px-6 rounded-xl hover:bg-brand/90 shadow-md flex items-center gap-2">
+                  <Plus size={18} /> Add
+                </button>
+              </form>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {categories.length === 0 ? (
+                  <p className="text-gray-500 col-span-full">No categories added yet.</p>
+                ) : categories.map(cat => (
+                  <div key={cat.id} className="flex justify-between items-center bg-gray-50 border border-gray-100 p-4 rounded-xl">
+                    <span className="font-bold text-dark">{cat.name}</span>
+                    <button onClick={() => handleDeleteCategory(cat.id)} className="text-alert p-2 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
                   </div>
                 ))}
               </div>
@@ -269,7 +310,8 @@ return (
               ))}
             </div>
           )}
-{activeTab === 'sellers' && (
+
+          {activeTab === 'sellers' && (
             <div>
               <h2 className="text-xl font-bold text-dark mb-4">Manage Sellers</h2>
               <div className="overflow-x-auto">
@@ -295,12 +337,12 @@ return (
                           </button>
                         </td>
                         <td className="p-3 text-right space-x-2 whitespace-nowrap">
-                          <button onClick={() => handleOpenEdit(seller)} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100" title="Edit Store"><Edit3 size={16} /></button>
-                          <button onClick={() => window.open(`#/store/${seller.id}`, '_blank')} className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200" title="View Public Store"><ExternalLink size={16} /></button>
-                          <button onClick={() => toggleFreeze(seller.id, seller.isFrozen)} className={`p-2 rounded-lg text-white ${seller.isFrozen ? 'bg-brand' : 'bg-yellow-500'}`} title={seller.isFrozen ? 'Unfreeze' : 'Freeze'}>
+                          <button onClick={() => handleOpenEdit(seller)} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"><Edit3 size={16} /></button>
+                          <button onClick={() => window.open(`#/store/${seller.id}`, '_blank')} className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"><ExternalLink size={16} /></button>
+                          <button onClick={() => toggleFreeze(seller.id, seller.isFrozen)} className={`p-2 rounded-lg text-white ${seller.isFrozen ? 'bg-brand' : 'bg-yellow-500'}`}>
                             {seller.isFrozen ? <CheckCircle size={16} /> : <ShieldAlert size={16} />}
                           </button>
-                          <button onClick={() => handleDeleteStore(seller.id)} className="p-2 bg-red-50 text-alert rounded-lg hover:bg-red-100" title="Delete Store Completely"><Trash2 size={16} /></button>
+                          <button onClick={() => handleDeleteStore(seller.id)} className="p-2 bg-red-50 text-alert rounded-lg hover:bg-red-100"><Trash2 size={16} /></button>
                         </td>
                       </tr>
                     ))}
@@ -362,9 +404,7 @@ return (
                         <span className={`px-2 py-1 rounded text-[10px] font-bold ${isPremiumSeller ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200 text-gray-600'}`}>
                           {isPremiumSeller ? 'Premium Store' : 'Standard Store'}
                         </span>
-                        <button onClick={() => handleDeleteProduct(p.id)} className="text-alert p-1.5 hover:bg-red-50 rounded-md" title="Delete Product">
-                          <Trash2 size={16} />
-                        </button>
+                        <button onClick={() => handleDeleteProduct(p.id)} className="text-alert p-1.5 hover:bg-red-50 rounded-md"><Trash2 size={16} /></button>
                       </div>
                     </div>
                   );
@@ -376,4 +416,4 @@ return (
       )}
     </div>
   );
-}
+    }
