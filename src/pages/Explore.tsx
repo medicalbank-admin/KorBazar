@@ -3,13 +3,17 @@ import { Search } from 'lucide-react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import ProductCard from '../components/ProductCard';
+import { useSearchParams } from 'react-router-dom';
 
 const allCategories = ["Cakes & Bakes", "Handmade Jewelry", "Crafts & Decor", "Embroidered Items", "Candles", "Gift Hampers"];
 
 export default function Explore() {
+  const [searchParams] = useSearchParams();
+  const initialCat = searchParams.get('cat');
+
   const [products, setProducts] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCat);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
