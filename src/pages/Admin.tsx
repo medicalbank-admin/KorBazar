@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard } from 'lucide-react';
+import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star } from 'lucide-react';
 
 export default function Admin() {
   const [sellers, setSellers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'orders' | 'products' | 'verification'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'promotions' | 'orders' | 'products' | 'verification'>('overview');
   const [viewImage, setViewImage] = useState<string | null>(null);
 
   const fetchData = async () => {
@@ -56,19 +56,21 @@ export default function Admin() {
     }
   };
 
-  const togglePremium = async (productId: string, currentStatus: boolean) => {
-    await updateDoc(doc(db, 'products', productId), { isPremium: !currentStatus });
-    fetchData();
-  };
-
   const toggleFeeStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === 'paid' ? 'pending' : 'paid';
     await updateDoc(doc(db, 'sellers', id), { feeStatus: newStatus });
     fetchData();
   };
 
+  const toggleSubscription = async (id: string, currentPlan: string) => {
+    const newPlan = currentPlan === 'premium' ? 'standard' : 'premium';
+    await updateDoc(doc(db, 'sellers', id), { plan: newPlan });
+    fetchData();
+  };
+
   const pendingSellers = sellers.filter(s => s.status === 'pending_verification');
   const totalRevenue = orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + o.total, 0);
+  const premiumSellers = sellers.filter(s => s.plan === 'premium' && s.status === 'approved');
     return (
     <div className="max-w-7xl mx-auto px-4 py-8 pb-24 relative">
       <h1 className="text-3xl font-bold text-dark mb-8">Admin Master Control</h1>
@@ -86,6 +88,7 @@ export default function Admin() {
       <div className="flex overflow-x-auto gap-2 mb-6 border-b border-gray-200 pb-2 scrollbar-hide">
         <button onClick={() => setActiveTab('overview')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'overview' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><LayoutDashboard size={18}/> Overview</button>
         <button onClick={() => setActiveTab('sellers')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'sellers' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Users size={18}/> Manage Sellers</button>
+        <button onClick={() => setActiveTab('promotions')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'promotions' ? 'bg-yellow-500 text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Star size={18}/> Promotions</button>
         <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'orders' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShoppingBag size={18}/> All Orders</button>
         <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'products' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Package size={18}/> All Products</button>
         <button onClick={() => setActiveTab('verification')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'verification' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShieldAlert size={18}/> Pending ({pendingSellers.length})</button>
@@ -158,6 +161,30 @@ export default function Admin() {
             </div>
           )}
 
+          {/* NEW PROMOTIONS TAB */}
+          {activeTab === 'promotions' && (
+            <div>
+              <h2 className="text-xl font-bold text-dark mb-2">Premium Promotions</h2>
+              <p className="text-sm text-gray-500 mb-6">Toggle the plan to <strong>Premium</strong> for sellers who have paid for promotion. Their products will appear on the Homepage and Order Success pages.</p>
+              
+              <div className="grid md:grid-cols-2 gap-4">
+                {sellers.filter(s => s.status === 'approved').map(seller => (
+                  <div key={seller.id} className="flex justify-between items-center p-4 border border-gray-100 rounded-xl bg-gray-50">
+                    <div>
+                      <h3 className="font-bold text-dark">{seller.storeName}</h3>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded ${seller.plan === 'premium' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200 text-gray-600'}`}>
+                        {seller.plan === 'premium' ? 'PREMIUM' : 'STANDARD'}
+                      </span>
+                    </div>
+                    <button onClick={() => toggleSubscription(seller.id, seller.plan)} className={`px-4 py-2 rounded-xl font-bold text-sm text-white ${seller.plan === 'premium' ? 'bg-gray-400 hover:bg-gray-500' : 'bg-yellow-500 hover:bg-yellow-600'}`}>
+                      {seller.plan === 'premium' ? 'Remove Premium' : 'Make Premium'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'orders' && (
             <div>
               <h2 className="text-xl font-bold text-dark mb-4">Global Orders Log</h2>
@@ -179,18 +206,22 @@ export default function Admin() {
             <div>
               <h2 className="text-xl font-bold text-dark mb-4">All Products</h2>
               <div className="grid md:grid-cols-2 gap-4">
-                {products.map(p => (
-                  <div key={p.id} className="flex items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <img src={p.image} alt={p.title} className="w-16 h-16 object-cover rounded-lg" />
-                    <div className="flex-grow">
-                      <h4 className="font-bold text-dark">{p.title}</h4>
-                      <p className="text-xs text-gray-500">{p.storeName} | Rs. {p.price}</p>
+                {products.map(p => {
+                  const seller = sellers.find(s => s.id === p.sellerId);
+                  const isPremiumSeller = seller?.plan === 'premium';
+                  return (
+                    <div key={p.id} className="flex items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                      <img src={p.image} alt={p.title} className="w-16 h-16 object-cover rounded-lg" />
+                      <div className="flex-grow">
+                        <h4 className="font-bold text-dark">{p.title}</h4>
+                        <p className="text-xs text-gray-500">{p.storeName} | Rs. {p.price}</p>
+                      </div>
+                      <span className={`px-2 py-1 rounded text-xs font-bold ${isPremiumSeller ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200 text-gray-500'}`}>
+                        {isPremiumSeller ? 'Premium Store' : 'Standard Store'}
+                      </span>
                     </div>
-                    <button onClick={() => togglePremium(p.id, p.isPremium)} className={`px-3 py-1.5 rounded-lg text-xs font-bold text-white ${p.isPremium ? 'bg-brand' : 'bg-gray-400'}`}>
-                      {p.isPremium ? 'Featured' : 'Standard'}
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -220,4 +251,4 @@ export default function Admin() {
       )}
     </div>
   );
-    }
+  }
