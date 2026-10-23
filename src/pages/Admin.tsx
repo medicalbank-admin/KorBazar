@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus } from 'lucide-react';
+import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket } from 'lucide-react';
 
 export default function Admin() {
   const [sellers, setSellers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [coupons, setCoupons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'promotions' | 'orders' | 'products' | 'categories' | 'verification'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'promotions' | 'orders' | 'products' | 'categories' | 'coupons' | 'verification'>('overview');
   const [viewImage, setViewImage] = useState<string | null>(null);
 
   // Edit Seller State
@@ -19,6 +20,10 @@ export default function Admin() {
 
   // Category State
   const [newCategoryName, setNewCategoryName] = useState('');
+
+  // Coupon State
+  const [newCoupon, setNewCoupon] = useState({ code: '', discount: '', minAmount: '' });
+  const [couponMsg, setCouponMsg] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
@@ -38,6 +43,9 @@ export default function Admin() {
 
       const catSnap = await getDocs(collection(db, 'categories'));
       setCategories(catSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+      const couponSnap = await getDocs(collection(db, 'coupons'));
+      setCoupons(couponSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -61,8 +69,7 @@ export default function Admin() {
   };
 
   const toggleFreeze = async (id: string, currentStatus: boolean) => {
-    const action = currentStatus ? 'Unfreeze' : 'Freeze';
-    if(window.confirm(`Are you sure you want to ${action} this store?`)) {
+    if(window.confirm(`Are you sure you want to ${currentStatus ? 'Unfreeze' : 'Freeze'} this store?`)) {
       await updateDoc(doc(db, 'sellers', id), { isFrozen: !currentStatus });
       fetchData();
     }
@@ -86,12 +93,11 @@ export default function Admin() {
   };
 
   const handleDeleteStore = async (id: string) => {
-    if(window.confirm("WARNING: This will permanently delete the store, their products, and their user profile. This cannot be undone. Are you sure?")) {
+    if(window.confirm("WARNING: This will permanently delete the store. Are you sure?")) {
       try {
         await deleteDoc(doc(db, 'sellers', id));
         await deleteDoc(doc(db, 'users', id));
         fetchData();
-        alert("Store deleted.");
       } catch (error) { alert("Failed to delete store."); }
     }
   };
@@ -114,8 +120,33 @@ export default function Admin() {
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if(window.confirm("Are you sure? Products in this category will still exist, but buyers won't be able to filter by it.")) {
+    if(window.confirm("Are you sure?")) {
       await deleteDoc(doc(db, 'categories', id));
+      fetchData();
+    }
+  };
+
+  const handleAddCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCoupon.code || !newCoupon.discount) return;
+    setCouponMsg('Creating...');
+    try {
+      await addDoc(collection(db, 'coupons'), { 
+        code: newCoupon.code.toUpperCase().trim(), 
+        discount: Number(newCoupon.discount),
+        minAmount: Number(newCoupon.minAmount) || 0,
+        createdAt: new Date().toISOString() 
+      });
+      setNewCoupon({ code: '', discount: '', minAmount: '' });
+      setCouponMsg('Coupon created successfully!');
+      fetchData();
+      setTimeout(() => setCouponMsg(''), 3000);
+    } catch (error) { setCouponMsg("Failed to create coupon."); }
+  };
+
+  const handleDeleteCoupon = async (id: string) => {
+    if(window.confirm("Delete this coupon? Buyers will no longer be able to use it.")) {
+      await deleteDoc(doc(db, 'coupons', id));
       fetchData();
     }
   };
@@ -152,7 +183,8 @@ export default function Admin() {
   const approvedSellers = sellers.filter(s => s.status === 'approved');
   const premiumSellers = approvedSellers.filter(s => s.plan === 'premium');
   const totalRevenue = orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + o.total, 0);
-    return (
+
+  return (
     <div className="max-w-7xl mx-auto px-4 py-8 pb-24 relative">
       <h1 className="text-3xl font-bold text-dark mb-8">Admin Master Control</h1>
       
@@ -202,11 +234,12 @@ export default function Admin() {
 
       <div className="flex overflow-x-auto gap-2 mb-6 border-b border-gray-200 pb-2 scrollbar-hide">
         <button onClick={() => setActiveTab('overview')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'overview' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><LayoutDashboard size={18}/> Overview</button>
-        <button onClick={() => setActiveTab('sellers')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'sellers' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Users size={18}/> Manage Sellers</button>
-        <button onClick={() => setActiveTab('promotions')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'promotions' ? 'bg-yellow-500 text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Star size={18}/> Promotions</button>
+        <button onClick={() => setActiveTab('sellers')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'sellers' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Users size={18}/> Sellers</button>
+        <button onClick={() => setActiveTab('promotions')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'promotions' ? 'bg-yellow-500 text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Star size={18}/> Premium</button>
+        <button onClick={() => setActiveTab('coupons')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'coupons' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Ticket size={18}/> Coupons</button>
         <button onClick={() => setActiveTab('categories')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'categories' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Tag size={18}/> Categories</button>
-        <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'orders' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShoppingBag size={18}/> All Orders</button>
-        <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'products' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Package size={18}/> All Products</button>
+        <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'orders' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShoppingBag size={18}/> Orders</button>
+        <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'products' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Package size={18}/> Products</button>
         <button onClick={() => setActiveTab('verification')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'verification' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShieldAlert size={18}/> Pending ({pendingSellers.length})</button>
       </div>
 
@@ -239,6 +272,48 @@ export default function Admin() {
             </div>
           )}
 
+          {activeTab === 'coupons' && (
+            <div>
+              <h2 className="text-xl font-bold text-dark mb-6">Manage Coupons</h2>
+              {couponMsg && <div className="bg-green-50 text-brand p-3 rounded-lg text-sm mb-4 max-w-2xl font-bold">{couponMsg}</div>}
+              
+              <form onSubmit={handleAddCoupon} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 max-w-4xl bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Coupon Code</label>
+                  <input type="text" required value={newCoupon.code} onChange={e => setNewCoupon({...newCoupon, code: e.target.value})} placeholder="E.g. EID2024" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:outline-none uppercase" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Discount (Rs.)</label>
+                  <input type="number" required value={newCoupon.discount} onChange={e => setNewCoupon({...newCoupon, discount: e.target.value})} placeholder="100" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Min Order (Rs.)</label>
+                  <input type="number" value={newCoupon.minAmount} onChange={e => setNewCoupon({...newCoupon, minAmount: e.target.value})} placeholder="0" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:outline-none" />
+                </div>
+                <div className="flex items-end">
+                  <button type="submit" className="w-full bg-brand text-white font-bold py-2.5 rounded-xl hover:bg-brand/90 shadow-sm flex items-center justify-center gap-2">
+                    <Plus size={18} /> Create
+                  </button>
+                </div>
+              </form>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {coupons.length === 0 ? (
+                  <p className="text-gray-500 col-span-full">No coupons created yet.</p>
+                ) : coupons.map(coupon => (
+                  <div key={coupon.id} className="flex justify-between items-center bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
+                    <div>
+                      <p className="font-bold text-dark text-lg uppercase">{coupon.code}</p>
+                      <p className="text-sm text-brand font-bold">Rs. {coupon.discount} OFF</p>
+                      {coupon.minAmount > 0 && <p className="text-xs text-gray-500">Min order: Rs. {coupon.minAmount}</p>}
+                    </div>
+                    <button onClick={() => handleDeleteCoupon(coupon.id)} className="text-alert p-2 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'promotions' && (
             <div>
               <h2 className="text-xl font-bold text-dark mb-2">Premium Promotions</h2>
@@ -265,21 +340,11 @@ export default function Admin() {
             <div>
               <h2 className="text-xl font-bold text-dark mb-6">Manage Categories</h2>
               <form onSubmit={handleAddCategory} className="flex gap-3 mb-8 max-w-lg">
-                <input 
-                  type="text" 
-                  value={newCategoryName} 
-                  onChange={e => setNewCategoryName(e.target.value)} 
-                  placeholder="e.g. Home Decor, Sweets, etc." 
-                  className="flex-grow px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" 
-                />
-                <button type="submit" className="bg-brand text-white font-bold py-3 px-6 rounded-xl hover:bg-brand/90 shadow-md flex items-center gap-2">
-                  <Plus size={18} /> Add
-                </button>
+                <input type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="e.g. Home Decor, Sweets, etc." className="flex-grow px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" />
+                <button type="submit" className="bg-brand text-white font-bold py-3 px-6 rounded-xl hover:bg-brand/90 shadow-md flex items-center gap-2"><Plus size={18} /> Add</button>
               </form>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {categories.length === 0 ? (
-                  <p className="text-gray-500 col-span-full">No categories added yet.</p>
-                ) : categories.map(cat => (
+                {categories.map(cat => (
                   <div key={cat.id} className="flex justify-between items-center bg-gray-50 border border-gray-100 p-4 rounded-xl">
                     <span className="font-bold text-dark">{cat.name}</span>
                     <button onClick={() => handleDeleteCategory(cat.id)} className="text-alert p-2 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
@@ -364,11 +429,7 @@ export default function Admin() {
                     </div>
                     <div className="flex items-center gap-4">
                       <p className="font-bold text-brand">Rs. {order.total}</p>
-                      <select 
-                        value={order.status} 
-                        onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                        className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-semibold focus:outline-none focus:border-brand"
-                      >
+                      <select value={order.status} onChange={(e) => updateOrderStatus(order.id, e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-semibold focus:outline-none focus:border-brand">
                         <option value="new">New</option>
                         <option value="accepted">Accepted</option>
                         <option value="dispatched">Dispatched</option>
@@ -382,8 +443,7 @@ export default function Admin() {
               </div>
             </div>
           )}
-
-          {activeTab === 'products' && (
+    {activeTab === 'products' && (
             <div>
               <h2 className="text-xl font-bold text-dark mb-4">All Platform Products</h2>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -416,4 +476,4 @@ export default function Admin() {
       )}
     </div>
   );
-    }
+}
