@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom'; // <-- 'Link' is removed here
+import { useParams } from 'react-router-dom';
 import { collection, query, where, getDocs, doc, getDoc, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { CheckCircle2, Clock, Package, Truck, MessageCircle, Star, Box, CheckSquare } from 'lucide-react';
@@ -144,20 +144,23 @@ export default function TrackOrder() {
         <div className="bg-gray-50 rounded-2xl p-6 mb-6">
           <h3 className="font-bold text-dark mb-4">Order Summary</h3>
           <p className="text-sm text-gray-600 mb-2"><span className="font-semibold">Store:</span> {order.storeName}</p>
+          
           <div className="space-y-2 mb-4">
             {order.items.map((item: any, i: number) => (
               <div key={i} className="flex justify-between text-sm">
                 <span>{item.qty}x {item.title}</span>
                 <span className="font-medium">Rs. {item.price * item.qty}</span>
               </div>
-      {order.discountAmount > 0 && (
-  <div className="flex justify-between text-sm text-brand font-bold mb-2">
-    <span>Discount ({order.couponCode})</span>
-    <span>- Rs. {order.discountAmount}</span>
-  </div>
-)}
             ))}
           </div>
+          
+          {order.discountAmount > 0 && (
+            <div className="flex justify-between text-sm text-brand font-bold mb-2">
+              <span>Discount ({order.couponCode})</span>
+              <span>- Rs. {order.discountAmount}</span>
+            </div>
+          )}
+
           <div className="border-t border-gray-200 pt-2 flex justify-between font-bold text-dark">
             <span>Total</span>
             <span>Rs. {order.total}</span>
@@ -214,4 +217,4 @@ export default function TrackOrder() {
       )}
     </div>
   );
-                                           }
+        }
