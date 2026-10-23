@@ -8,6 +8,8 @@ type CartItem = {
   sellerId: string;
   storeName: string;
   quantity: number;
+  deliveryFee?: number;
+  description?: string;
 };
 
 type CartContextType = {
@@ -16,6 +18,7 @@ type CartContextType = {
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
   cartTotal: number;
+  cartDeliveryFee: number;
 };
 
 const CartContext = createContext<CartContextType>({} as CartContextType);
@@ -36,7 +39,6 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       if (existing) {
         return prev.map(i => i.productId === item.productId ? { ...i, quantity: i.quantity + 1 } : i);
       }
-      // Single seller constraint
       if (prev.length > 0 && prev[0].sellerId !== item.sellerId) {
         if (window.confirm('Your cart has items from another store. Clear cart and add this item?')) {
           return [{ ...item, quantity: 1 }];
@@ -52,10 +54,14 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const clearCart = () => setCart([]);
+  
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  
+  // Calculate delivery fee: sum of all items' delivery fees (or highest, let's sum them for simplicity)
+  const cartDeliveryFee = cart.reduce((sum, item) => sum + (item.deliveryFee || 0) * item.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, clearCart, cartTotal }}>
+    <CartContext.Provider value={{ cart, addToCart, removeFromCart, clearCart, cartTotal, cartDeliveryFee }}>
       {children}
     </CartContext.Provider>
   );
