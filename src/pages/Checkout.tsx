@@ -17,6 +17,9 @@ export default function Checkout() {
   });
   const [paymentMethod, setPaymentMethod] = useState('COD');
 
+  // MOVED THIS HERE SO THE JSX CAN SEE IT
+  const finalTotal = cartTotal + cartDeliveryFee;
+
   useEffect(() => {
     const fetchUserData = async () => {
       if (!currentUser) {
@@ -31,7 +34,7 @@ export default function Checkout() {
             ...prev,
             phone: data.mobile || '',
             whatsapp: data.whatsapp || data.mobile || '',
-            address: data.defaultAddress || '' // Auto-fill the saved address!
+            address: data.defaultAddress || ''
           }));
         }
       } catch (error) {
@@ -50,7 +53,6 @@ export default function Checkout() {
 
     try {
       const trackingToken = crypto.randomUUID();
-      const finalTotal = cartTotal + cartDeliveryFee;
       
       const orderData = {
         buyerUid: currentUser?.uid || 'guest',
@@ -90,8 +92,7 @@ export default function Checkout() {
 
   if (cart.length === 0) return null;
   if (fetchingAddress) return <div className="p-12 text-center text-brand font-bold">Loading details...</div>;
-
-  return (
+return (
     <div className="max-w-3xl mx-auto px-4 py-8 pb-24">
       <h1 className="text-3xl font-bold text-dark mb-6">Checkout</h1>
       
