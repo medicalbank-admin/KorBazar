@@ -72,6 +72,11 @@ export default function Admin() {
     await updateDoc(doc(db, 'sellers', id), { plan: newPlan });
     fetchData();
   };
+  
+  const updateOrderStatus = async (id: string, newStatus: string) => {
+    await updateDoc(doc(db, 'orders', id), { status: newStatus });
+    fetchData();
+  };
 
   const handleDeleteStore = async (id: string) => {
     if(window.confirm("WARNING: This will permanently delete the store, their products, and their user profile. This cannot be undone. Are you sure?")) {
