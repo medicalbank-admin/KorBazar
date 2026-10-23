@@ -150,6 +150,12 @@ export default function TrackOrder() {
                 <span>{item.qty}x {item.title}</span>
                 <span className="font-medium">Rs. {item.price * item.qty}</span>
               </div>
+      {order.discountAmount > 0 && (
+  <div className="flex justify-between text-sm text-brand font-bold mb-2">
+    <span>Discount ({order.couponCode})</span>
+    <span>- Rs. {order.discountAmount}</span>
+  </div>
+)}
             ))}
           </div>
           <div className="border-t border-gray-200 pt-2 flex justify-between font-bold text-dark">
