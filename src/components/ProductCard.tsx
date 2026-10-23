@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom';
 import { CheckCircle2, Star } from 'lucide-react';
-import { Product } from '../mockData';
 
-export default function ProductCard({ product }: { product: Product }) {
+export default function ProductCard({ product }: { product: any }) {
+  // Use the first image from the array, or a fallback
+  const displayImage = product.images?.[0] || product.image || 'https://placehold.co/400x400?text=No+Image';
+
   return (
     <Link to={`/product/${product.id}`} className="group bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col border border-gray-100">
       <div className="relative aspect-square overflow-hidden bg-gray-50">
-        <img src={product.image} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+        <img src={displayImage} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         {product.isPremium && (
           <span className="absolute top-3 left-3 bg-brand text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">
             Featured
@@ -23,7 +25,7 @@ export default function ProductCard({ product }: { product: Product }) {
           <span className="font-bold text-lg text-dark">Rs. {product.price}</span>
           <div className="flex items-center gap-1 text-sm bg-gray-50 px-2 py-1 rounded-md">
             <Star size={14} className="text-yellow-400 fill-yellow-400" />
-            <span className="font-medium">{product.rating}</span>
+            <span className="font-medium">{product.rating || 'New'}</span>
           </div>
         </div>
       </div>
