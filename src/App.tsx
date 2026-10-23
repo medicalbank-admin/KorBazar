@@ -15,6 +15,8 @@ import Checkout from './pages/Checkout';
 import TrackOrder from './pages/TrackOrder';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import BuyerOrders from './pages/BuyerOrders';
+import Profile from './pages/Profile'; 
 
 const Placeholder = ({ title }: { title: string }) => (
   <div className="max-w-7xl mx-auto px-4 py-24 text-center pb-24">
@@ -50,8 +52,8 @@ export default function App() {
                 <Route path="/about" element={<Placeholder title="About KorBazar" />} />
                 <Route path="/terms" element={<Placeholder title="Terms & Conditions" />} />
                 <Route path="/privacy" element={<Placeholder title="Privacy Policy" />} />
-                <Route path="/orders" element={<Placeholder title="My Orders" />} />
-                <Route path="/profile" element={<Placeholder title="My Profile" />} />
+                <Route path="/orders" element={<BuyerOrders />} />
+                <Route path="/profile" element={<Profile />} />
               </Routes>
             </main>
             <footer className="bg-white border-t border-gray-100 py-8 text-center text-sm text-gray-500 pb-24 md:pb-8">
