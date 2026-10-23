@@ -8,7 +8,7 @@ import SellWithUs from './pages/SellWithUs';
 import SellerPending from './pages/SellerPending';
 import Admin from './pages/Admin';
 import SellerDashboard from './pages/SellerDashboard';
-import ProductDetail from './pages/ProductDetail';
+import ProductDetails from './pages/ProductDetails'; 
 import StorePage from './pages/StorePage';
 import { AuthProvider } from './context/AuthContext';
 
@@ -29,7 +29,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/explore" element={<Explore />} />
-              <Route path="/product/:id" element={<ProductDetail />} />
+              <Route path="/product/:id" element={<ProductDetails />} />
               <Route path="/store/:id" element={<StorePage />} />
               
               {/* Auth Routes */}
