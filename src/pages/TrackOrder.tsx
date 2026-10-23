@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { collection, query, where, getDocs, doc, getDoc, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CheckCircle2, Clock, Package, Truck, MessageCircle, Star } from 'lucide-react';
+import { CheckCircle2, Clock, Package, Truck, MessageCircle, Star, Box, CheckSquare } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 
 export default function TrackOrder() {
@@ -45,10 +45,7 @@ export default function TrackOrder() {
       const prodSnap = await getDocs(collection(db, 'products'));
       const allProducts = prodSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
       
-      // Get products from premium sellers only
       const promoProducts = allProducts.filter(p => premiumSellerIds.includes(p.sellerId));
-      
-      // Shuffle and take top 4
       setPremiumProducts(promoProducts.sort(() => 0.5 - Math.random()).slice(0, 4));
     };
 
@@ -81,8 +78,8 @@ export default function TrackOrder() {
     }
   };
 
-  if (loading) return <div className="p-12 text-center">Loading order...</div>;
-  if (!order) return <div className="p-12 text-center text-alert">Order not found. Please check your link.</div>;
+  if (loading) return <div className="p-12 text-center text-dark font-bold">Loading order...</div>;
+  if (!order) return <div className="p-12 text-center text-alert font-bold">Order not found. Please check your link.</div>;
 
   const steps = [
     { id: 'new', label: 'Order Placed', icon: Clock },
@@ -123,10 +120,24 @@ export default function TrackOrder() {
                   </div>
                   <div>
                     <h3 className={`font-bold ${isActive ? 'text-dark' : 'text-gray-400'}`}>{step.label}</h3>
+                    {step.id === 'accepted' && order.paymentVerified && (
+                      <p className="text-xs text-brand font-semibold flex items-center gap-1 mt-1"><CheckSquare size={12}/> Payment Verified</p>
+                    )}
                   </div>
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* COURIER TRACKING INFO */}
+        {order.trackingNumber && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl flex items-center gap-3 mb-6">
+            <Box size={24} />
+            <div>
+              <p className="font-bold text-sm">Courier Tracking Number</p>
+              <p className="text-lg font-mono font-bold">{order.trackingNumber}</p>
+            </div>
           </div>
         )}
 
@@ -183,7 +194,6 @@ export default function TrackOrder() {
         )}
       </div>
 
-      {/* MOST POPULAR PRODUCTS SECTION */}
       {premiumProducts.length > 0 && (
         <div className="border-t border-gray-200 pt-8">
           <h2 className="text-2xl font-bold text-dark mb-6 flex items-center gap-2">
@@ -191,11 +201,11 @@ export default function TrackOrder() {
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             {premiumProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} isSellerPremium={true} />
             ))}
           </div>
         </div>
       )}
     </div>
   );
-            }
+                }
