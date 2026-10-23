@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Link } from 'react-router-dom';
-import { Package, ChevronRight } from 'lucide-react';
+import { Package, ChevronRight, XCircle } from 'lucide-react';
 
 export default function BuyerOrders() {
   const { currentUser } = useAuth();
@@ -16,7 +16,19 @@ export default function BuyerOrders() {
       try {
         const q = query(collection(db, 'orders'), where('buyerUid', '==', currentUser.uid));
         const snap = await getDocs(q);
-        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // Fetch seller info for each order to get their WhatsApp number
+        const data = await Promise.all(snap.docs.map(async (d) => {
+          const orderData = { id: d.id, ...d.data() } as any;
+          if (orderData.sellerId) {
+            const sellerSnap = await getDoc(doc(db, 'sellers', orderData.sellerId));
+            if (sellerSnap.exists()) {
+              orderData.sellerWhatsapp = sellerSnap.data().whatsappNumber;
+            }
+          }
+          return orderData;
+        }));
+
         data.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setOrders(data);
       } catch (error) {
@@ -27,6 +39,14 @@ export default function BuyerOrders() {
     };
     fetchOrders();
   }, [currentUser]);
+
+  const handleCancelOrder = (order: any) => {
+    if(window.confirm('Are you sure you want to cancel this order? You will be redirected to WhatsApp to notify the seller.')) {
+      const text = `Assalam-o-Alaikum ${order.storeName},\n\nI would like to CANCEL my order #${order.trackingToken.slice(0,8).toUpperCase()} placed on KorBazar.\n\nReason: (Please type your reason here)\n\nThank you.`;
+      const cleanNumber = order.sellerWhatsapp?.replace(/^0/, '') || '';
+      window.open(`https://wa.me/92${cleanNumber}?text=${encodeURIComponent(text)}`, '_blank');
+    }
+  };
 
   if (!currentUser) return <div className="p-12 text-center text-dark">Please log in to view your orders.</div>;
   if (loading) return <div className="p-12 text-center text-dark">Loading orders...</div>;
@@ -47,8 +67,8 @@ export default function BuyerOrders() {
       ) : (
         <div className="space-y-4">
           {orders.map(order => (
-            <Link key={order.id} to={`/track/${order.trackingToken}`} className="block bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-center mb-4">
+            <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col gap-4">
+              <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-bold text-lg text-dark">Order #{order.trackingToken.slice(0,6).toUpperCase()}</h3>
                   <p className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</p>
@@ -56,22 +76,37 @@ export default function BuyerOrders() {
                 <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase ${
                   order.status === 'new' ? 'bg-yellow-100 text-yellow-700' : 
                   order.status === 'delivered' ? 'bg-green-100 text-brand' : 
-                  order.status === 'rejected' ? 'bg-red-100 text-alert' :
+                  order.status === 'rejected' || order.status === 'cancelled' ? 'bg-red-100 text-alert' :
                   'bg-blue-100 text-blue-700'
                 }`}>
                   {order.status}
                 </span>
               </div>
+              
               <div className="flex justify-between items-end border-t border-gray-100 pt-4">
                 <div className="text-sm text-gray-600">
-                  <span className="font-semibold text-dark">{order.storeName}</span><br/>
-                  {order.items.length} item(s)
+                  <span className="font-semibold text-dark text-base">{order.storeName}</span><br/>
+                  {order.items.length} item(s) • <span className="font-semibold uppercase">{order.paymentMethod}</span>
                 </div>
-                <div className="flex items-center gap-2 font-bold text-dark">
-                  Rs. {order.total} <ChevronRight size={18} className="text-gray-400" />
+                <div className="flex items-center gap-4">
+                  <span className="font-bold text-dark">Rs. {order.total}</span>
+                  <Link to={`/track/${order.trackingToken}`} className="bg-gray-100 text-dark px-4 py-2 rounded-lg font-semibold hover:bg-gray-200 text-sm flex items-center gap-1">
+                    Track <ChevronRight size={16} />
+                  </Link>
                 </div>
               </div>
-            </Link>
+
+              {order.status === 'new' && (
+                <div className="border-t border-gray-100 pt-3">
+                  <button 
+                    onClick={() => handleCancelOrder(order)} 
+                    className="flex items-center gap-1 text-alert font-semibold text-sm hover:underline"
+                  >
+                    <XCircle size={16} /> Cancel Order via WhatsApp
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}
