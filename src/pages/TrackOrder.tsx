@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { collection, query, where, getDocs, doc, getDoc, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { CheckCircle2, Clock, Package, Truck, MessageCircle, Star } from 'lucide-react';
+import ProductCard from '../components/ProductCard';
 
 export default function TrackOrder() {
   const { token } = useParams();
   const [order, setOrder] = useState<any>(null);
   const [seller, setSeller] = useState<any>(null);
+  const [premiumProducts, setPremiumProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Review State
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
@@ -28,14 +29,31 @@ export default function TrackOrder() {
         const sellerSnap = await getDoc(doc(db, 'sellers', orderData.sellerId));
         if (sellerSnap.exists()) setSeller(sellerSnap.data());
 
-        // Check if review already exists for this order
         const reviewQ = query(collection(db, 'reviews'), where('orderId', '==', orderData.id));
         const reviewSnap = await getDocs(reviewQ);
         if (!reviewSnap.empty) setReviewSubmitted(true);
       }
       setLoading(false);
     };
+    
+    const fetchPremiumProducts = async () => {
+      const sellersSnap = await getDocs(collection(db, 'sellers'));
+      const premiumSellerIds = sellersSnap.docs
+        .filter(d => d.data().status === 'approved' && d.data().plan === 'premium' && !d.data().isFrozen)
+        .map(d => d.id);
+
+      const prodSnap = await getDocs(collection(db, 'products'));
+      const allProducts = prodSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+      
+      // Get products from premium sellers only
+      const promoProducts = allProducts.filter(p => premiumSellerIds.includes(p.sellerId));
+      
+      // Shuffle and take top 4
+      setPremiumProducts(promoProducts.sort(() => 0.5 - Math.random()).slice(0, 4));
+    };
+
     fetchOrder();
+    fetchPremiumProducts();
   }, [token]);
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
@@ -80,8 +98,8 @@ export default function TrackOrder() {
   const waLink = `https://wa.me/92${cleanNumber}?text=${encodeURIComponent(whatsappText)}`;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-12 pb-24">
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+    <div className="max-w-4xl mx-auto px-4 py-12 pb-24">
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 mb-12">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-dark mb-2">Order Status</h1>
           <p className="text-gray-500">Order ID: #{order.trackingToken.slice(0,8).toUpperCase()}</p>
@@ -129,13 +147,12 @@ export default function TrackOrder() {
           </div>
         </div>
 
-        <a href={waLink} target="_blank" rel="noreferrer" className="w-full bg-[#25D366] text-white font-bold py-3 rounded-xl hover:bg-[#20bd5a] flex items-center justify-center gap-2 mb-8">
+        <a href={waLink} target="_blank" rel="noreferrer" className="w-full bg-[#25D366] text-white font-bold py-3 rounded-xl hover:bg-[#20bd5a] flex items-center justify-center gap-2">
           <MessageCircle size={20} /> Contact Seller on WhatsApp
         </a>
 
-        {/* REVIEW SECTION */}
         {order.status === 'delivered' && (
-          <div className="border-t border-gray-100 pt-8 mt-4">
+          <div className="border-t border-gray-100 pt-8 mt-8">
             <h3 className="text-xl font-bold text-dark mb-4 text-center">Rate this order</h3>
             {reviewSubmitted ? (
               <div className="bg-green-50 text-brand p-4 rounded-xl text-center font-semibold">
@@ -164,8 +181,21 @@ export default function TrackOrder() {
             )}
           </div>
         )}
-
       </div>
+
+      {/* MOST POPULAR PRODUCTS SECTION */}
+      {premiumProducts.length > 0 && (
+        <div className="border-t border-gray-200 pt-8">
+          <h2 className="text-2xl font-bold text-dark mb-6 flex items-center gap-2">
+            <Star className="text-yellow-500 fill-yellow-500" /> Most Popular in Charsadda
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {premiumProducts.map(product => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+            }
