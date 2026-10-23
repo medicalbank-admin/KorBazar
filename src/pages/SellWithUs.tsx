@@ -2,11 +2,31 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db } from '../firebase';
-import { getStorage } from 'firebase/storage';
 
-const storage = getStorage();
+// Helper to compress image and convert to Base64 text
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 600; // Resize to save space in Firestore
+        const scale = MAX_WIDTH / img.width;
+        canvas.width = MAX_WIDTH;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.6)); // Compress to 60% quality
+      };
+      img.onerror = (error) => reject(error);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
 
 export default function SellWithUs() {
   const [step, setStep] = useState(1);
@@ -46,19 +66,13 @@ export default function SellWithUs() {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const uid = userCredential.user.uid;
 
-      // 2. Upload CNIC Images to Firebase Storage
-      let frontUrl = '';
-      let backUrl = '';
+      // 2. Compress and Convert CNIC to Base64 Strings
+      let frontBase64 = '';
+      let backBase64 = '';
       
       if (cnicFront && cnicBack) {
-        const frontRef = ref(storage, `cnic/${uid}/front`);
-        const backRef = ref(storage, `cnic/${uid}/back`);
-        
-        await uploadBytes(frontRef, cnicFront);
-        await uploadBytes(backRef, cnicBack);
-        
-        frontUrl = await getDownloadURL(frontRef);
-        backUrl = await getDownloadURL(backRef);
+        frontBase64 = await compressImage(cnicFront);
+        backBase64 = await compressImage(cnicBack);
       }
 
       // 3. Save to users collection
@@ -66,10 +80,10 @@ export default function SellWithUs() {
         email: formData.email, mobile: formData.mobile, role: 'seller', createdAt: new Date().toISOString()
       });
 
-      // 4. Save to sellers collection with CNIC URLs
+      // 4. Save to sellers collection with Base64 strings
       await setDoc(doc(db, 'sellers', uid), {
         fullName: formData.fullName, dob: formData.dob, phone: formData.mobile, whatsappNumber: formData.whatsapp,
-        cnicNumber: formData.cnicNumber, cnicFrontUrl: frontUrl, cnicBackUrl: backUrl,
+        cnicNumber: formData.cnicNumber, cnicFrontUrl: frontBase64, cnicBackUrl: backBase64,
         storeName: formData.storeName, storeType: formData.storeType, storeAddress: formData.storeAddress,
         city: formData.city, area: formData.area, bio: formData.bio,
         status: 'pending_verification', createdAt: new Date().toISOString()
@@ -193,7 +207,7 @@ export default function SellWithUs() {
               </div>
               <div className="flex gap-3 mt-4">
                 <button type="button" onClick={() => setStep(2)} className="w-1/3 bg-gray-100 text-dark font-bold py-3.5 rounded-xl hover:bg-gray-200">Back</button>
-                <button type="submit" disabled={loading} className="w-2/3 bg-brand text-white font-bold py-3.5 rounded-xl hover:bg-brand/90">{loading ? 'Submitting...' : 'Submit Application'}</button>
+                <button type="submit" disabled={loading} className="w-2/3 bg-brand text-white font-bold py-3.5 rounded-xl hover:bg-brand/90">{loading ? 'Compressing & Submitting...' : 'Submit Application'}</button>
               </div>
             </div>
           )}
@@ -201,4 +215,4 @@ export default function SellWithUs() {
       </div>
     </div>
   );
-                                                                                             }
+                }
