@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket, TrendingUp, Banknote, PieChart } from 'lucide-react';
+import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket, TrendingUp, Banknote, PieChart, Settings } from 'lucide-react';
 
 export default function Admin() {
   const [sellers, setSellers] = useState<any[]>([]);
@@ -20,6 +20,10 @@ export default function Admin() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCoupon, setNewCoupon] = useState({ code: '', discount: '', minAmount: '' });
   const [couponMsg, setCouponMsg] = useState('');
+
+  // Platform Settings State
+  const [fees, setFees] = useState({ standard: 1000, premium: 2000 });
+  const [isSavingFees, setIsSavingFees] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -42,6 +46,12 @@ export default function Admin() {
 
       const couponSnap = await getDocs(collection(db, 'coupons'));
       setCoupons(couponSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+      // Fetch Platform Settings
+      const settingsSnap = await getDoc(doc(db, 'settings', 'platform'));
+      if (settingsSnap.exists()) {
+        setFees(settingsSnap.data() as any);
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -50,6 +60,21 @@ export default function Admin() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  const handleSaveFees = async () => {
+    setIsSavingFees(true);
+    try {
+      await setDoc(doc(db, 'settings', 'platform'), { 
+        standard: Number(fees.standard), 
+        premium: Number(fees.premium) 
+      });
+      alert("Platform fees updated successfully!");
+    } catch (error) {
+      alert("Failed to update fees.");
+    } finally {
+      setIsSavingFees(false);
+    }
+  };
 
   const handleApprove = async (id: string) => {
     await updateDoc(doc(db, 'sellers', id), { status: 'approved', verifiedAt: new Date().toISOString() });
@@ -168,17 +193,19 @@ export default function Admin() {
   const pendingSellers = sellers.filter(s => s.status === 'pending_verification');
   const approvedSellers = sellers.filter(s => s.status === 'approved');
   const premiumSellers = approvedSellers.filter(s => s.plan === 'premium');
+  const standardSellers = approvedSellers.filter(s => s.plan !== 'premium');
   
-  const totalGMV = orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + o.total, 0);
-  const deliveredOrdersCount = orders.filter(o => o.status === 'delivered').length;
+  // --- FINANCIAL CALCULATIONS ---
+  // Actual Earned Revenue: Only counts sellers who have PAID
+  const paidStandardCount = standardSellers.filter(s => s.feeStatus === 'paid').length;
+  const paidPremiumCount = premiumSellers.filter(s => s.feeStatus === 'paid').length;
+  const actualEarnedRevenue = (paidStandardCount * fees.standard) + (paidPremiumCount * fees.premium);
+
+  // Expected Revenue: Counts all active sellers
+  const expectedMonthlyRevenue = (standardSellers.length * fees.standard) + (premiumSellers.length * fees.premium);
+  
   const paidSellersCount = approvedSellers.filter(s => s.feeStatus === 'paid').length;
-  const unpaidSellersCount = approvedSellers.filter(s => s.feeStatus !== 'paid').length;
-  
-  const STANDARD_FEE = 1000;
-  const PREMIUM_FEE = 2000;
-  const monthlySubRevenue = (approvedSellers.length - premiumSellers.length) * STANDARD_FEE;
-  const premiumSubRevenue = premiumSellers.length * PREMIUM_FEE;
-  const totalExpectedRevenue = monthlySubRevenue + premiumSubRevenue;
+  const unpaidSellersCount = approvedSellers.length - paidSellersCount;
   return (
   <div className="max-w-7xl mx-auto px-4 py-8 pb-24 relative">
     <h1 className="text-3xl font-bold text-dark mb-8">Admin Master Control</h1>
@@ -254,15 +281,15 @@ export default function Admin() {
               </div>
               <div className="bg-yellow-50 p-6 rounded-2xl border border-yellow-100 text-center">
                 <p className="text-3xl font-extrabold text-yellow-600">{premiumSellers.length}</p>
-                <p className="text-sm font-semibold text-yellow-700 uppercase mt-1">Premium Stores</p>
+                <p className="text-sm font-semibold text-gray-500 uppercase mt-1">Premium Stores</p>
               </div>
               <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center">
                 <p className="text-3xl font-extrabold text-blue-600">{orders.length}</p>
                 <p className="text-sm font-semibold text-gray-500 uppercase mt-1">Total Orders</p>
               </div>
               <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center">
-                <p className="text-3xl font-extrabold text-alert">Rs. {totalGMV}</p>
-                <p className="text-sm font-semibold text-gray-500 uppercase mt-1">Total Delivered Rev.</p>
+                <p className="text-3xl font-extrabold text-brand">Rs. {actualEarnedRevenue}</p>
+                <p className="text-sm font-semibold text-gray-500 uppercase mt-1">Earned Revenue</p>
               </div>
             </div>
           </div>
@@ -270,70 +297,62 @@ export default function Admin() {
 
         {activeTab === 'finance' && (
           <div>
-            <h2 className="text-xl font-bold text-dark mb-6">Financial Dashboard</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <h2 className="text-xl font-bold text-dark mb-6 flex items-center gap-2"><Settings size={24}/> Financial Dashboard & Settings</h2>
+            
+            {/* FEE SETTINGS FORM */}
+            <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl mb-8 flex flex-col md:flex-row items-end gap-4 max-w-3xl">
+              <div className="flex-grow">
+                <label className="block text-xs font-bold text-gray-500 mb-1">Standard Monthly Fee (Rs.)</label>
+                <input type="number" value={fees.standard} onChange={e => setFees({...fees, standard: Number(e.target.value)})} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:outline-none" />
+              </div>
+              <div className="flex-grow">
+                <label className="block text-xs font-bold text-gray-500 mb-1">Premium Monthly Fee (Rs.)</label>
+                <input type="number" value={fees.premium} onChange={e => setFees({...fees, premium: Number(e.target.value)})} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:outline-none" />
+              </div>
+              <button onClick={handleSaveFees} disabled={isSavingFees} className="bg-dark text-white font-bold py-2.5 px-6 rounded-xl hover:bg-black shadow-md whitespace-nowrap">
+                {isSavingFees ? 'Saving...' : 'Update Fees'}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {/* ACTUAL EARNED REVENUE */}
               <div className="bg-gradient-to-br from-brand to-green-700 text-white p-6 rounded-3xl shadow-md">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <p className="text-green-100 font-semibold uppercase text-xs tracking-wider mb-1">Platform Revenue</p>
-                    <h3 className="text-3xl font-extrabold">Rs. {totalExpectedRevenue}</h3>
+                    <p className="text-green-100 font-semibold uppercase text-xs tracking-wider mb-1">Platform Earned Revenue</p>
+                    <h3 className="text-4xl font-extrabold">Rs. {actualEarnedRevenue}</h3>
                   </div>
                   <Banknote size={32} className="text-green-200 opacity-50" />
                 </div>
-                <p className="text-sm text-green-100 mb-4">Expected monthly revenue from subscriptions.</p>
-                <div className="bg-white/20 p-3 rounded-xl text-sm flex justify-between">
-                  <span>Standard: {approvedSellers.length - premiumSellers.length} x Rs. {STANDARD_FEE}</span>
-                  <span>Premium: {premiumSellers.length} x Rs. {PREMIUM_FEE}</span>
+                <p className="text-sm text-green-100 mb-4">Money actually collected from sellers who have paid their fee.</p>
+                <div className="bg-white/20 p-3 rounded-xl text-xs flex justify-between">
+                  <span>Standard Paid: {paidStandardCount} x Rs. {fees.standard}</span>
+                  <span>Premium Paid: {paidPremiumCount} x Rs. {fees.premium}</span>
                 </div>
               </div>
+
+              {/* EXPECTED REVENUE */}
               <div className="bg-gray-50 p-6 rounded-3xl border border-gray-200 shadow-sm">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <p className="text-gray-500 font-semibold uppercase text-xs tracking-wider mb-1">Total GMV (Delivered)</p>
-                    <h3 className="text-3xl font-extrabold text-dark">Rs. {totalGMV}</h3>
+                    <p className="text-gray-500 font-semibold uppercase text-xs tracking-wider mb-1">Expected Monthly Revenue</p>
+                    <h3 className="text-3xl font-extrabold text-dark">Rs. {expectedMonthlyRevenue}</h3>
                   </div>
                   <TrendingUp size={32} className="text-brand opacity-30" />
                 </div>
-                <p className="text-sm text-gray-600">Total money transacted on the platform from {deliveredOrdersCount} delivered orders.</p>
-              </div>
-              <div className="bg-gray-50 p-6 rounded-3xl border border-gray-200 shadow-sm">
-                <div className="flex justify-between items-start mb-4">
+                <p className="text-sm text-gray-600 mb-4">Total potential revenue if all active sellers pay their monthly fee.</p>
+                
+                <div className="bg-white border border-gray-200 p-3 rounded-xl text-sm flex justify-between mb-4">
                   <div>
-                    <p className="text-gray-500 font-semibold uppercase text-xs tracking-wider mb-1">Fee Collection Status</p>
-                    <h3 className="text-3xl font-extrabold text-dark">{paidSellersCount} <span className="text-lg text-gray-400">/ {approvedSellers.length}</span></h3>
+                    <p className="font-bold text-dark">{paidSellersCount} / {approvedSellers.length}</p>
+                    <p className="text-xs text-gray-500">Sellers Paid</p>
                   </div>
-                  <PieChart size={32} className="text-yellow-500 opacity-50" />
+                  <div className="text-right">
+                    <p className="font-bold text-alert">{unpaidSellersCount}</p>
+                    <p className="text-xs text-gray-500">Pending</p>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-600 mb-4">Sellers who have paid their fee this month.</p>
-                {unpaidSellersCount > 0 ? (
-                  <div className="bg-red-50 text-alert text-sm font-bold p-2 rounded-lg text-center">{unpaidSellersCount} sellers have pending fees!</div>
-                ) : (
-                  <div className="bg-green-50 text-brand text-sm font-bold p-2 rounded-lg text-center">All fees are up to date!</div>
-                )}
               </div>
-            </div>
-            <h3 className="font-bold text-lg text-dark mb-4 border-t border-gray-100 pt-6">Recent Delivered Orders</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-gray-200 text-sm text-gray-500">
-                    <th className="p-3">Order ID</th>
-                    <th className="p-3">Store</th>
-                    <th className="p-3">Payment Method</th>
-                    <th className="p-3 text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.filter(o => o.status === 'delivered').slice(0, 10).map(order => (
-                    <tr key={order.id} className="border-b border-gray-100">
-                      <td className="p-3 text-sm font-bold text-dark">#{order.trackingToken.slice(0,6).toUpperCase()}</td>
-                      <td className="p-3 text-sm text-gray-600">{order.storeName}</td>
-                      <td className="p-3"><span className="text-xs font-bold uppercase bg-gray-100 px-2 py-1 rounded">{order.paymentMethod}</span></td>
-                      <td className="p-3 text-right font-bold text-brand">Rs. {order.total}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           </div>
         )}
@@ -399,7 +418,6 @@ export default function Admin() {
             </div>
           </div>
         )}
-
                   {activeTab === 'categories' && (
             <div>
               <h2 className="text-xl font-bold text-dark mb-6">Manage Categories</h2>
