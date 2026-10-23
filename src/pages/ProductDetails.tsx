@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CheckCircle2, ChevronLeft, MessageCircle, ShoppingCart } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, MessageCircle, ShoppingCart, Truck } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
 export default function ProductDetails() {
@@ -25,7 +25,6 @@ export default function ProductDetails() {
         const prodData = { id: docSnap.id, ...docSnap.data() } as any;
         setProduct(prodData);
 
-        // Fetch Seller Info
         const sellerRef = doc(db, 'sellers', prodData.sellerId);
         const sellerSnap = await getDoc(sellerRef);
         if (sellerSnap.exists()) setSeller(sellerSnap.data());
@@ -40,7 +39,6 @@ export default function ProductDetails() {
 
   const images = product.images?.length > 0 ? product.images : [product.image];
 
-  // WhatsApp link for pre-sale questions
   const whatsappMessage = `Assalam-o-Alaikum, I have a question about "${product.title}" (Rs. ${product.price}) on KorBazar.`;
   const cleanNumber = seller?.whatsappNumber?.replace(/^0/, '');
   const whatsappLink = `https://wa.me/92${cleanNumber}?text=${encodeURIComponent(whatsappMessage)}`;
@@ -52,7 +50,9 @@ export default function ProductDetails() {
       price: product.price,
       image: images[0],
       sellerId: product.sellerId,
-      storeName: product.storeName
+      storeName: product.storeName,
+      deliveryFee: product.deliveryFee || 0,
+      description: product.description || ''
     });
     setCartMsg('Added to cart successfully!');
     setTimeout(() => setCartMsg(''), 3000);
@@ -86,20 +86,23 @@ export default function ProductDetails() {
           <span className="text-sm font-bold text-brand tracking-wider uppercase mb-2">{product.category}</span>
           <h1 className="text-3xl font-bold text-dark mb-2">{product.title}</h1>
           
-          <div className="flex items-center gap-2 mb-6">
+          <div className="flex items-center gap-2 mb-4">
             <Link to={`/store/${product.sellerId}`} className="flex items-center gap-1 text-gray-600 hover:text-brand font-medium">
               {product.storeName} <CheckCircle2 size={16} className="text-brand" />
             </Link>
           </div>
 
-          <div className="text-4xl font-extrabold text-dark mb-8">
+          <div className="text-4xl font-extrabold text-dark mb-2">
             Rs. {product.price}
+          </div>
+          <div className="flex items-center gap-2 text-sm text-gray-600 mb-6 bg-gray-50 w-fit px-3 py-1 rounded-lg">
+            <Truck size={16} /> Delivery: Rs. {product.deliveryFee || 0}
           </div>
 
           <div className="bg-gray-50 rounded-2xl p-6 mb-8">
-            <h3 className="font-semibold text-dark mb-2">About this item</h3>
-            <p className="text-gray-600 text-sm leading-relaxed">
-              This item is handmade with love in Charsadda. Add it to your cart to checkout, or contact the seller directly if you have questions or need customization.
+            <h3 className="font-semibold text-dark mb-2">Product Description</h3>
+            <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">
+              {product.description || "No description provided for this item."}
             </p>
           </div>
 
@@ -121,8 +124,6 @@ export default function ProductDetails() {
               <MessageCircle size={22} className="text-[#25D366]" /> Ask Seller on WhatsApp
             </a>
           </div>
-          
-          <p className="text-center text-xs text-gray-400 mt-4">Cash on Delivery / Seller Arranged Delivery</p>
         </div>
       </div>
     </div>
