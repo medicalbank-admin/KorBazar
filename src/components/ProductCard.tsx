@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
-import { CheckCircle2, Star, Heart } from 'lucide-react';
+import { CheckCircle2, Star, Heart, Crown } from 'lucide-react';
 import { useFavorites } from '../context/FavoritesContext';
 
-export default function ProductCard({ product }: { product: any }) {
+export default function ProductCard({ product, isSellerPremium }: { product: any, isSellerPremium?: boolean }) {
   const { toggleFavorite, isFavorite } = useFavorites();
   const displayImage = product.images?.[0] || product.image || 'https://placehold.co/400x400?text=No+Image';
 
@@ -10,11 +10,14 @@ export default function ProductCard({ product }: { product: any }) {
     <Link to={`/product/${product.id}`} className="group bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col border border-gray-100 relative">
       <div className="relative aspect-square overflow-hidden bg-gray-50">
         <img src={displayImage} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-        {product.isPremium && (
-          <span className="absolute top-3 left-3 bg-brand text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">
-            Featured
+        
+        {/* Premium Badge */}
+        {isSellerPremium && (
+          <span className="absolute top-3 left-3 bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-1 border border-yellow-200">
+            <Crown size={12} className="fill-yellow-500 text-yellow-500" /> Premium
           </span>
         )}
+
         <button 
           onClick={(e) => { e.preventDefault(); toggleFavorite(product.id); }}
           className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white text-gray-500 hover:text-red-500 transition-colors shadow-sm"
@@ -26,7 +29,11 @@ export default function ProductCard({ product }: { product: any }) {
         <h3 className="font-semibold text-dark line-clamp-1">{product.title}</h3>
         <div className="flex items-center gap-1 text-sm text-gray-500 mt-1 mb-2">
           <span className="truncate">{product.storeName}</span>
-          <CheckCircle2 size={14} className="text-brand flex-shrink-0" />
+          {isSellerPremium ? (
+            <Crown size={14} className="text-yellow-500 flex-shrink-0" />
+          ) : (
+            <CheckCircle2 size={14} className="text-brand flex-shrink-0" />
+          )}
         </div>
         <div className="mt-auto flex items-center justify-between">
           <span className="font-bold text-lg text-dark">Rs. {product.price}</span>
