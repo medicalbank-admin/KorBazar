@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-// I added updateDoc to this line below:
 import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Link } from 'react-router-dom';
@@ -18,7 +17,6 @@ export default function BuyerOrders() {
         const q = query(collection(db, 'orders'), where('buyerUid', '==', currentUser.uid));
         const snap = await getDocs(q);
         
-        // Fetch seller info for each order to get their WhatsApp number
         const data = await Promise.all(snap.docs.map(async (d) => {
           const orderData = { id: d.id, ...d.data() } as any;
           if (orderData.sellerId) {
@@ -44,19 +42,16 @@ export default function BuyerOrders() {
   const handleCancelOrder = async (order: any) => {
     if(window.confirm('Are you sure you want to cancel this order? You will be redirected to WhatsApp to notify the seller.')) {
       try {
-        // 1. Update status in Firestore
         await updateDoc(doc(db, 'orders', order.id), { 
           status: 'cancelled',
           cancelledBy: 'buyer',
           cancelledAt: new Date().toISOString()
         });
 
-        // 2. Open WhatsApp to notify seller
         const text = `Assalam-o-Alaikum ${order.storeName},\n\nI would like to CANCEL my order #${order.trackingToken.slice(0,8).toUpperCase()} placed on KorBazar.\n\nReason: (Please type your reason here)\n\nThank you.`;
         const cleanNumber = order.sellerWhatsapp?.replace(/^0/, '') || '';
         window.open(`https://wa.me/92${cleanNumber}?text=${encodeURIComponent(text)}`, '_blank');
         
-        // 3. Refresh orders list to show updated status
         setOrders(orders.map(o => o.id === order.id ? { ...o, status: 'cancelled' } : o));
       } catch (error) {
         console.error("Error cancelling order:", error);
