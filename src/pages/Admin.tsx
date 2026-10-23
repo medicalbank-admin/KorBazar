@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CheckCircle, XCircle, Clock, X } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard } from 'lucide-react';
 
 export default function Admin() {
   const [sellers, setSellers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'pending' | 'history' | 'products'>('pending');
+  const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'orders' | 'products' | 'verification'>('overview');
   const [viewImage, setViewImage] = useState<string | null>(null);
 
   const fetchData = async () => {
@@ -19,9 +20,12 @@ export default function Admin() {
       setSellers(sellersData);
 
       const productsSnap = await getDocs(collection(db, 'products'));
-      const productsData = productsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      productsData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setProducts(productsData);
+      setProducts(productsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+      const ordersSnap = await getDocs(collection(db, 'orders'));
+      const ordersData = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      ordersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setOrders(ordersData);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -29,9 +33,7 @@ export default function Admin() {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const handleApprove = async (id: string) => {
     await updateDoc(doc(db, 'sellers', id), { status: 'approved', verifiedAt: new Date().toISOString() });
@@ -46,13 +48,31 @@ export default function Admin() {
     }
   };
 
-  const filteredSellers = sellers.filter(s => 
-    activeTab === 'pending' ? s.status === 'pending_verification' : s.status !== 'pending_verification'
-  );
+  const toggleFreeze = async (id: string, currentStatus: boolean) => {
+    const action = currentStatus ? 'Unfreeze' : 'Freeze';
+    if(window.confirm(`Are you sure you want to ${action} this store?`)) {
+      await updateDoc(doc(db, 'sellers', id), { isFrozen: !currentStatus });
+      fetchData();
+    }
+  };
+
+  const togglePremium = async (productId: string, currentStatus: boolean) => {
+    await updateDoc(doc(db, 'products', productId), { isPremium: !currentStatus });
+    fetchData();
+  };
+
+  const toggleFeeStatus = async (id: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'paid' ? 'pending' : 'paid';
+    await updateDoc(doc(db, 'sellers', id), { feeStatus: newStatus });
+    fetchData();
+  };
+
+  const pendingSellers = sellers.filter(s => s.status === 'pending_verification');
+  const totalRevenue = orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + o.total, 0);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 pb-24 relative">
-      <h1 className="text-3xl font-bold text-dark mb-8">Admin Dashboard</h1>
+      <h1 className="text-3xl font-bold text-dark mb-8">Admin Master Control</h1>
       
       {viewImage && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
@@ -64,80 +84,139 @@ export default function Admin() {
       )}
 
       {/* Tabs */}
-      <div className="flex overflow-x-auto gap-4 mb-6 border-b border-gray-200 scrollbar-hide">
-        <button 
-          onClick={() => setActiveTab('pending')}
-          className={`pb-3 px-2 font-bold text-lg whitespace-nowrap ${activeTab === 'pending' ? 'text-brand border-b-2 border-brand' : 'text-gray-400'}`}
-        >
-          Pending Sellers ({sellers.filter(s => s.status === 'pending_verification').length})
-        </button>
-        <button 
-          onClick={() => setActiveTab('history')}
-          className={`pb-3 px-2 font-bold text-lg whitespace-nowrap ${activeTab === 'history' ? 'text-brand border-b-2 border-brand' : 'text-gray-400'}`}
-        >
-          Seller History
-        </button>
-        <button 
-          onClick={() => setActiveTab('products')}
-          className={`pb-3 px-2 font-bold text-lg whitespace-nowrap ${activeTab === 'products' ? 'text-brand border-b-2 border-brand' : 'text-gray-400'}`}
-        >
-          Platform Products ({products.length})
-        </button>
+      <div className="flex overflow-x-auto gap-2 mb-6 border-b border-gray-200 pb-2 scrollbar-hide">
+        <button onClick={() => setActiveTab('overview')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'overview' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><LayoutDashboard size={18}/> Overview</button>
+        <button onClick={() => setActiveTab('sellers')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'sellers' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Users size={18}/> Manage Sellers</button>
+        <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'orders' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShoppingBag size={18}/> All Orders</button>
+        <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'products' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Package size={18}/> All Products</button>
+        <button onClick={() => setActiveTab('verification')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'verification' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShieldAlert size={18}/> Pending Approvals ({pendingSellers.length})</button>
       </div>
 
       {loading ? (
-        <div className="p-8 text-center text-gray-500">Loading data...</div>
-      ) : activeTab === 'products' ? (
+        <div className="p-8 text-center text-gray-500">Loading platform data...</div>
+      ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map(p => (
-              <div key={p.id} className="flex gap-4 items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
-                <img src={p.image} alt={p.title} className="w-16 h-16 object-cover rounded-lg" />
-                <div>
-                  <h4 className="font-bold text-dark">{p.title}</h4>
-                  <p className="text-xs text-gray-500">{p.storeName}</p>
-                  <p className="text-sm text-brand font-semibold">Rs. {p.price}</p>
+          
+          {/* OVERVIEW TAB */}
+          {activeTab === 'overview' && (
+            <div>
+              <h2 className="text-xl font-bold text-dark mb-6">Platform Overview</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center">
+                  <p className="text-3xl font-extrabold text-dark">{sellers.length}</p>
+                  <p className="text-sm font-semibold text-gray-500 uppercase mt-1">Total Sellers</p>
+                </div>
+                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center">
+                  <p className="text-3xl font-extrabold text-brand">{products.length}</p>
+                  <p className="text-sm font-semibold text-gray-500 uppercase mt-1">Total Products</p>
+                </div>
+                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center">
+                  <p className="text-3xl font-extrabold text-blue-600">{orders.length}</p>
+                  <p className="text-sm font-semibold text-gray-500 uppercase mt-1">Total Orders</p>
+                </div>
+                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center">
+                  <p className="text-3xl font-extrabold text-alert">Rs. {totalRevenue}</p>
+                  <p className="text-sm font-semibold text-gray-500 uppercase mt-1">Total Delivered Rev.</p>
                 </div>
               </div>
-            ))}
-            {products.length === 0 && <p className="text-gray-500">No products listed on the platform yet.</p>}
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {filteredSellers.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">No applications found.</div>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {filteredSellers.map((seller) => (
-                <div key={seller.id} className="p-6 flex flex-col md:flex-row md:items-start justify-between gap-6">
-                  <div className="flex-grow">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-bold text-xl text-dark">{seller.storeName}</h3>
-                      {seller.status === 'approved' && <span className="bg-green-100 text-brand text-xs font-bold px-2 py-1 rounded-full uppercase">Approved</span>}
-                      {seller.status === 'rejected' && <span className="bg-red-100 text-alert text-xs font-bold px-2 py-1 rounded-full uppercase">Rejected</span>}
-                      {seller.status === 'pending_verification' && <span className="bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-1 rounded-full uppercase flex items-center gap-1"><Clock size={12}/> Pending</span>}
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm text-gray-600">
-                      <p><span className="font-semibold text-dark">Owner:</span> {seller.fullName}</p>
-                      <p><span className="font-semibold text-dark">CNIC:</span> {seller.cnicNumber}</p>
-                      <p><span className="font-semibold text-dark">Phone:</span> {seller.phone}</p>
-                      <p><span className="font-semibold text-dark">Type:</span> {seller.storeType}</p>
-                    </div>
-                    {seller.rejectionReason && <p className="text-sm text-alert mt-2"><span className="font-semibold">Reason:</span> {seller.rejectionReason}</p>}
-                  </div>
+            </div>
+          )}
 
-                  <div className="flex flex-col gap-4 md:items-end">
-                    <div className="flex gap-2">
-                      {seller.cnicFrontUrl && <button onClick={() => setViewImage(seller.cnicFrontUrl)} className="text-sm bg-gray-100 px-3 py-1 rounded-lg hover:bg-gray-200 font-semibold text-dark">View CNIC Front</button>}
-                      {seller.cnicBackUrl && <button onClick={() => setViewImage(seller.cnicBackUrl)} className="text-sm bg-gray-100 px-3 py-1 rounded-lg hover:bg-gray-200 font-semibold text-dark">View CNIC Back</button>}
+          {/* SELLERS TAB (FREEZE & FEES) */}
+          {activeTab === 'sellers' && (
+            <div>
+              <h2 className="text-xl font-bold text-dark mb-4">Manage Sellers</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-sm text-gray-500">
+                      <th className="p-3">Store</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Monthly Fee</th>
+                      <th className="p-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sellers.filter(s => s.status === 'approved').map(seller => (
+                      <tr key={seller.id} className="border-b border-gray-100">
+                        <td className="p-3 font-semibold text-dark">{seller.storeName}<br/><span className="text-xs font-normal text-gray-500">{seller.fullName}</span></td>
+                        <td className="p-3">
+                          {seller.isFrozen ? <span className="text-alert font-bold text-xs bg-red-50 px-2 py-1 rounded">FROZEN</span> : <span className="text-brand font-bold text-xs bg-green-50 px-2 py-1 rounded">ACTIVE</span>}
+                        </td>
+                        <td className="p-3">
+                          <button onClick={() => toggleFeeStatus(seller.id, seller.feeStatus)} className={`px-3 py-1 rounded-lg text-xs font-bold border ${seller.feeStatus === 'paid' ? 'border-brand text-brand bg-green-50' : 'border-yellow-500 text-yellow-600 bg-yellow-50'}`}>
+                            {seller.feeStatus === 'paid' ? 'PAID' : 'PENDING'}
+                          </button>
+                        </td>
+                        <td className="p-3">
+                          <button onClick={() => toggleFreeze(seller.id, seller.isFrozen)} className={`px-4 py-1.5 rounded-lg font-bold text-sm text-white ${seller.isFrozen ? 'bg-brand' : 'bg-alert'}`}>
+                            {seller.isFrozen ? 'Unfreeze' : 'Freeze Store'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ORDERS TAB */}
+          {activeTab === 'orders' && (
+            <div>
+              <h2 className="text-xl font-bold text-dark mb-4">Global Orders Log</h2>
+              <div className="space-y-3">
+                {orders.map(order => (
+                  <div key={order.id} className="flex justify-between items-center p-4 border border-gray-100 rounded-xl bg-gray-50">
+                    <div>
+                      <p className="font-bold text-dark">#{order.trackingToken.slice(0,6).toUpperCase()} - {order.storeName}</p>
+                      <p className="text-sm text-gray-500">{order.buyerName} | {order.status.toUpperCase()} | {order.paymentMethod}</p>
                     </div>
-                    {seller.status === 'pending_verification' && (
-                      <div className="flex gap-3">
-                        <button onClick={() => handleReject(seller.id)} className="flex items-center gap-2 px-4 py-2 text-alert border border-alert rounded-xl font-semibold hover:bg-red-50 transition-colors"><XCircle size={18} /> Reject</button>
-                        <button onClick={() => handleApprove(seller.id)} className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-xl font-semibold hover:bg-brand/90 transition-colors"><CheckCircle size={18} /> Approve</button>
-                      </div>
-                    )}
+                    <p className="font-bold text-brand">Rs. {order.total}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* PRODUCTS TAB (PREMIUM TOGGLE) */}
+          {activeTab === 'products' && (
+            <div>
+              <h2 className="text-xl font-bold text-dark mb-4">All Products</h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {products.map(p => (
+                  <div key={p.id} className="flex items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <img src={p.image} alt={p.title} className="w-16 h-16 object-cover rounded-lg" />
+                    <div className="flex-grow">
+                      <h4 className="font-bold text-dark">{p.title}</h4>
+                      <p className="text-xs text-gray-500">{p.storeName} | Rs. {p.price}</p>
+                    </div>
+                    <button onClick={() => togglePremium(p.id, p.isPremium)} className={`px-3 py-1.5 rounded-lg text-xs font-bold text-white ${p.isPremium ? 'bg-brand' : 'bg-gray-400'}`}>
+                      {p.isPremium ? 'Featured' : 'Standard'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* VERIFICATION TAB */}
+          {activeTab === 'verification' && (
+            <div>
+              <h2 className="text-xl font-bold text-dark mb-4">Pending Sellers</h2>
+              {pendingSellers.length === 0 ? <p className="text-gray-500">No pending applications.</p> : pendingSellers.map(seller => (
+                <div key={seller.id} className="p-4 border border-gray-100 rounded-xl mb-4 flex flex-col md:flex-row justify-between gap-4">
+                  <div>
+                    <h3 className="font-bold text-lg text-dark">{seller.storeName}</h3>
+                    <p className="text-sm text-gray-600">Owner: {seller.fullName} | CNIC: {seller.cnicNumber}</p>
+                    <div className="flex gap-2 mt-2">
+                      {seller.cnicFrontUrl && <button onClick={() => setViewImage(seller.cnicFrontUrl)} className="text-xs bg-gray-200 px-3 py-1 rounded font-bold">View CNIC Front</button>}
+                      {seller.cnicBackUrl && <button onClick={() => setViewImage(seller.cnicBackUrl)} className="text-xs bg-gray-200 px-3 py-1 rounded font-bold">View CNIC Back</button>}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <button onClick={() => handleReject(seller.id)} className="px-4 py-2 text-alert border border-alert rounded-xl font-bold hover:bg-red-50">Reject</button>
+                    <button onClick={() => handleApprove(seller.id)} className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-brand/90">Approve</button>
                   </div>
                 </div>
               ))}
@@ -147,4 +226,4 @@ export default function Admin() {
       )}
     </div>
   );
-                      }
+                                                                                                                                                }
