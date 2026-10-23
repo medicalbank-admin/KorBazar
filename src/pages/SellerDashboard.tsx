@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { doc, getDoc, updateDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook, Instagram, Globe, ShieldAlert, Star, CreditCard } from 'lucide-react';
+import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook, Instagram, Globe, ShieldAlert, Star, CreditCard, Box, CheckSquare } from 'lucide-react';
 
 const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -152,6 +152,19 @@ export default function SellerDashboard() {
     fetchData();
   };
 
+  // NEW: Handle Payment Verification
+  const handlePaymentReceived = async (orderId: string) => {
+    await updateOrderStatus(orderId, 'accepted', { paymentVerified: true });
+  };
+
+  // NEW: Handle Dispatch with Tracking Number
+  const handleDispatch = async (orderId: string) => {
+    const tracking = window.prompt("Enter Courier Tracking Number (e.g. TCS, Leopards):");
+    if (tracking !== null) { // If user didn't click cancel
+      await updateOrderStatus(orderId, 'dispatched', { trackingNumber: tracking });
+    }
+  };
+
   const handleWhatsAppNotify = (order: any) => {
     let paymentInstructions = "";
     if (order.paymentMethod !== 'COD') {
@@ -181,14 +194,14 @@ export default function SellerDashboard() {
     );
   }
 
-  const pendingCount = orders.filter(o => o.status === 'new' || o.status === 'accepted').length;
+  const pendingCount = orders.filter(o => o.status === 'new' || (o.status === 'accepted' && !o.paymentVerified && o.paymentMethod !== 'COD')).length;
   const dispatchedCount = orders.filter(o => o.status === 'dispatched').length;
   const deliveredCount = orders.filter(o => o.status === 'delivered').length;
   const cancelledCount = orders.filter(o => o.status === 'cancelled' || o.status === 'rejected').length;
 
   const filteredOrders = orders.filter(order => {
     if (orderFilter === 'all') return true;
-    if (orderFilter === 'pending') return order.status === 'new' || order.status === 'accepted';
+    if (orderFilter === 'pending') return order.status === 'new' || (order.status === 'accepted' && !order.paymentVerified && order.paymentMethod !== 'COD');
     if (orderFilter === 'dispatched') return order.status === 'dispatched';
     if (orderFilter === 'delivered') return order.status === 'delivered';
     if (orderFilter === 'cancelled') return order.status === 'cancelled' || order.status === 'rejected';
@@ -209,7 +222,7 @@ export default function SellerDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
           <span className="text-3xl font-extrabold text-yellow-600">{pendingCount}</span>
-          <span className="text-xs font-bold text-yellow-700 uppercase mt-1">New / Pending</span>
+          <span className="text-xs font-bold text-yellow-700 uppercase mt-1">Action Needed</span>
         </div>
         <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
           <span className="text-3xl font-extrabold text-blue-600">{dispatchedCount}</span>
@@ -263,6 +276,7 @@ export default function SellerDashboard() {
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-bold text-lg text-dark">Order #{order.trackingToken.slice(0,6).toUpperCase()}</h3>
                         <span className={`text-xs font-bold px-2 py-1 rounded-full uppercase ${order.status === 'new' ? 'bg-yellow-100 text-yellow-700' : order.status === 'delivered' ? 'bg-green-100 text-brand' : order.status === 'cancelled' || order.status === 'rejected' ? 'bg-red-100 text-alert' : 'bg-blue-100 text-blue-700'}`}>{order.status}</span>
+                        {order.paymentVerified && <span className="text-xs font-bold text-brand bg-green-50 px-2 py-1 rounded-full">PAID</span>}
                       </div>
                       <p className="text-sm text-gray-600"><span className="font-semibold text-dark">Buyer:</span> {order.buyerName} ({order.buyerPhone})</p>
                       <p className="text-sm text-gray-600 mb-2"><span className="font-semibold text-dark">Address:</span> {order.buyerAddress}</p>
@@ -278,6 +292,11 @@ export default function SellerDashboard() {
                         <p className="font-bold text-dark text-lg">Total: Rs. {order.total}</p>
                         <span className="text-xs font-bold uppercase bg-gray-200 px-2 py-1 rounded">{order.paymentMethod}</span>
                       </div>
+                      {order.trackingNumber && (
+                        <div className="mt-3 bg-blue-50 text-blue-800 text-xs p-2 rounded-lg border border-blue-200 font-semibold flex items-center gap-2">
+                          <Box size={14} /> Courier Tracking: {order.trackingNumber}
+                        </div>
+                      )}
                     </div>
                     
                     <div className="flex flex-col gap-2 min-w-[200px] justify-center">
@@ -287,9 +306,18 @@ export default function SellerDashboard() {
                           <button onClick={() => updateOrderStatus(order.id, 'rejected', { rejectionReason: 'Out of stock' })} className="w-full bg-red-50 text-alert font-bold py-2.5 rounded-xl border border-red-200 hover:bg-red-100 flex items-center justify-center gap-2"><XCircle size={18}/> Reject</button>
                         </>
                       )}
+                      
                       {order.status === 'accepted' && (
-                        <button onClick={() => updateOrderStatus(order.id, 'dispatched')} className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-700"><Truck size={18}/> Mark Dispatched</button>
+                        <>
+                          {order.paymentMethod !== 'COD' && !order.paymentVerified && (
+                            <button onClick={() => handlePaymentReceived(order.id)} className="w-full bg-green-100 text-brand font-bold py-2.5 rounded-xl border border-green-200 hover:bg-green-200 flex items-center justify-center gap-2 mb-2">
+                              <CheckSquare size={18}/> Mark Payment Received
+                            </button>
+                          )}
+                          <button onClick={() => handleDispatch(order.id)} className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-700"><Truck size={18}/> Mark Dispatched</button>
+                        </>
                       )}
+                      
                       {order.status === 'dispatched' && (
                         <button onClick={() => updateOrderStatus(order.id, 'delivered')} className="w-full bg-brand text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-brand/90"><CheckCircle size={18}/> Mark Delivered</button>
                       )}
@@ -415,7 +443,7 @@ export default function SellerDashboard() {
                   <h3 className="text-2xl font-bold text-dark capitalize">{store.plan || 'standard'} Plan</h3>
                 </div>
                 
-                {store.plan === 'premium' ? (
+                        {store.plan === 'premium' ? (
                   <div className="mt-4">
                     <p className="text-gray-700 text-sm mb-4">Your store is currently featured on the Homepage and highlighted to buyers after checkout. Keep providing great service!</p>
                     <span className="inline-block bg-yellow-500 text-white px-4 py-2 rounded-lg font-bold text-sm">Active Premium Status</span>
@@ -445,7 +473,7 @@ export default function SellerDashboard() {
                 <p><span className="font-semibold text-dark">CNIC:</span> {store.cnicNumber}</p>
                 <p><span className="font-semibold text-dark">Phone:</span> {store.phone}</p>
                 <p><span className="font-semibold text-dark">City:</span> {store.city}, {store.area}</p>
-            </div>
+              </div>
             </div>
           )}
         </div>
