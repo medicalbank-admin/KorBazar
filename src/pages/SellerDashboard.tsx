@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { doc, getDoc, updateDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Package, Store, User, PlusCircle } from 'lucide-react';
+import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck } from 'lucide-react';
 
-// Helper to compress multiple images
 const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -20,7 +19,7 @@ const compressImage = (file: File): Promise<string> => {
         canvas.height = img.height * scale;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.5)); // Compress heavily to save DB space
+        resolve(canvas.toDataURL('image/jpeg', 0.5));
       };
       img.onerror = (error) => reject(error);
     };
@@ -32,8 +31,9 @@ export default function SellerDashboard() {
   const { currentUser } = useAuth();
   const [store, setStore] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'orders' | 'store' | 'profile'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'store' | 'profile'>('orders');
   
   // Store Edit State
   const [storeBio, setStoreBio] = useState('');
@@ -48,25 +48,35 @@ export default function SellerDashboard() {
   const [productMsg, setProductMsg] = useState('');
   const [uploading, setUploading] = useState(false);
 
-  useEffect(() => {
-    if (currentUser) {
-      // Fetch Store Data
-      getDoc(doc(db, 'sellers', currentUser.uid)).then(docSnap => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setStore(data);
-          setStoreBio(data.bio || '');
-          setStoreAddress(data.storeAddress || '');
-        }
-      });
-
-      // Fetch Seller's Products
-      const q = query(collection(db, 'products'), where('sellerId', '==', currentUser.uid));
-      getDocs(q).then(snapshot => {
-        setProducts(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-        setLoading(false);
-      });
+  const fetchData = async () => {
+    if (!currentUser) return;
+    
+    // Fetch Store Data
+    const docSnap = await getDoc(doc(db, 'sellers', currentUser.uid));
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      setStore(data);
+      setStoreBio(data.bio || '');
+      setStoreAddress(data.storeAddress || '');
     }
+
+    // Fetch Products
+    const prodQ = query(collection(db, 'products'), where('sellerId', '==', currentUser.uid));
+    const prodSnap = await getDocs(prodQ);
+    setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+    // Fetch Orders
+    const orderQ = query(collection(db, 'orders'), where('sellerId', '==', currentUser.uid));
+    const orderSnap = await getDocs(orderQ);
+    const ordersData = orderSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    ordersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    setOrders(ordersData);
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchData();
   }, [currentUser]);
 
   const handleUpdateStore = async (e: React.FormEvent) => {
@@ -105,7 +115,7 @@ export default function SellerDashboard() {
         category,
         isPremium: false,
         images: imageUrls,
-        image: imageUrls[0], // Fallback for older components
+        image: imageUrls[0],
         createdAt: new Date().toISOString()
       };
 
@@ -114,7 +124,6 @@ export default function SellerDashboard() {
       
       setProductMsg('Product added successfully!');
       setTitle(''); setPrice(''); setProductImages(null);
-      // Reset file input
       (document.getElementById('product-images') as HTMLInputElement).value = '';
       setTimeout(() => setProductMsg(''), 3000);
     } catch (error) {
@@ -123,6 +132,18 @@ export default function SellerDashboard() {
     } finally {
       setUploading(false);
     }
+  };
+
+  const updateOrderStatus = async (orderId: string, newStatus: string, extraData = {}) => {
+    await updateDoc(doc(db, 'orders', orderId), { status: newStatus, ...extraData });
+    fetchData();
+  };
+
+  const handleWhatsAppNotify = (order: any) => {
+    const text = `Assalam-o-Alaikum ${order.buyerName},\n\nYour order from ${store.storeName} has been CONFIRMED ✅\n\nOrder ID: #${order.trackingToken.slice(0,8).toUpperCase()}\nTotal: Rs. ${order.total}\n\nTrack your order here: https://medicalbank-admin.github.io/KorBazar/#/track/${order.trackingToken}\n\nThank you for supporting a local seller!\n— ${store.storeName} via KorBazar`;
+    const cleanNumber = order.buyerWhatsapp.replace(/^0/, '');
+    window.open(`https://wa.me/92${cleanNumber}?text=${encodeURIComponent(text)}`, '_blank');
+    updateOrderStatus(order.id, 'accepted', { whatsappNotifiedAt: new Date().toISOString() });
   };
 
   if (loading) return <div className="p-8 text-center">Loading dashboard...</div>;
@@ -142,7 +163,8 @@ export default function SellerDashboard() {
 
       {/* Tabs */}
       <div className="flex overflow-x-auto gap-2 mb-8 border-b border-gray-200 pb-2 scrollbar-hide">
-        <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'orders' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Package size={18}/> Orders & Products</button>
+        <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'orders' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Package size={18}/> Orders</button>
+        <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'products' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><PlusCircle size={18}/> Products</button>
         <button onClick={() => setActiveTab('store')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'store' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Store size={18}/> My Store</button>
         <button onClick={() => setActiveTab('profile')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'profile' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><User size={18}/> My Profile</button>
       </div>
@@ -154,9 +176,49 @@ export default function SellerDashboard() {
         </div>
       ) : (
         <div>
+          {/* ORDERS TAB */}
           {activeTab === 'orders' && (
+            <div className="space-y-4">
+              {orders.length === 0 ? (
+                <div className="bg-white p-8 text-center rounded-2xl border border-gray-100 text-gray-500">No orders yet. Share your store link to get sales!</div>
+              ) : orders.map(order => (
+                <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row justify-between gap-6">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-bold text-lg text-dark">Order #{order.trackingToken.slice(0,6).toUpperCase()}</h3>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-full uppercase ${order.status === 'new' ? 'bg-yellow-100 text-yellow-700' : order.status === 'delivered' ? 'bg-green-100 text-brand' : 'bg-blue-100 text-blue-700'}`}>{order.status}</span>
+                    </div>
+                    <p className="text-sm text-gray-600"><span className="font-semibold text-dark">Buyer:</span> {order.buyerName} ({order.buyerPhone})</p>
+                    <p className="text-sm text-gray-600 mb-2"><span className="font-semibold text-dark">Address:</span> {order.buyerAddress}</p>
+                    <div className="bg-gray-50 p-3 rounded-xl text-sm mb-2">
+                      {order.items.map((i:any, idx:number) => <div key={idx}>{i.qty}x {i.title} - Rs. {i.price}</div>)}
+                      {order.notes && <div className="text-brand font-semibold mt-1">Note: {order.notes}</div>}
+                    </div>
+                    <p className="font-bold text-dark text-lg">Total: Rs. {order.total}</p>
+                  </div>
+                  
+                  <div className="flex flex-col gap-2 min-w-[200px]">
+                    {order.status === 'new' && (
+                      <>
+                        <button onClick={() => handleWhatsAppNotify(order)} className="w-full bg-[#25D366] text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-[#20bd5a]"><MessageCircle size={18}/> Accept & Notify</button>
+                        <button onClick={() => updateOrderStatus(order.id, 'rejected', { rejectionReason: 'Out of stock' })} className="w-full bg-red-50 text-alert font-bold py-2 rounded-xl border border-red-200 hover:bg-red-100 flex items-center justify-center gap-2"><XCircle size={18}/> Reject</button>
+                      </>
+                    )}
+                    {order.status === 'accepted' && (
+                      <button onClick={() => updateOrderStatus(order.id, 'dispatched')} className="w-full bg-blue-600 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-700"><Truck size={18}/> Mark Dispatched</button>
+                    )}
+                    {order.status === 'dispatched' && (
+                      <button onClick={() => updateOrderStatus(order.id, 'delivered')} className="w-full bg-brand text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-brand/90"><CheckCircle size={18}/> Mark Delivered</button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* PRODUCTS TAB */}
+          {activeTab === 'products' && (
             <div className="grid lg:grid-cols-2 gap-8">
-              {/* Add Product Section */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><PlusCircle size={20}/> Add New Product</h2>
                 {productMsg && <div className={`p-3 rounded-lg text-sm mb-4 ${productMsg.includes('Error') ? 'bg-red-50 text-alert' : 'bg-green-50 text-brand'}`}>{productMsg}</div>}
@@ -193,7 +255,6 @@ export default function SellerDashboard() {
                 </form>
               </div>
 
-              {/* Product List */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h2 className="text-xl font-bold text-dark mb-4">Your Listed Products ({products.length})</h2>
                 <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
@@ -211,6 +272,7 @@ export default function SellerDashboard() {
             </div>
           )}
 
+          {/* STORE TAB */}
           {activeTab === 'store' && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
               <h2 className="text-xl font-bold text-dark mb-4">Edit Store Information</h2>
@@ -233,6 +295,7 @@ export default function SellerDashboard() {
             </div>
           )}
 
+          {/* PROFILE TAB */}
           {activeTab === 'profile' && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
               <h2 className="text-xl font-bold text-dark mb-4">My Profile</h2>
@@ -250,4 +313,4 @@ export default function SellerDashboard() {
       )}
     </div>
   );
-    }
+}
