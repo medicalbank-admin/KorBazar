@@ -6,7 +6,8 @@ import { auth, db } from '../firebase';
 import { signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
-import { LogOut, User, Shield, Store, ShoppingBag, Heart, Phone, Mail, ChevronRight, Edit3, Check, HelpCircle, LayoutDashboard, MapPin, Lock, TrendingUp, Package, Users, Wallet, Bell, ShieldAlert, Truck, XCircle, RotateCcw, FileText } from 'lucide-react';
+// ONLY THE USED ICONS ARE IMPORTED HERE:
+import { LogOut, Shield, Store, Phone, ChevronRight, Edit3, Check, HelpCircle, LayoutDashboard, MapPin, Lock, Package, Wallet, Bell, Truck, RotateCcw, FileText } from 'lucide-react';
 
 export default function Profile() {
   const { currentUser, userRole } = useAuth();
@@ -19,7 +20,6 @@ export default function Profile() {
   const [buyerOrders, setBuyerOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Form State
   const [isEditingContact, setIsEditingContact] = useState(false);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [mobile, setMobile] = useState('');
@@ -49,7 +49,6 @@ export default function Profile() {
           const storeDoc = await getDoc(doc(db, 'sellers', currentUser.uid));
           if (storeDoc.exists()) setStoreData(storeDoc.data());
         } else if (userRole === 'buyer') {
-          // Fetch all orders for this buyer to calculate statuses
           const q = query(collection(db, 'orders'), where('buyerUid', '==', currentUser.uid));
           const snap = await getDocs(q);
           const ordersData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -112,7 +111,6 @@ export default function Profile() {
   const initial = currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : 'U';
   const displayName = currentUser?.email?.split('@')[0] || 'User';
   
-  // Calculate Buyer Order Counts
   const pendingOrders = buyerOrders.filter(o => o.status === 'new').length;
   const shippedOrders = buyerOrders.filter(o => o.status === 'accepted' || o.status === 'dispatched').length;
   const deliveredOrders = buyerOrders.filter(o => o.status === 'delivered').length;
@@ -123,7 +121,6 @@ export default function Profile() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 pb-24">
       
-      {/* Top Header Card */}
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-6">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-20 h-20 bg-brand text-white rounded-full flex items-center justify-center text-4xl font-extrabold shadow-sm">
@@ -138,7 +135,6 @@ export default function Profile() {
           </div>
         </div>
         
-        {/* Daraz-style quick stats */}
         {userRole === 'buyer' && (
           <div className="flex items-center justify-center gap-4 md:gap-8 text-sm font-semibold text-gray-600 border-t border-gray-100 pt-4">
             <Link to="/favorites" className="hover:text-brand flex flex-col items-center">
@@ -161,10 +157,8 @@ export default function Profile() {
 
       {msg && <div className="bg-green-50 text-brand p-3 rounded-xl text-center font-bold mb-6">{msg}</div>}
 
-      {/* BUYER DASHBOARD */}
       {userRole === 'buyer' && (
         <>
-          {/* My Orders Grid */}
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-dark">My Orders</h2>
@@ -215,7 +209,6 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Recently Viewed */}
           {history.length > 0 && (
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-6">
               <div className="flex justify-between items-center mb-4">
@@ -238,7 +231,6 @@ export default function Profile() {
             </div>
           )}
 
-          {/* Saved Address */}
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold text-dark flex items-center gap-2"><MapPin className="text-brand" size={20}/> Default Delivery Address</h2>
@@ -261,7 +253,6 @@ export default function Profile() {
         </>
       )}
 
-      {/* SELLER DASHBOARD PREVIEW */}
       {userRole === 'seller' && storeData && (
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
@@ -279,7 +270,6 @@ export default function Profile() {
         </div>
       )}
 
-      {/* ADMIN DASHBOARD PREVIEW */}
       {userRole === 'admin' && (
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-6">
           <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><Shield className="text-dark"/> Admin Access</h2>
@@ -289,10 +279,7 @@ export default function Profile() {
         </div>
       )}
 
-      {/* SETTINGS & SECURITY GRID */}
       <div className="grid md:grid-cols-2 gap-6">
-        
-        {/* Contact Info */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold text-dark">Contact Info</h2>
@@ -326,7 +313,6 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Preferences & Security */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-lg font-bold text-dark mb-4 flex items-center gap-2"><Bell size={18} className="text-gray-400"/> Preferences</h2>
           <div className="flex items-center justify-between mb-6">
@@ -354,7 +340,6 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Support Box */}
       <div className="bg-brand/5 border border-brand/20 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 mt-6">
         <div>
           <h2 className="text-lg font-bold text-dark mb-1 flex items-center gap-2"><HelpCircle size={20} className="text-brand" /> Need Help?</h2>
