@@ -130,12 +130,12 @@ export default function TrackOrder() {
           </div>
         )}
 
-        {/* COURIER TRACKING INFO */}
+        {/* COURIER TRACKING INFO - UPDATED TO SHOW COURIER NAME */}
         {order.trackingNumber && (
           <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl flex items-center gap-3 mb-6">
             <Box size={24} />
             <div>
-              <p className="font-bold text-sm">Courier Tracking Number</p>
+              <p className="font-bold text-sm">Courier Service: {order.courierName || 'Standard Courier'}</p>
               <p className="text-lg font-mono font-bold">{order.trackingNumber}</p>
             </div>
           </div>
@@ -217,4 +217,4 @@ export default function TrackOrder() {
       )}
     </div>
   );
-        }
+                                                                                                  }
