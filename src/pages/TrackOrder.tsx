@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom'; // <-- Link removed here
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { useParams } from 'react-router-dom';
+import { collection, query, where, getDocs, doc, getDoc, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CheckCircle2, Clock, Package, Truck, MessageCircle } from 'lucide-react';
+import { CheckCircle2, Clock, Package, Truck, MessageCircle, Star } from 'lucide-react';
 
 export default function TrackOrder() {
   const { token } = useParams();
@@ -10,24 +10,60 @@ export default function TrackOrder() {
   const [seller, setSeller] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // Review State
+  const [rating, setRating] = useState(0);
+  const [reviewText, setReviewText] = useState('');
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
+
   useEffect(() => {
     const fetchOrder = async () => {
       const q = query(collection(db, 'orders'), where('trackingToken', '==', token));
       const snap = await getDocs(q);
       
       if (!snap.empty) {
-        const orderData = snap.docs[0].data();
+        const orderData = { id: snap.docs[0].id, ...snap.docs[0].data() } as any;
         setOrder(orderData);
         
         const sellerSnap = await getDoc(doc(db, 'sellers', orderData.sellerId));
         if (sellerSnap.exists()) setSeller(sellerSnap.data());
+
+        // Check if review already exists for this order
+        const reviewQ = query(collection(db, 'reviews'), where('orderId', '==', orderData.id));
+        const reviewSnap = await getDocs(reviewQ);
+        if (!reviewSnap.empty) setReviewSubmitted(true);
       }
       setLoading(false);
     };
     fetchOrder();
   }, [token]);
 
-  if (loading) return <div className="p-12 text-center text-dark">Loading order...</div>;
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (rating === 0) return alert('Please select a star rating.');
+    setSubmittingReview(true);
+
+    try {
+      await addDoc(collection(db, 'reviews'), {
+        orderId: order.id,
+        sellerId: order.sellerId,
+        storeName: order.storeName,
+        productIds: order.items.map((i: any) => i.productId),
+        buyerName: order.buyerName,
+        rating,
+        text: reviewText,
+        createdAt: new Date().toISOString()
+      });
+      setReviewSubmitted(true);
+    } catch (error) {
+      console.error(error);
+      alert('Failed to submit review.');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  if (loading) return <div className="p-12 text-center">Loading order...</div>;
   if (!order) return <div className="p-12 text-center text-alert">Order not found. Please check your link.</div>;
 
   const steps = [
@@ -51,10 +87,10 @@ export default function TrackOrder() {
           <p className="text-gray-500">Order ID: #{order.trackingToken.slice(0,8).toUpperCase()}</p>
         </div>
 
-        {order.status === 'rejected' ? (
+        {order.status === 'rejected' || order.status === 'cancelled' ? (
           <div className="bg-red-50 text-alert p-6 rounded-2xl text-center mb-8">
-            <h3 className="font-bold text-lg mb-2">Order Rejected</h3>
-            <p className="text-sm">Reason: {order.rejectionReason || 'Seller could not fulfill this order.'}</p>
+            <h3 className="font-bold text-lg mb-2">Order Cancelled</h3>
+            <p className="text-sm">Reason: {order.rejectionReason || 'Order was cancelled.'}</p>
           </div>
         ) : (
           <div className="relative mb-12">
@@ -93,9 +129,42 @@ export default function TrackOrder() {
           </div>
         </div>
 
-        <a href={waLink} target="_blank" rel="noreferrer" className="w-full bg-[#25D366] text-white font-bold py-3 rounded-xl hover:bg-[#20bd5a] flex items-center justify-center gap-2">
+        <a href={waLink} target="_blank" rel="noreferrer" className="w-full bg-[#25D366] text-white font-bold py-3 rounded-xl hover:bg-[#20bd5a] flex items-center justify-center gap-2 mb-8">
           <MessageCircle size={20} /> Contact Seller on WhatsApp
         </a>
+
+        {/* REVIEW SECTION */}
+        {order.status === 'delivered' && (
+          <div className="border-t border-gray-100 pt-8 mt-4">
+            <h3 className="text-xl font-bold text-dark mb-4 text-center">Rate this order</h3>
+            {reviewSubmitted ? (
+              <div className="bg-green-50 text-brand p-4 rounded-xl text-center font-semibold">
+                Thank you! Your review has been submitted.
+              </div>
+            ) : (
+              <form onSubmit={handleReviewSubmit} className="space-y-4">
+                <div className="flex justify-center gap-2 mb-4">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <button type="button" key={star} onClick={() => setRating(star)} className="focus:outline-none">
+                      <Star size={32} className={star <= rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"} />
+                    </button>
+                  ))}
+                </div>
+                <textarea 
+                  placeholder="How was the quality, delivery, and service?" 
+                  value={reviewText}
+                  onChange={e => setReviewText(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none"
+                  rows={3}
+                />
+                <button type="submit" disabled={submittingReview} className="w-full bg-dark text-white font-bold py-3 rounded-xl hover:bg-black transition-colors">
+                  {submittingReview ? 'Submitting...' : 'Submit Review'}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   );
