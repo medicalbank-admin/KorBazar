@@ -35,7 +35,6 @@ export default function SellerDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'store' | 'profile'>('orders');
   
-  // Store Edit State
   const [storeBio, setStoreBio] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
   const [deliveryFee, setDeliveryFee] = useState('');
@@ -43,7 +42,6 @@ export default function SellerDashboard() {
   const [socialLinks, setSocialLinks] = useState({ facebook: '', instagram: '', tiktok: '' });
   const [storeMsg, setStoreMsg] = useState('');
 
-  // Product Form State
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('Cakes & Bakes');
@@ -166,7 +164,6 @@ export default function SellerDashboard() {
     );
   }
 
-  // Calculate Stats
   const pendingOrders = orders.filter(o => o.status === 'new' || o.status === 'accepted' || o.status === 'dispatched').length;
   const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
   const cancelledOrders = orders.filter(o => o.status === 'cancelled' || o.status === 'rejected').length;
@@ -183,7 +180,6 @@ export default function SellerDashboard() {
         )}
       </div>
 
-      {/* Stats Row */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
           <span className="text-3xl font-extrabold text-yellow-600">{pendingOrders}</span>
@@ -325,4 +321,4 @@ export default function SellerDashboard() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Store Address</label>
-                  <input ty
+                  <input type="text" value={storeAddress} onChange={e => setStoreAddress(e.target.value)} className="w
