@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, ShoppingCart, User, Package, LayoutDashboard } from 'lucide-react';
+import { Home, Search, ShoppingCart, User, Package, LayoutDashboard, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
@@ -32,7 +32,7 @@ export default function Navbar() {
             </>
           ) : (
             <div className="flex items-center gap-4">
-              <span className="text-sm font-semibold text-gray-500 uppercase">{userRole}</span>
+              <span className="text-sm font-bold text-brand uppercase bg-brand/10 px-3 py-1 rounded-full">{userRole || 'buyer'}</span>
               <Link to="/profile" className="font-semibold text-dark hover:text-brand transition-colors">Profile</Link>
             </div>
           )}
@@ -48,7 +48,9 @@ export default function Navbar() {
         {!currentUser ? (
           <Link to="/login" className="font-semibold text-brand">Login</Link>
         ) : (
-          <Link to={userRole === 'seller' ? '/seller/dashboard' : userRole === 'admin' ? '/admin' : '/profile'} className="font-semibold text-brand flex items-center gap-1"><User size={16}/> Account</Link>
+          <Link to={userRole === 'seller' ? '/seller/dashboard' : userRole === 'admin' ? '/admin' : '/profile'} className="font-semibold text-brand flex items-center gap-1 uppercase text-sm bg-brand/10 px-3 py-1.5 rounded-full">
+            <User size={14}/> {userRole || 'buyer'}
+          </Link>
         )}
       </header>
 
@@ -73,6 +75,15 @@ export default function Navbar() {
               <User size={20} /> <span className="text-[10px] mt-1 font-medium">Profile</span>
             </Link>
           </>
+        ) : userRole === 'admin' ? (
+          <>
+            <Link to="/admin" className={`flex flex-col items-center p-2 ${location.pathname === '/admin' ? 'text-brand' : 'text-gray-500'}`}>
+              <ShieldCheck size={20} /> <span className="text-[10px] mt-1 font-medium">Admin</span>
+            </Link>
+            <Link to="/profile" className={`flex flex-col items-center p-2 ${location.pathname === '/profile' ? 'text-brand' : 'text-gray-500'}`}>
+              <User size={20} /> <span className="text-[10px] mt-1 font-medium">Profile</span>
+            </Link>
+          </>
         ) : (
           <>
             <Link to="/cart" className={`flex flex-col items-center p-2 ${location.pathname === '/cart' ? 'text-brand' : 'text-gray-500'}`}>
@@ -89,4 +100,4 @@ export default function Navbar() {
       </nav>
     </>
   );
-                                                                                      }
+              }
