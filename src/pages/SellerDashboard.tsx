@@ -61,8 +61,11 @@ export default function SellerDashboard() {
   const [variants, setVariants] = useState<any[]>([]);
   const [dispatchModal, setDispatchModal] = useState({ isOpen: false, orderId: '', courier: 'TCS', tracking: '' });
 
-  // NEW: Custom Edit Modal State for Stock & Discount
+  // Edit Modal State
   const [editModal, setEditModal] = useState({ isOpen: false, productId: '', type: 'stock', value: '' });
+  
+  // Reject Order Modal State
+  const [rejectOrderModal, setRejectOrderModal] = useState({ isOpen: false, orderId: '', reason: 'Out of stock' });
 
   const defaultCategories = [
     "Cakes & Bakes", "Handmade Jewelry", "Crafts & Decor", "Embroidered Items", 
@@ -104,7 +107,6 @@ export default function SellerDashboard() {
       const finalCats = cats.length > 0 ? cats : defaultCategories;
       
       setAvailableCategories(finalCats);
-      // Force select the first one to prevent mobile dropdown crash
       if (finalCats.length > 0 && !category) setCategory(finalCats[0]);
 
     } catch (error) {
@@ -115,8 +117,7 @@ export default function SellerDashboard() {
   };
 
   useEffect(() => { fetchData(); }, [currentUser]);
-
-const handleUpdateStore = async (e: React.FormEvent) => {
+  const handleUpdateStore = async (e: React.FormEvent) => {
   e.preventDefault();
   if (!currentUser) return;
   setStoreMsg('Saving...');
@@ -192,8 +193,7 @@ const handleEditSubmit = async () => {
   setEditModal({ isOpen: false, productId: '', type: 'stock', value: '' });
   fetchData();
 };
-
-const updateOrderStatus = async (orderId: string, newStatus: string, extraData = {}) => {
+  const updateOrderStatus = async (orderId: string, newStatus: string, extraData = {}) => {
   await updateDoc(doc(db, 'orders', orderId), { status: newStatus, ...extraData });
 
   if (newStatus === 'delivered') {
@@ -256,6 +256,16 @@ const handleDispatchSubmit = async () => {
     trackingNumber: dispatchModal.tracking 
   });
   setDispatchModal({ isOpen: false, orderId: '', courier: 'TCS', tracking: '' });
+};
+
+const handleOpenRejectOrder = (orderId: string) => {
+  setRejectOrderModal({ isOpen: true, orderId, reason: 'Out of stock' });
+};
+
+const handleConfirmRejectOrder = async () => {
+  if (!rejectOrderModal.reason.trim()) return alert('Please select a reason.');
+  await updateOrderStatus(rejectOrderModal.orderId, 'rejected', { rejectionReason: rejectOrderModal.reason });
+  setRejectOrderModal({ isOpen: false, orderId: '', reason: 'Out of stock' });
 };
 
 const handleContactAdmin = async () => {
@@ -347,117 +357,148 @@ const filteredOrders = orders.filter(order => {
   if (orderFilter === 'cancelled') return order.status === 'cancelled' || order.status === 'rejected';
   return true;
 });
-
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
-      
-      {/* EDIT MODAL (Stock / Discount) */}
-      {editModal.isOpen && (
-        <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm p-6 relative">
-            <button onClick={() => setEditModal({ ...editModal, isOpen: false })} className="absolute top-4 right-4 text-gray-400 hover:text-alert"><X size={24} /></button>
-            <h2 className="text-xl font-bold text-dark mb-4 capitalize">Update {editModal.type}</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {editModal.type === 'stock' ? 'New Stock Quantity' : 'Discount Percentage (0-100)'}
-                </label>
-                <input 
-                  type="number" 
-                  value={editModal.value} 
-                  onChange={e => setEditModal({...editModal, value: e.target.value})} 
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" 
-                />
-              </div>
-              <button onClick={handleEditSubmit} className="w-full bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand/90 shadow-md">
-                Save Changes
-              </button>
+  <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
+    
+    {/* EDIT MODAL (Stock / Discount) */}
+    {editModal.isOpen && (
+      <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm p-6 relative">
+          <button onClick={() => setEditModal({ ...editModal, isOpen: false })} className="absolute top-4 right-4 text-gray-400 hover:text-alert"><X size={24} /></button>
+          <h2 className="text-xl font-bold text-dark mb-4 capitalize">Update {editModal.type}</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {editModal.type === 'stock' ? 'New Stock Quantity' : 'Discount Percentage (0-100)'}
+              </label>
+              <input 
+                type="number" 
+                value={editModal.value} 
+                onChange={e => setEditModal({...editModal, value: e.target.value})} 
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" 
+              />
             </div>
+            <button onClick={handleEditSubmit} className="w-full bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand/90 shadow-md">
+              Save Changes
+            </button>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
-      {dispatchModal.isOpen && (
-        <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm p-6 relative">
-            <button onClick={() => setDispatchModal({ ...dispatchModal, isOpen: false })} className="absolute top-4 right-4 text-gray-400 hover:text-alert"><X size={24} /></button>
-            <h2 className="text-xl font-bold text-dark mb-4">Dispatch Order</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Courier Service</label>
-                <select value={dispatchModal.courier} onChange={e => setDispatchModal({...dispatchModal, courier: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
-                  <option value="TCS">TCS</option>
-                  <option value="Leopards">Leopards Courier</option>
-                  <option value="M&P">M&P (BlueEx)</option>
-                  <option value="Pakistan Post">Pakistan Post</option>
-                  <option value="PostEx">PostEx</option>
-                  <option value="Trax">Trax</option>
-                  <option value="Call Courier">Call Courier</option>
-                  <option value="Doorway">Doorway Delivery Service</option>
-                  <option value="Local Rider">Local Rider</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tracking Number</label>
-                <input type="text" value={dispatchModal.tracking} onChange={e => setDispatchModal({...dispatchModal, tracking: e.target.value})} placeholder="e.g. TC123456789" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-              </div>
-              <button onClick={handleDispatchSubmit} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-md flex items-center justify-center gap-2">
-                <Truck size={18} /> Confirm Dispatch
-              </button>
+    {/* DISPATCH MODAL */}
+    {dispatchModal.isOpen && (
+      <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm p-6 relative">
+          <button onClick={() => setDispatchModal({ ...dispatchModal, isOpen: false })} className="absolute top-4 right-4 text-gray-400 hover:text-alert"><X size={24} /></button>
+          <h2 className="text-xl font-bold text-dark mb-4">Dispatch Order</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Courier Service</label>
+              <select value={dispatchModal.courier} onChange={e => setDispatchModal({...dispatchModal, courier: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
+                <option value="TCS">TCS</option>
+                <option value="Leopards">Leopards Courier</option>
+                <option value="M&P">M&P (BlueEx)</option>
+                <option value="Pakistan Post">Pakistan Post</option>
+                <option value="PostEx">PostEx</option>
+                <option value="Trax">Trax</option>
+                <option value="Call Courier">Call Courier</option>
+                <option value="Doorway">Doorway Delivery Service</option>
+                <option value="Local Rider">Local Rider</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tracking Number</label>
+              <input type="text" value={dispatchModal.tracking} onChange={e => setDispatchModal({...dispatchModal, tracking: e.target.value})} placeholder="e.g. TC123456789" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+            </div>
+            <button onClick={handleDispatchSubmit} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-md flex items-center justify-center gap-2">
+              <Truck size={18} /> Confirm Dispatch
+            </button>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-dark">{store.storeName}</h1>
-          <p className="text-gray-500 font-medium">Professional Seller Dashboard</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/inbox')} className="bg-brand/10 text-brand px-4 py-2 rounded-xl font-semibold hover:bg-brand/20 transition-colors flex items-center gap-2">
-            <MessageSquare size={18} /> My Inbox
-          </button>
-          <a href={`#/store/${currentUser?.uid}`} target="_blank" rel="noreferrer" className="bg-dark text-white px-6 py-2 rounded-xl font-semibold hover:bg-black transition-colors">View Store</a>
+    {/* REJECT ORDER MODAL */}
+    {rejectOrderModal.isOpen && (
+      <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm p-6 relative">
+          <button onClick={() => setRejectOrderModal({ ...rejectOrderModal, isOpen: false })} className="absolute top-4 right-4 text-gray-400 hover:text-alert"><X size={24} /></button>
+          <h2 className="text-xl font-bold text-dark mb-4">Reject Order</h2>
+          <p className="text-sm text-gray-500 mb-4">Please select a reason. The buyer will see this on their tracking page.</p>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Reason for Rejection</label>
+              <select 
+                value={rejectOrderModal.reason} 
+                onChange={e => setRejectOrderModal({...rejectOrderModal, reason: e.target.value})} 
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50"
+              >
+                <option value="Out of stock">Out of stock</option>
+                <option value="Cannot deliver to this area">Cannot deliver to this area</option>
+                <option value="Personalization not possible">Personalization not possible</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            
+            <button onClick={handleConfirmRejectOrder} className="w-full bg-alert text-white font-bold py-3 rounded-xl hover:bg-red-700 shadow-md flex items-center justify-center gap-2">
+              Confirm Rejection
+            </button>
+          </div>
         </div>
       </div>
+    )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
-          <span className="text-3xl font-extrabold text-yellow-600">{pendingCount}</span>
-          <span className="text-xs font-bold text-yellow-700 uppercase mt-1">Action Needed</span>
-        </div>
-        <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
-          <span className="text-3xl font-extrabold text-blue-600">{dispatchedCount}</span>
-          <span className="text-xs font-bold text-blue-700 uppercase mt-1">Dispatched</span>
-        </div>
-        <div className="bg-green-50 border border-green-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
-          <span className="text-3xl font-extrabold text-brand">{deliveredCount}</span>
-          <span className="text-xs font-bold text-brand uppercase mt-1">Delivered</span>
-        </div>
-        <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
-          <span className="text-3xl font-extrabold text-alert">{cancelledCount}</span>
-          <span className="text-xs font-bold text-alert uppercase mt-1">Cancelled</span>
-        </div>
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <div>
+        <h1 className="text-3xl font-bold text-dark">{store.storeName}</h1>
+        <p className="text-gray-500 font-medium">Professional Seller Dashboard</p>
       </div>
-
-      <div className="flex overflow-x-auto gap-2 mb-8 border-b border-gray-200 pb-2 scrollbar-hide">
-        <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'orders' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Package size={18}/> Orders</button>
-        <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'products' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><PlusCircle size={18}/> Products</button>
-        <button onClick={() => setActiveTab('store')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'store' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Store size={18}/> Settings</button>
-        <button onClick={() => setActiveTab('subscription')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'subscription' ? 'bg-yellow-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Star size={18}/> Subscription</button>
-        <button onClick={() => setActiveTab('profile')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'profile' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><User size={18}/> Profile</button>
+      <div className="flex items-center gap-3">
+        <button onClick={() => navigate('/inbox')} className="bg-brand/10 text-brand px-4 py-2 rounded-xl font-semibold hover:bg-brand/20 transition-colors flex items-center gap-2">
+          <MessageSquare size={18} /> My Inbox
+        </button>
+        <a href={`#/store/${currentUser?.uid}`} target="_blank" rel="noreferrer" className="bg-dark text-white px-6 py-2 rounded-xl font-semibold hover:bg-black transition-colors">View Store</a>
       </div>
+    </div>
 
-      {store.status !== 'approved' ? (
-        <div className="bg-yellow-50 text-yellow-800 p-8 rounded-2xl border border-yellow-200 text-center">
-          <h2 className="text-xl font-bold mb-2">Account Pending Approval</h2>
-          <p>Your account is under review. Once approved, you can add products and manage your store.</p>
-        </div>
-      ) : (
-        <div>
-          {activeTab === 'orders' && (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+        <span className="text-3xl font-extrabold text-yellow-600">{pendingCount}</span>
+        <span className="text-xs font-bold text-yellow-700 uppercase mt-1">Action Needed</span>
+      </div>
+      <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+        <span className="text-3xl font-extrabold text-blue-600">{dispatchedCount}</span>
+        <span className="text-xs font-bold text-blue-700 uppercase mt-1">Dispatched</span>
+      </div>
+      <div className="bg-green-50 border border-green-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+        <span className="text-3xl font-extrabold text-brand">{deliveredCount}</span>
+        <span className="text-xs font-bold text-brand uppercase mt-1">Delivered</span>
+      </div>
+      <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+        <span className="text-3xl font-extrabold text-alert">{cancelledCount}</span>
+        <span className="text-xs font-bold text-alert uppercase mt-1">Cancelled</span>
+      </div>
+    </div>
+
+    <div className="flex overflow-x-auto gap-2 mb-8 border-b border-gray-200 pb-2 scrollbar-hide">
+      <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'orders' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Package size={18}/> Orders</button>
+      <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'products' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><PlusCircle size={18}/> Products</button>
+      <button onClick={() => setActiveTab('store')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'store' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Store size={18}/> Settings</button>
+      <button onClick={() => setActiveTab('subscription')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'subscription' ? 'bg-yellow-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Star size={18}/> Subscription</button>
+      <button onClick={() => setActiveTab('profile')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'profile' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><User size={18}/> Profile</button>
+    </div>
+
+    {store.status !== 'approved' ? (
+      <div className="bg-yellow-50 text-yellow-800 p-8 rounded-2xl border border-yellow-200 text-center">
+        <h2 className="text-xl font-bold mb-2">Account Pending Approval</h2>
+        <p>Your account is under review. Once approved, you can add products and manage your store.</p>
+      </div>
+    ) : (
+      <div>
+                  {activeTab === 'orders' && (
             <div>
               <div className="flex overflow-x-auto gap-2 mb-6 scrollbar-hide">
                 {['all', 'pending', 'dispatched', 'delivered', 'cancelled'].map(tab => (
@@ -516,7 +557,7 @@ const filteredOrders = orders.filter(order => {
                       {order.status === 'new' && (
                         <>
                           <button onClick={() => handleWhatsAppNotify(order)} className="w-full bg-[#25D366] text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-[#20bd5a]"><MessageCircle size={18}/> Accept & Notify</button>
-                          <button onClick={() => updateOrderStatus(order.id, 'rejected', { rejectionReason: 'Out of stock' })} className="w-full bg-red-50 text-alert font-bold py-2.5 rounded-xl border border-red-200 hover:bg-red-100 flex items-center justify-center gap-2"><XCircle size={18}/> Reject</button>
+                          <button onClick={() => handleOpenRejectOrder(order.id)} className="w-full bg-red-50 text-alert font-bold py-2.5 rounded-xl border border-red-200 hover:bg-red-100 flex items-center justify-center gap-2"><XCircle size={18}/> Reject</button>
                         </>
                       )}
                       {order.status === 'accepted' && (
@@ -581,7 +622,7 @@ const filteredOrders = orders.filter(order => {
                      </div>
                    </div>
 
-                                      {/* VARIANTS SECTION */}
+                   {/* VARIANTS SECTION */}
                    <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl">
                      <div className="flex justify-between items-center mb-3">
                        <label className="block text-sm font-bold text-dark">Product Variants (Sizes/Colors)</label>
@@ -675,7 +716,7 @@ const filteredOrders = orders.filter(order => {
              </div>
           )}
 
-          {activeTab === 'store' && (
+                    {activeTab === 'store' && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
               <h2 className="text-xl font-bold text-dark mb-4">Store Settings</h2>
               {storeMsg && <div className="bg-green-50 text-brand p-3 rounded-lg text-sm mb-4">{storeMsg}</div>}
@@ -762,4 +803,4 @@ const filteredOrders = orders.filter(order => {
       )}
     </div>
   );
-                                      }
+                      }
