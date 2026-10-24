@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket, TrendingUp, Banknote, Settings, Flag, Megaphone, Image } from 'lucide-react';
+import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket, TrendingUp, Banknote, Settings, Flag, Megaphone } from 'lucide-react';
 
 export default function Admin() {
   const [sellers, setSellers] = useState<any[]>([]);
