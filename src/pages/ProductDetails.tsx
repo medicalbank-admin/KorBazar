@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CheckCircle2, ChevronLeft, MessageCircle, MessageSquare, ShoppingCart, Truck, Star } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, MessageCircle, MessageSquare, ShoppingCart, Truck, Star, Zap } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useHistory } from '../context/HistoryContext';
@@ -21,7 +21,7 @@ export default function ProductDetails() {
   const [activeImage, setActiveImage] = useState(0);
   const [cartMsg, setCartMsg] = useState('');
 
-  // NEW: State for selected variant
+  // State for selected variant
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
 
@@ -60,10 +60,8 @@ export default function ProductDetails() {
 
   const images = product.images?.length > 0 ? product.images : [product.image];
   
-  // NEW: Check for variants
   const hasVariants = product.variants && product.variants.length > 0;
   
-  // Calculate total stock from variants if they exist, otherwise use normal stock
   const totalVariantStock = hasVariants 
     ? product.variants.reduce((sum: number, v: any) => sum + Number(v.qty), 0) 
     : Number(product.stock) || 0;
@@ -74,29 +72,28 @@ export default function ProductDetails() {
   const cleanNumber = seller?.whatsappNumber?.replace(/^0/, '');
   const whatsappLink = `https://wa.me/92${cleanNumber}?text=${encodeURIComponent(whatsappMessage)}`;
 
-  const handleAddToCart = () => {
-    if (isOutOfStock) return;
-
-    // NEW: Validate variant selection
+  const validateVariantAndGetItem = () => {
     if (hasVariants) {
       if (product.variants.some((v: any) => v.size) && !selectedSize) {
-        return alert("Please select a size.");
+        alert("Please select a size.");
+        return null;
       }
       if (product.variants.some((v: any) => v.color) && !selectedColor) {
-        return alert("Please select a color.");
+        alert("Please select a color.");
+        return null;
       }
 
-      // Check if the specific selected variant is in stock
       const matchedVariant = product.variants.find((v: any) => 
         (v.size || '') === selectedSize && (v.color || '') === selectedColor
       );
 
       if (!matchedVariant || matchedVariant.qty <= 0) {
-        return alert("This specific size/color combination is out of stock.");
+        alert("This specific size/color combination is out of stock.");
+        return null;
       }
     }
-    
-    addToCart({
+
+    return {
       productId: product.id,
       title: product.title,
       price: product.price,
@@ -104,12 +101,31 @@ export default function ProductDetails() {
       sellerId: product.sellerId,
       storeName: product.storeName,
       deliveryFee: product.deliveryFee || 0,
-      selectedSize,  // NEW: Pass size to cart
-      selectedColor   // NEW: Pass color to cart
-    } as any);
+      selectedSize,
+      selectedColor
+    } as any;
+  };
+
+  const handleAddToCart = () => {
+    if (isOutOfStock) return;
+
+    const item = validateVariantAndGetItem();
+    if (!item) return;
     
+    addToCart(item);
     setCartMsg('Added to cart successfully!');
     setTimeout(() => setCartMsg(''), 3000);
+  };
+
+  const handleBuyNow = () => {
+    if (isOutOfStock) return;
+
+    const item = validateVariantAndGetItem();
+    if (!item) return;
+
+    // Add to cart and immediately go to checkout
+    addToCart(item);
+    navigate('/checkout');
   };
 
   const handleChatWithSeller = async () => {
@@ -153,7 +169,6 @@ export default function ProductDetails() {
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) 
     : 'New';
 
-  // Get unique sizes and colors for the dropdowns
   const uniqueSizes = hasVariants ? [...new Set(product.variants.filter((v:any) => v.size).map((v:any) => v.size))] : [];
   const uniqueColors = hasVariants ? [...new Set(product.variants.filter((v:any) => v.color).map((v:any) => v.color))] : [];
 
@@ -262,6 +277,15 @@ export default function ProductDetails() {
           )}
 
           <div className="mt-auto space-y-3">
+            {/* BUY NOW BUTTON */}
+            <button 
+              onClick={handleBuyNow} 
+              disabled={isOutOfStock}
+              className={`w-full font-bold text-lg py-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg ${isOutOfStock ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-dark text-white hover:bg-black'}`}
+            >
+              <Zap size={22} /> Buy Now
+            </button>
+
             <button 
               onClick={handleAddToCart} 
               disabled={isOutOfStock}
@@ -310,4 +334,4 @@ export default function ProductDetails() {
       </div>
     </div>
   );
-    }
+                    }
