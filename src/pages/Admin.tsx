@@ -305,6 +305,7 @@ const handleDeleteAd = async (id: string) => {
       <button onClick={() => setActiveTab('sellers')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'sellers' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Users size={18}/> Sellers</button>
       <button onClick={() => setActiveTab('promotions')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'promotions' ? 'bg-yellow-500 text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Star size={18}/> Premium</button>
       <button onClick={() => setActiveTab('coupons')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'coupons' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Ticket size={18}/> Coupons</button>
+      <button onClick={() => setActiveTab('ads')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'ads' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Megaphone size={18}/> Ads Manager</button>
       <button onClick={() => setActiveTab('categories')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'categories' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Tag size={18}/> Categories</button>
       <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'orders' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShoppingBag size={18}/> Orders</button>
       <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'products' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Package size={18}/> Products</button>
@@ -442,6 +443,52 @@ const handleDeleteAd = async (id: string) => {
             </div>
           </div>
         )}
+
+        {activeTab === 'ads' && (
+  <div>
+    <h2 className="text-xl font-bold text-dark mb-6">Manage Advertisements</h2>
+    
+    <form onSubmit={handleAddAd} className="bg-gray-50 p-6 rounded-2xl border border-gray-100 mb-8 max-w-3xl">
+      <div className="grid md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label className="block text-xs font-bold text-gray-500 mb-1">Ad Title (Internal)</label>
+          <input type="text" required value={newAd.title} onChange={e => setNewAd({...newAd, title: e.target.value})} placeholder="e.g. Eid Sale - Premium Cakes" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:outline-none" />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-500 mb-1">Link to Product ID (Optional)</label>
+          <input type="text" value={newAd.productId} onChange={e => setNewAd({...newAd, productId: e.target.value})} placeholder="e.g. prod-123" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:outline-none" />
+        </div>
+      </div>
+      
+      <div className="mb-4">
+        <label className="block text-xs font-bold text-gray-500 mb-1">Upload Ad Banner Image (Required)</label>
+        <input type="file" accept="image/*" required onChange={handleImageUpload} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20" />
+        {newAd.imageBase64 && <img src={newAd.imageBase64} alt="Preview" className="mt-3 h-32 object-contain rounded-lg border" />}
+      </div>
+
+      <button type="submit" disabled={isUploadingAd} className="w-full bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand/90 shadow-md flex items-center justify-center gap-2">
+        <Megaphone size={18} /> {isUploadingAd ? 'Publishing Ad...' : 'Create Advertisement'}
+      </button>
+    </form>
+
+    <h3 className="font-bold text-lg text-dark mb-4 border-t border-gray-100 pt-6">Active Ads ({ads.length}/5)</h3>
+    <div className="grid md:grid-cols-2 gap-4">
+      {ads.length === 0 ? (
+        <p className="text-gray-500 col-span-full">No ads created yet.</p>
+      ) : ads.map(ad => (
+        <div key={ad.id} className="bg-white border border-gray-200 p-4 rounded-xl shadow-sm relative">
+          <img src={ad.imageBase64} alt={ad.title} className="w-full h-40 object-cover rounded-lg mb-3" />
+          <p className="font-bold text-dark">{ad.title}</p>
+          <p className="text-xs text-gray-500 mb-3">Product ID: {ad.productId || 'General Link'}</p>
+          <button onClick={() => handleDeleteAd(ad.id)} className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors">
+            <Trash2 size={16} />
+          </button>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+      
 
         {activeTab === 'promotions' && (
           <div>
