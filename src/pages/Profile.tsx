@@ -350,7 +350,7 @@ if (loading) return <div className="p-12 text-center text-brand font-bold">Loadi
           <h2 className="text-lg font-bold text-dark mb-1 flex items-center gap-2"><HelpCircle size={20} className="text-brand" /> Need Help?</h2>
           <p className="text-sm text-gray-600">Our support team is available for account or order issues.</p>
         </div>
-        <a href="https://wa.me/923000000000" target="_blank" rel="noreferrer" className="bg-[#25D366] text-white font-bold py-2.5 px-6 rounded-xl hover:bg-[#20bd5a] transition-colors text-sm shadow-sm whitespace-nowrap">
+        <a href="https://wa.me/923390251147" target="_blank" rel="noreferrer" className="bg-[#25D366] text-white font-bold py-2.5 px-6 rounded-xl hover:bg-[#20bd5a] transition-colors text-sm shadow-sm whitespace-nowrap">
           Chat on WhatsApp
         </a>
       </div>
