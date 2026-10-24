@@ -160,10 +160,34 @@ const handleUpdateStock = async (productId: string, currentStock: number) => {
 };
   
   const updateOrderStatus = async (orderId: string, newStatus: string, extraData = {}) => {
-    await updateDoc(doc(db, 'orders', orderId), { status: newStatus, ...extraData });
-    fetchData();
-  };
+  // 1. Update the order status
+  await updateDoc(doc(db, 'orders', orderId), { status: newStatus, ...extraData });
 
+  // 2. If the status is 'delivered', reduce the stock automatically
+  if (newStatus === 'delivered') {
+    const order = orders.find(o => o.id === orderId);
+    if (order && order.items) {
+      for (const item of order.items) {
+        try {
+          const productRef = doc(db, 'products', item.productId);
+          const productSnap = await getDoc(productRef);
+          
+          if (productSnap.exists()) {
+            const currentStock = Number(productSnap.data().stock) || 0;
+            // Prevent stock from going below 0
+            const newStock = Math.max(0, currentStock - item.qty); 
+            
+            await updateDoc(productRef, { stock: newStock });
+          }
+        } catch (err) {
+          console.error("Failed to update stock for product:", item.productId);
+        }
+      }
+    }
+  }
+
+  fetchData();
+};
   const handlePaymentReceived = async (orderId: string) => {
     await updateOrderStatus(orderId, 'accepted', { paymentVerified: true });
   };
