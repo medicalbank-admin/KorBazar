@@ -269,7 +269,7 @@ export default function SellerDashboard() {
           <ShieldAlert size={64} className="text-alert mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-alert mb-2">Store Frozen</h2>
           <p className="text-gray-700 mb-6">Your store has been temporarily frozen by the Admin. Please contact support on WhatsApp.</p>
-          <a href="https://wa.me/923390251147" target="_blank" rel="noreferrer" className="bg-alert text-white px-6 py-3 rounded-xl font-bold inline-block">Contact Admin</a>
+          <a href="https://wa.me/923000000000" target="_blank" rel="noreferrer" className="bg-alert text-white px-6 py-3 rounded-xl font-bold inline-block">Contact Admin</a>
         </div>
       </div>
     );
@@ -510,7 +510,7 @@ export default function SellerDashboard() {
                </div>
              </div>
           )}
-       {activeTab === 'store' && (
+                    {activeTab === 'store' && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
               <h2 className="text-xl font-bold text-dark mb-4">Store Settings</h2>
               {storeMsg && <div className="bg-green-50 text-brand p-3 rounded-lg text-sm mb-4">{storeMsg}</div>}
@@ -597,4 +597,4 @@ export default function SellerDashboard() {
       )}
     </div>
   );
-          }
+}
