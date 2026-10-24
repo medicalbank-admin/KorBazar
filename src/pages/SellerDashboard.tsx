@@ -96,12 +96,17 @@ export default function SellerDashboard() {
       const catSnap = await getDocs(collection(db, 'categories'));
 const cats = catSnap.docs.map(d => d.data().name);
 
-// If categories exist in the database, use them. Otherwise, use fallback.
-const finalCats = cats.length > 0 ? cats : ["Cakes & Bakes", "Handmade Jewelry", "Crafts & Decor", "Embroidered Items", "Candles", "Gift Hampers"];
+// If database is empty, use the full list. If database has items, use them.
+const finalCats = cats.length > 0 ? cats : [
+  "Cakes & Bakes", "Handmade Jewelry", "Crafts & Decor", "Embroidered Items", 
+  "Candles", "Gift Hampers", "Customized Mugs & Photo Frames", "Resin Art & Keychains", 
+  "Wedding and Festive Sweets", "Home Decor", "Essential Oils & Natural Hair Care"
+];
 
 setAvailableCategories(finalCats);
-if (finalCats.length > 0 && !category) setCategory(finalCats[0]);
-
+// Auto-select the first category to prevent the "empty" issue
+if (finalCats.length > 0) setCategory(finalCats[0]);
+      
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -539,8 +544,7 @@ return (
                      </div>
                      <div>
                        <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
-  <option value="">Select Category</option>
-  {availableCategories.map(catName => (
+                         {availableCategories.map(catName => (
     <option key={catName} value={catName}>{catName}</option>
   ))}
 </select>
