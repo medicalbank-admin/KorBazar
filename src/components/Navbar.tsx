@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, ShoppingCart, User, Package, LayoutDashboard, ShieldCheck, Heart, MessageSquare } from 'lucide-react';
+import { Home, Search, ShoppingCart, User, Package, LayoutDashboard, ShieldCheck, Heart, MessageSquare, MapPin } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
 import { useCart } from '../context/CartContext';
@@ -9,7 +9,7 @@ export default function Navbar() {
   const location = useLocation();
   const { currentUser, userRole } = useAuth();
   const { unreadTotal } = useChat();
-  const { cartItemCount } = useCart(); // GET CART COUNT
+  const { cartItemCount } = useCart();
 
   return (
     <>
@@ -22,6 +22,7 @@ export default function Navbar() {
         <nav className="flex gap-8 font-medium text-dark/80">
           <Link to="/" className="hover:text-brand transition-colors">Home</Link>
           <Link to="/explore" className="hover:text-brand transition-colors">Explore</Link>
+          <Link to="/track" className="hover:text-brand transition-colors">Track Order</Link>
           {userRole === 'admin' && <Link to="/admin" className="text-brand font-bold">Admin Panel</Link>}
           {userRole === 'seller' && <Link to="/seller/dashboard" className="text-brand font-bold">Seller Dashboard</Link>}
         </nav>
@@ -72,6 +73,11 @@ export default function Navbar() {
         </Link>
         
         <div className="flex items-center gap-2">
+          {/* TRACK ORDER ICON FOR MOBILE */}
+          <Link to="/track" className="p-2 text-gray-600 hover:text-brand transition-colors">
+            <MapPin size={22} />
+          </Link>
+
           {/* CART ICON FOR MOBILE TOP BAR */}
           {currentUser && (
             <Link to="/cart" className="relative p-2 text-gray-600 hover:text-brand transition-colors">
@@ -139,6 +145,10 @@ export default function Navbar() {
           </>
         ) : (
           <>
+            {/* TRACK ORDER FOR GUESTS & BUYERS */}
+            <Link to="/track" className={`flex flex-col items-center p-2 ${location.pathname === '/track' ? 'text-brand' : 'text-gray-500'}`}>
+              <MapPin size={20} /> <span className="text-[10px] mt-1 font-medium">Track</span>
+            </Link>
             <Link to="/cart" className={`flex flex-col items-center p-2 ${location.pathname === '/cart' ? 'text-brand' : 'text-gray-500'}`}>
               <div className="relative">
                 <ShoppingCart size={20} /> 
@@ -153,9 +163,6 @@ export default function Navbar() {
             <Link to="/favorites" className={`flex flex-col items-center p-2 ${location.pathname === '/favorites' ? 'text-brand' : 'text-gray-500'}`}>
               <Heart size={20} /> <span className="text-[10px] mt-1 font-medium">Saved</span>
             </Link>
-            <Link to="/orders" className={`flex flex-col items-center p-2 ${location.pathname === '/orders' ? 'text-brand' : 'text-gray-500'}`}>
-              <Package size={20} /> <span className="text-[10px] mt-1 font-medium">Orders</span>
-            </Link>
             <Link to="/profile" className={`flex flex-col items-center p-2 ${location.pathname === '/profile' ? 'text-brand' : 'text-gray-500'}`}>
               <User size={20} /> <span className="text-[10px] mt-1 font-medium">Profile</span>
             </Link>
@@ -164,4 +171,4 @@ export default function Navbar() {
       </nav>
     </>
   );
-                    }
+}
