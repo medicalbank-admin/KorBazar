@@ -31,13 +31,13 @@ export default function AdSlideshow() {
     fetchAds();
   }, []);
 
-  // 2. Handle 7-second ad rotation with infinite loop
+  // 2. Handle 3-second ad rotation with infinite loop
   useEffect(() => {
     if (!isVisible || ads.length <= 1) return;
 
     const adTimer = setInterval(() => {
       setCurrentAdIndex((prevIndex) => (prevIndex + 1) % ads.length);
-    }, 3000); // 7 seconds
+    }, 3000); // 3 seconds
 
     return () => clearInterval(adTimer);
   }, [isVisible, ads.length]);
