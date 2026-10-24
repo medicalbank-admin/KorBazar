@@ -5,13 +5,13 @@ import { db } from '../firebase';
 import { CheckCircle2, ChevronLeft, MessageCircle, MessageSquare, ShoppingCart, Truck, Star } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { useHistory } from '../context/HistoryContext'; // <-- HISTORY IMPORT RESTORED
+import { useHistory } from '../context/HistoryContext';
 
 export default function ProductDetails() {
   const { id } = useParams();
   const { addToCart } = useCart();
   const { currentUser } = useAuth();
-  const { addToHistory } = useHistory(); // <-- HISTORY HOOK RESTORED
+  const { addToHistory } = useHistory();
   const navigate = useNavigate();
   
   const [product, setProduct] = useState<any>(null);
@@ -20,6 +20,10 @@ export default function ProductDetails() {
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const [cartMsg, setCartMsg] = useState('');
+
+  // NEW: State for selected variant
+  const [selectedSize, setSelectedSize] = useState<string>('');
+  const [selectedColor, setSelectedColor] = useState<string>('');
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -31,7 +35,7 @@ export default function ProductDetails() {
         const prodData = { id: docSnap.id, ...docSnap.data() } as any;
         setProduct(prodData);
         
-        addToHistory(prodData); // <-- HISTORY TRACKING RESTORED
+        addToHistory(prodData);
 
         const sellerRef = doc(db, 'sellers', prodData.sellerId);
         const sellerSnap = await getDoc(sellerRef);
@@ -55,8 +59,16 @@ export default function ProductDetails() {
   if (!product) return <div className="p-12 text-center text-dark">Product not found.</div>;
 
   const images = product.images?.length > 0 ? product.images : [product.image];
-  const stockNum = Number(product.stock) || 0;
-  const isOutOfStock = product.stock !== undefined && stockNum <= 0;
+  
+  // NEW: Check for variants
+  const hasVariants = product.variants && product.variants.length > 0;
+  
+  // Calculate total stock from variants if they exist, otherwise use normal stock
+  const totalVariantStock = hasVariants 
+    ? product.variants.reduce((sum: number, v: any) => sum + Number(v.qty), 0) 
+    : Number(product.stock) || 0;
+    
+  const isOutOfStock = hasVariants ? totalVariantStock <= 0 : (product.stock !== undefined && Number(product.stock) <= 0);
 
   const whatsappMessage = `Assalam-o-Alaikum, I have a question about "${product.title}" (Rs. ${product.price}) on KorBazar.`;
   const cleanNumber = seller?.whatsappNumber?.replace(/^0/, '');
@@ -64,6 +76,25 @@ export default function ProductDetails() {
 
   const handleAddToCart = () => {
     if (isOutOfStock) return;
+
+    // NEW: Validate variant selection
+    if (hasVariants) {
+      if (product.variants.some((v: any) => v.size) && !selectedSize) {
+        return alert("Please select a size.");
+      }
+      if (product.variants.some((v: any) => v.color) && !selectedColor) {
+        return alert("Please select a color.");
+      }
+
+      // Check if the specific selected variant is in stock
+      const matchedVariant = product.variants.find((v: any) => 
+        (v.size || '') === selectedSize && (v.color || '') === selectedColor
+      );
+
+      if (!matchedVariant || matchedVariant.qty <= 0) {
+        return alert("This specific size/color combination is out of stock.");
+      }
+    }
     
     addToCart({
       productId: product.id,
@@ -72,8 +103,11 @@ export default function ProductDetails() {
       image: images[0],
       sellerId: product.sellerId,
       storeName: product.storeName,
-      deliveryFee: product.deliveryFee || 0
-    });
+      deliveryFee: product.deliveryFee || 0,
+      selectedSize,  // NEW: Pass size to cart
+      selectedColor   // NEW: Pass color to cart
+    } as any);
+    
     setCartMsg('Added to cart successfully!');
     setTimeout(() => setCartMsg(''), 3000);
   };
@@ -118,7 +152,12 @@ export default function ProductDetails() {
   const averageRating = reviews.length > 0 
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) 
     : 'New';
-    return (
+
+  // Get unique sizes and colors for the dropdowns
+  const uniqueSizes = hasVariants ? [...new Set(product.variants.filter((v:any) => v.size).map((v:any) => v.size))] : [];
+  const uniqueColors = hasVariants ? [...new Set(product.variants.filter((v:any) => v.color).map((v:any) => v.color))] : [];
+
+  return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
       <Link to="/explore" className="inline-flex items-center text-gray-500 hover:text-brand mb-6 font-medium">
         <ChevronLeft size={20} /> Back to Explore
@@ -170,12 +209,51 @@ export default function ProductDetails() {
             <Truck size={16} /> Delivery: Rs. {product.deliveryFee || 0}
           </div>
 
-          <div className="bg-gray-50 rounded-2xl p-6 mb-8">
+          <div className="bg-gray-50 rounded-2xl p-6 mb-6">
             <h3 className="font-semibold text-dark mb-2">Product Description</h3>
             <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">
               {product.description || "No description provided for this item."}
             </p>
           </div>
+
+          {/* VARIANTS SELECTION */}
+          {hasVariants && (
+            <div className="mb-6 space-y-4">
+              {uniqueSizes.length > 0 && (
+                <div>
+                  <label className="block text-sm font-bold text-dark mb-2">Select Size</label>
+                  <div className="flex flex-wrap gap-2">
+                    {uniqueSizes.map((size: any) => (
+                      <button
+                        key={size}
+                        onClick={() => setSelectedSize(size)}
+                        className={`px-4 py-2 rounded-lg border-2 font-semibold transition-colors ${selectedSize === size ? 'border-brand bg-brand text-white' : 'border-gray-200 text-gray-700 hover:border-brand'}`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {uniqueColors.length > 0 && (
+                <div>
+                  <label className="block text-sm font-bold text-dark mb-2">Select Color</label>
+                  <div className="flex flex-wrap gap-2">
+                    {uniqueColors.map((color: any) => (
+                      <button
+                        key={color}
+                        onClick={() => setSelectedColor(color)}
+                        className={`px-4 py-2 rounded-lg border-2 font-semibold transition-colors ${selectedColor === color ? 'border-brand bg-brand text-white' : 'border-gray-200 text-gray-700 hover:border-brand'}`}
+                      >
+                        {color}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {cartMsg && (
             <div className="bg-green-50 text-brand p-3 rounded-xl mb-4 text-center font-semibold">
@@ -183,16 +261,11 @@ export default function ProductDetails() {
             </div>
           )}
 
-                    <div className="mt-auto space-y-3">
+          <div className="mt-auto space-y-3">
             <button 
-              onClick={() => {
-                if (isOutOfStock) {
-                  alert("This product is out of stock right now.");
-                } else {
-                  handleAddToCart();
-                }
-              }} 
-              className={`w-full font-bold text-lg py-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-md ${isOutOfStock ? 'bg-gray-300 text-gray-500 cursor-pointer' : 'bg-brand text-white hover:bg-brand/90'}`}
+              onClick={handleAddToCart} 
+              disabled={isOutOfStock}
+              className={`w-full font-bold text-lg py-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-md ${isOutOfStock ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-brand text-white hover:bg-brand/90'}`}
             >
               <ShoppingCart size={22} /> {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
             </button>
@@ -237,4 +310,4 @@ export default function ProductDetails() {
       </div>
     </div>
   );
-                        }
+    }
