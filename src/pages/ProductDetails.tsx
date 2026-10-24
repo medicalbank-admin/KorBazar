@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { doc, getDoc, collection, query, where, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CheckCircle2, ChevronLeft, MessageCircle, ShoppingCart, Truck, Star } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, MessageCircle, MessageSquare, ShoppingCart, Truck, Star } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { useHistory } from '../context/HistoryContext';
 
 export default function ProductDetails() {
   const { id } = useParams();
   const { addToCart } = useCart();
+const { currentUser } = useAuth();
+const navigate = useNavigate();
   const { addToHistory } = useHistory(); // <-- History tracking restored
   
   const [product, setProduct] = useState<any>(null);
@@ -72,6 +75,45 @@ export default function ProductDetails() {
     setCartMsg('Added to cart successfully!');
     setTimeout(() => setCartMsg(''), 3000);
   };
+
+  const handleChatWithSeller = async () => {
+  if (!currentUser) {
+    alert("Please login to chat with the seller.");
+    navigate('/login');
+    return;
+  }
+
+  if (currentUser.uid === product.sellerId) {
+    alert("You cannot chat with your own store.");
+    return;
+  }
+
+  // Create a consistent Chat ID based on both user IDs
+  const chatId = [currentUser.uid, product.sellerId].sort().join('_');
+  
+  try {
+    // Check if chat exists, if not create it
+    const chatRef = doc(db, 'chats', chatId);
+    const chatSnap = await getDoc(chatRef);
+    
+    if (!chatSnap.exists()) {
+      await setDoc(chatRef, {
+        participants: [currentUser.uid, product.sellerId],
+        lastMessage: "Started a new conversation",
+        updatedAt: serverTimestamp(),
+        unreadCount: {
+          [currentUser.uid]: 0,
+          [product.sellerId]: 0
+        }
+      });
+    }
+    
+    navigate(`/chat/${chatId}`);
+  } catch (error) {
+    console.error("Error starting chat:", error);
+    alert("Failed to start chat.");
+  }
+};
 
   const averageRating = reviews.length > 0 
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) 
@@ -155,7 +197,14 @@ export default function ProductDetails() {
 >
   <ShoppingCart size={22} /> {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
 </button>
+          <button 
+  onClick={handleChatWithSeller}
+  className="w-full bg-blue-50 text-blue-600 border-2 border-blue-200 font-bold text-lg py-4 rounded-xl hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 mb-3"
+>
+  <MessageSquare size={22} /> Chat with Seller
+</button>
             
+<a href={whatsappLink} target="_blank" rel="noreferrer" className="w-full bg-white text-dark border-2...
             <a href={whatsappLink} target="_blank" rel="noreferrer" className="w-full bg-white text-dark border-2 border-[#25D366] font-bold text-lg py-4 rounded-xl hover:bg-[#25D366]/10 transition-colors flex items-center justify-center gap-2">
               <MessageCircle size={22} className="text-[#25D366]" /> Ask Seller on WhatsApp
             </a>
