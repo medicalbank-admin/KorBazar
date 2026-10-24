@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { collection, addDoc, doc, getDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Ticket, X, Mail, Gift, CheckCircle } from 'lucide-react';
+import { Ticket, X, Mail, Gift } from 'lucide-react';
 
 export default function Checkout() {
   const { cart, cartTotal, cartDeliveryFee, clearCart } = useCart();
