@@ -44,7 +44,7 @@ export default function Navbar() {
       {/* Mobile Top Bar */}
       <header className="md:hidden flex items-center justify-between px-4 py-3 bg-white shadow-sm sticky top-0 z-50">
         <Link to="/" className="flex items-center gap-1">
-          <img src="./logo.png" alt="KorBazar" className="h-10 w-auto object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+          <img src="./logo.png" alt="KorBazar" className="h-14 w-auto object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           <span className="font-bold text-xl text-brand">KorBazar</span>
         </Link>
         
