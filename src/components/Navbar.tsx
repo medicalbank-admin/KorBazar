@@ -30,6 +30,15 @@ export default function Navbar() {
         <div className="flex items-center gap-4">
           {!currentUser ? (
             <>
+              {/* CART ICON FOR DESKTOP GUESTS */}
+              <Link to="/cart" className="relative p-2 text-gray-600 hover:text-brand transition-colors">
+                <ShoppingCart size={24} />
+                {cartItemCount > 0 && (
+                  <span className="absolute top-0 right-0 bg-alert text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">
+                    {cartItemCount}
+                  </span>
+                )}
+              </Link>
               <Link to="/login" className="font-semibold text-dark hover:text-brand transition-colors">Login</Link>
               <Link to="/sell-with-us" className="bg-brand text-white px-6 py-2.5 rounded-full font-semibold hover:bg-brand/90 transition-all shadow-sm">
                 Sell with Us
@@ -78,19 +87,17 @@ export default function Navbar() {
             <MapPin size={22} />
           </Link>
 
-          {/* CART ICON FOR MOBILE TOP BAR */}
-          {currentUser && (
-            <Link to="/cart" className="relative p-2 text-gray-600 hover:text-brand transition-colors">
-              <ShoppingCart size={22} />
-              {cartItemCount > 0 && (
-                <span className="absolute top-0 right-0 bg-alert text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
-                  {cartItemCount}
-                </span>
-              )}
-            </Link>
-          )}
+          {/* CART ICON FOR MOBILE TOP BAR (VISIBLE TO EVERYONE) */}
+          <Link to="/cart" className="relative p-2 text-gray-600 hover:text-brand transition-colors">
+            <ShoppingCart size={22} />
+            {cartItemCount > 0 && (
+              <span className="absolute top-0 right-0 bg-alert text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
+                {cartItemCount}
+              </span>
+            )}
+          </Link>
 
-          {/* INBOX ICON FOR MOBILE */}
+          {/* INBOX ICON FOR MOBILE (LOGGED IN USERS ONLY) */}
           {currentUser && (
             <Link to="/inbox" className="relative p-2 text-gray-600 hover:text-brand transition-colors">
               <MessageSquare size={22} />
