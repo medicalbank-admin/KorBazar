@@ -569,7 +569,7 @@ export default function SellerDashboard() {
                 ) : (
                   <div className="mt-4">
                     <p className="text-gray-700 text-sm mb-4">Upgrade to Premium to feature your products on the Homepage and get more visibility!</p>
-                    <a href={`https://wa.me/923000000000?text=${encodeURIComponent(`Assalam-o-Alaikum, I want to upgrade my store "${store.storeName}" to the Premium plan on KorBazar.`)}`} target="_blank" rel="noreferrer" className="inline-block bg-dark text-white font-bold py-3 px-6 rounded-xl hover:bg-black transition-colors">Contact Admin to Upgrade</a>
+                    <a href={`https://wa.me/923390251147?text=${encodeURIComponent(`Assalam-o-Alaikum, I want to upgrade my store "${store.storeName}" to the Premium plan on KorBazar.`)}`} target="_blank" rel="noreferrer" className="inline-block bg-dark text-white font-bold py-3 px-6 rounded-xl hover:bg-black transition-colors">Contact Admin to Upgrade</a>
                   </div>
                 )}
               </div>
