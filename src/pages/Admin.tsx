@@ -28,6 +28,8 @@ export default function Admin() {
 
   const [fees, setFees] = useState({ standard: 1000, premium: 2000 });
   const [isSavingFees, setIsSavingFees] = useState(false);
+  // NEW: Custom Reject Modal State
+const [rejectModal, setRejectModal] = useState({ isOpen: false, sellerId: '', reason: '' });
 
   const fetchData = async () => {
     setLoading(true);
@@ -90,14 +92,20 @@ export default function Admin() {
     fetchData();
   };
 
-  const handleReject = async (id: string) => {
-    const reason = window.prompt("Enter rejection reason:");
-    if (reason) {
-      await updateDoc(doc(db, 'sellers', id), { status: 'rejected', rejectionReason: reason });
-      fetchData();
-    }
-  };
+  const handleReject = (id: string) => {
+  setRejectModal({ isOpen: true, sellerId: id, reason: '' });
+};
 
+const handleConfirmReject = async () => {
+  if (!rejectModal.reason.trim()) return alert('Please enter a rejection reason.');
+  await updateDoc(doc(db, 'sellers', rejectModal.sellerId), { 
+    status: 'rejected', 
+    rejectionReason: rejectModal.reason 
+  });
+  setRejectModal({ isOpen: false, sellerId: '', reason: '' });
+  fetchData();
+};
+  
   const toggleFreeze = async (id: string, currentStatus: boolean) => {
     if(window.confirm(`Are you sure you want to ${currentStatus ? 'Unfreeze' : 'Freeze'} this store?`)) {
       await updateDoc(doc(db, 'sellers', id), { isFrozen: !currentStatus });
@@ -262,6 +270,48 @@ export default function Admin() {
         </div>
       </div>
     )}
+
+    {/* CUSTOM REJECT MODAL */}
+{rejectModal.isOpen && (
+  <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4">
+    <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm p-6 relative">
+      <button onClick={() => setRejectModal({ ...rejectModal, isOpen: false })} className="absolute top-4 right-4 text-gray-400 hover:text-alert"><X size={24} /></button>
+      <h2 className="text-xl font-bold text-dark mb-4">Reject Application</h2>
+      <p className="text-sm text-gray-500 mb-4">Please provide a reason for rejecting this seller. The seller will see this reason on their dashboard.</p>
+      
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Reason for Rejection</label>
+          <select 
+            value={rejectModal.reason} 
+            onChange={e => setRejectModal({...rejectModal, reason: e.target.value})} 
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50 mb-2"
+          >
+            <option value="">Select a reason...</option>
+            <option value="Name does not match CNIC">Name does not match CNIC</option>
+            <option value="CNIC image is unclear">CNIC image is unclear</option>
+            <option value="Age is below 18">Age is below 18</option>
+            <option value="Store name is already taken">Store name is already taken</option>
+            <option value="Other">Other</option>
+          </select>
+          
+          {rejectModal.reason === 'Other' && (
+            <input 
+              type="text" 
+              placeholder="Type custom reason here..." 
+              onChange={e => setRejectModal({...rejectModal, reason: e.target.value})} 
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50 mt-2" 
+            />
+          )}
+        </div>
+        
+        <button onClick={handleConfirmReject} className="w-full bg-alert text-white font-bold py-3 rounded-xl hover:bg-red-700 shadow-md flex items-center justify-center gap-2">
+          Confirm Rejection
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
     {editingSeller && (
       <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4">
