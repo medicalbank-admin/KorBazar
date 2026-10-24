@@ -6,8 +6,7 @@ import { auth, db } from '../firebase';
 import { signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
-import { LogOut, User, Shield, Store, ShoppingBag, Heart, Phone, Mail, ChevronRight, Edit3, Check, Copy, HelpCircle, LayoutDashboard, MapPin, Lock, Star, TrendingUp, Package, Users, Wallet, Award, Bell, ShieldAlert, MessageSquare } from 'lucide-react';
-
+import { ShoppingBag, Heart, MessageSquare, ChevronRight, LogOut, Lock, Bell, Wallet, Package, FileText, Truck, RotateCcw, Store, Shield, ShieldAlert, LayoutDashboard, MapPin, HelpCircle, Edit3, Check, Phone } from 'lucide-react';
 export default function Profile() {
   const { currentUser, userRole } = useAuth();
   const { favorites } = useFavorites();
