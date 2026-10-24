@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { collection, addDoc, doc, getDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Ticket, X, Mail, Gift } from 'lucide-react';
+import { Ticket, X, Mail, Gift, CheckCircle } from 'lucide-react';
 
 export default function Checkout() {
   const { cart, cartTotal, cartDeliveryFee, clearCart } = useCart();
@@ -12,6 +12,7 @@ export default function Checkout() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [fetchingAddress, setFetchingAddress] = useState(true);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '', phone: '', whatsapp: '', address: '', notes: '', email: ''
@@ -220,7 +221,8 @@ export default function Checkout() {
 
   if (cart.length === 0) return null;
   if (fetchingAddress) return <div className="p-12 text-center text-brand font-bold">Loading details...</div>;
-    return (
+
+  return (
     <div className="max-w-3xl mx-auto px-4 py-8 pb-24">
       <h1 className="text-3xl font-bold text-dark mb-6">Checkout</h1>
 
@@ -234,7 +236,7 @@ export default function Checkout() {
         </div>
       )}
       
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={(e) => { e.preventDefault(); setShowConfirmModal(true); }} className="space-y-6">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
           <h2 className="font-bold text-lg text-dark mb-2">Delivery Details</h2>
           <div>
@@ -354,10 +356,66 @@ export default function Checkout() {
           </div>
         </div>
 
-        <button type="submit" disabled={loading} className="w-full bg-brand text-white font-bold py-4 rounded-xl hover:bg-brand/90 shadow-md disabled:bg-gray-400">
-          {loading ? 'Placing Order...' : `Place Order (Rs. ${finalTotal})`}
+        <button type="submit" className="w-full bg-brand text-white font-bold py-4 rounded-xl hover:bg-brand/90 shadow-md">
+          Review & Place Order
         </button>
       </form>
+
+      {/* FINAL ORDER CONFIRMATION MODAL */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 relative max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-dark mb-4 text-center">Confirm Your Order</h2>
+            
+            <div className="bg-gray-50 rounded-2xl p-4 mb-4 space-y-3 text-sm border border-gray-100">
+              <div>
+                <p className="font-semibold text-dark">Delivery To:</p>
+                <p className="text-gray-600">{formData.name}</p>
+                <p className="text-gray-600">{formData.phone}</p>
+                <p className="text-gray-600">{formData.address}</p>
+              </div>
+              
+              {appliedCoupon && (
+                <div className="text-brand font-semibold">
+                  Coupon Applied: {appliedCoupon.code} (- Rs. {discountAmount})
+                </div>
+              )}
+              {appliedReferral && (
+                <div className="text-brand font-semibold">
+                  Referral Applied (- Rs. {referralDiscount})
+                </div>
+              )}
+              
+              <div className="border-t border-gray-200 pt-2 flex justify-between font-bold text-lg text-dark">
+                <span>Total to Pay:</span>
+                <span>Rs. {finalTotal}</span>
+              </div>
+              <div className="text-xs text-right text-gray-500 uppercase font-bold">
+                Payment: {paymentMethod}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowConfirmModal(false)} 
+                className="w-1/3 bg-gray-100 text-dark font-bold py-3 rounded-xl hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={(e) => {
+                  setShowConfirmModal(false);
+                  handleSubmit(e as any); 
+                }} 
+                disabled={loading}
+                className="w-2/3 bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand/90 shadow-md disabled:bg-gray-400 flex justify-center items-center gap-2"
+              >
+                {loading ? 'Placing Order...' : 'Confirm Order'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-              }
+                              }
