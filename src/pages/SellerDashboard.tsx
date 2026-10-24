@@ -47,6 +47,7 @@ export default function SellerDashboard() {
   // Product Form State
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
+  const [stock, setStock] = useState(''); 
   const [productDescription, setProductDescription] = useState('');
   const [productDeliveryFee, setProductDeliveryFee] = useState('');
   const [category, setCategory] = useState('');
@@ -129,6 +130,7 @@ export default function SellerDashboard() {
         title, 
         description: productDescription,
         price: Number(price), 
+        stock: Number(stock), 
         deliveryFee: Number(productDeliveryFee) || 0,
         category,
         isPremium: false, 
@@ -140,7 +142,7 @@ export default function SellerDashboard() {
       const docRef = await addDoc(collection(db, 'products'), newProduct);
       setProducts([{ id: docRef.id, ...newProduct }, ...products]);
       setProductMsg('Product added successfully!');
-      setTitle(''); setPrice(''); setProductDescription(''); setProductDeliveryFee(''); setProductImages(null);
+      setTitle(''); setPrice(''); setStock(''); setProductDescription(''); setProductDeliveryFee(''); setProductImages(null);
       (document.getElementById('product-images') as HTMLInputElement).value = '';
       setTimeout(() => setProductMsg(''), 3000);
     } catch (error) {
@@ -149,7 +151,14 @@ export default function SellerDashboard() {
       setUploading(false);
     }
   };
-
+const handleUpdateStock = async (productId: string, currentStock: number) => {
+  const newStock = window.prompt("Enter new stock quantity (0 = Out of Stock):", currentStock.toString());
+  if (newStock !== null && !isNaN(Number(newStock))) {
+    await updateDoc(doc(db, 'products', productId), { stock: Number(newStock) });
+    fetchData();
+  }
+};
+  
   const updateOrderStatus = async (orderId: string, newStatus: string, extraData = {}) => {
     await updateDoc(doc(db, 'orders', orderId), { status: newStatus, ...extraData });
     fetchData();
@@ -410,24 +419,28 @@ if (order.buyerUid && order.buyerUid !== 'guest') {
                      <label className="block text-sm font-medium text-gray-700 mb-1">Product Description</label>
                      <textarea required value={productDescription} onChange={e => setProductDescription(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="Describe the item, size, materials, etc." />
                    </div>
-                   <div className="grid grid-cols-3 gap-4">
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-1">Price (Rs.)</label>
-                       <input type="number" required value={price} onChange={e => setPrice(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-                     </div>
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Fee (Rs.)</label>
-                       <input type="number" required value={productDeliveryFee} onChange={e => setProductDeliveryFee(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-                     </div>
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                       <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
-                         {availableCategories.map(catName => (
-                           <option key={catName} value={catName}>{catName}</option>
-                         ))}
-                       </select>
-                     </div>
-                   </div>
+                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">Price (Rs.)</label>
+    <input type="number" required value={price} onChange={e => setPrice(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+  </div>
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">Stock Qty</label>
+    <input type="number" required value={stock} onChange={e => setStock(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. 5" />
+  </div>
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Fee (Rs.)</label>
+    <input type="number" required value={productDeliveryFee} onChange={e => setProductDeliveryFee(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+  </div>
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+    <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
+      {availableCategories.map(catName => (
+        <option key={catName} value={catName}>{catName}</option>
+      ))}
+    </select>
+  </div>
+</div>
                    <div>
                      <label className="block text-sm font-medium text-gray-700 mb-1">Product Images (Max 3)</label>
                      <input id="product-images" type="file" multiple accept="image/*" required onChange={e => setProductImages(e.target.files)} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20" />
@@ -445,9 +458,18 @@ if (order.buyerUid && order.buyerUid !== 'guest') {
                      <div key={p.id} className="flex gap-4 items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
                        <img src={p.image} alt={p.title} className="w-16 h-16 object-cover rounded-lg" />
                        <div className="flex-grow">
-                         <h4 className="font-bold text-dark">{p.title}</h4>
-                         <p className="text-sm text-brand font-semibold">Rs. {p.price} <span className="text-gray-400 text-xs ml-2">+ Rs. {p.deliveryFee || 0} Delivery</span></p>
-                       </div>
+  <h4 className="font-bold text-dark">{p.title}</h4>
+  <p className="text-sm text-brand font-semibold">Rs. {p.price} <span className="text-gray-400 text-xs ml-2">+ Rs. {p.deliveryFee || 0} Delivery</span></p>
+  
+  <div className="flex items-center gap-2 mt-1">
+    <span className={`text-xs font-bold px-2 py-0.5 rounded ${Number(p.stock) > 0 ? 'bg-green-100 text-brand' : 'bg-red-100 text-alert'}`}>
+      Stock: {p.stock !== undefined ? p.stock : 'N/A'}
+    </span>
+    <button onClick={() => handleUpdateStock(p.id, p.stock)} className="text-blue-600 text-xs font-bold hover:underline">
+      Edit
+    </button>
+  </div>
+</div>
                      </div>
                    ))}
                  </div>
