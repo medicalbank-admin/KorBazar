@@ -61,6 +61,15 @@ export default function SellerDashboard() {
   const [variants, setVariants] = useState<any[]>([]);
   const [dispatchModal, setDispatchModal] = useState({ isOpen: false, orderId: '', courier: 'TCS', tracking: '' });
 
+  // NEW: Custom Edit Modal State for Stock & Discount
+  const [editModal, setEditModal] = useState({ isOpen: false, productId: '', type: 'stock', value: '' });
+
+  const defaultCategories = [
+    "Cakes & Bakes", "Handmade Jewelry", "Crafts & Decor", "Embroidered Items", 
+    "Candles", "Gift Hampers", "Customized Mugs & Photo Frames", "Resin Art & Keychains", 
+    "Wedding and Festive Sweets", "Home Decor", "Essential Oils & Natural Hair Care"
+  ];
+
   const fetchData = async () => {
     if (!currentUser) return;
     try {
@@ -74,47 +83,30 @@ export default function SellerDashboard() {
         setSocialLinks(data.socialLinks || { facebook: '', instagram: '', tiktok: '' });
       }
 
-      // Fetch products without strict ordering to ensure nothing is missed
-const prodQ = query(
-  collection(db, 'products'), 
-  where('sellerId', '==', currentUser.uid)
-);
-const prodSnap = await getDocs(prodQ);
-const productsData = prodSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const prodQ = query(collection(db, 'products'), where('sellerId', '==', currentUser.uid));
+      const prodSnap = await getDocs(prodQ);
+      const productsData = prodSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      productsData.sort((a: any, b: any) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
+      setProducts(productsData);
 
-// Sort them in memory instead of the database
-productsData.sort((a: any, b: any) => {
-  const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-  const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-  return dateB - dateA;
-});
-
-setProducts(productsData);
-
-      const orderQ = query(
-        collection(db, 'orders'), 
-        where('sellerId', '==', currentUser.uid),
-        orderBy('createdAt', 'desc'),
-        limit(50)
-      );
+      const orderQ = query(collection(db, 'orders'), where('sellerId', '==', currentUser.uid));
       const orderSnap = await getDocs(orderQ);
       const ordersData = orderSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      ordersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setOrders(ordersData);
 
       const catSnap = await getDocs(collection(db, 'categories'));
-const cats = catSnap.docs.map(d => d.data().name);
-
-// If database is empty, use the full list. If database has items, use them.
-const finalCats = cats.length > 0 ? cats : [
-  "Cakes & Bakes", "Handmade Jewelry", "Crafts & Decor", "Embroidered Items", 
-  "Candles", "Gift Hampers", "Customized Mugs & Photo Frames", "Resin Art & Keychains", 
-  "Wedding and Festive Sweets", "Home Decor", "Essential Oils & Natural Hair Care"
-];
-
-setAvailableCategories(finalCats);
-// Auto-select the first category to prevent the "empty" issue
-if (finalCats.length > 0) setCategory(finalCats[0]);
+      const cats = catSnap.docs.map(d => d.data().name);
+      const finalCats = cats.length > 0 ? cats : defaultCategories;
       
+      setAvailableCategories(finalCats);
+      // Force select the first one to prevent mobile dropdown crash
+      if (finalCats.length > 0 && !category) setCategory(finalCats[0]);
+
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -123,239 +115,268 @@ if (finalCats.length > 0) setCategory(finalCats[0]);
   };
 
   useEffect(() => { fetchData(); }, [currentUser]);
+
 const handleUpdateStore = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentUser) return;
-    setStoreMsg('Saving...');
-    await updateDoc(doc(db, 'sellers', currentUser.uid), {
-      bio: storeBio,
-      storeAddress: storeAddress,
-      paymentAccounts: paymentAccounts,
-      socialLinks: socialLinks
-    });
-    setStoreMsg('Store updated successfully!');
-    fetchData();
-    setTimeout(() => setStoreMsg(''), 3000);
-  };
+  e.preventDefault();
+  if (!currentUser) return;
+  setStoreMsg('Saving...');
+  await updateDoc(doc(db, 'sellers', currentUser.uid), {
+    bio: storeBio,
+    storeAddress: storeAddress,
+    paymentAccounts: paymentAccounts,
+    socialLinks: socialLinks
+  });
+  setStoreMsg('Store updated successfully!');
+  fetchData();
+  setTimeout(() => setStoreMsg(''), 3000);
+};
 
-  const handleAddProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentUser || !store) return;
-    if (!productImages || productImages.length === 0) return setProductMsg('Please select at least 1 image.');
+const handleAddProduct = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!currentUser || !store) return;
+  if (!productImages || productImages.length === 0) return setProductMsg('Please select at least 1 image.');
 
-    setUploading(true);
-    try {
-      const imageUrls: string[] = [];
-      for (let i = 0; i < productImages.length; i++) {
-        const base64 = await compressImage(productImages[i]);
-        imageUrls.push(base64);
-      }
-
-      const newProduct = {
-        sellerId: currentUser.uid, 
-        storeName: store.storeName,
-        title, 
-        description: productDescription,
-        price: Number(price), 
-        stock: Number(stock),
-        discountPercent: Number(discountPercent) || 0,
-        deliveryFee: Number(productDeliveryFee) || 0,
-        category,
-        isPremium: false, 
-        images: imageUrls, 
-        image: imageUrls[0],
-        variants: variants,
-        createdAt: new Date().toISOString()
-      };
-
-      const docRef = await addDoc(collection(db, 'products'), newProduct);
-      setProducts([{ id: docRef.id, ...newProduct }, ...products]);
-      setProductMsg('Product added successfully!');
-      setTitle(''); setPrice(''); setStock(''); setDiscountPercent(''); setProductDescription(''); setProductDeliveryFee(''); setProductImages(null); setVariants([]);
-      (document.getElementById('product-images') as HTMLInputElement).value = '';
-      setTimeout(() => setProductMsg(''), 3000);
-    } catch (error) {
-      setProductMsg('Error adding product.');
-    } finally {
-      setUploading(false);
+  setUploading(true);
+  try {
+    const imageUrls: string[] = [];
+    for (let i = 0; i < productImages.length; i++) {
+      const base64 = await compressImage(productImages[i]);
+      imageUrls.push(base64);
     }
-  };
 
-  const handleUpdateStock = async (productId: string, currentStock: number | undefined) => {
-    const safeStock = currentStock || 0;
-    const newStock = window.prompt("Enter new stock quantity (0 = Out of Stock):", safeStock.toString());
-    if (newStock !== null && !isNaN(Number(newStock))) {
-      await updateDoc(doc(db, 'products', productId), { stock: Number(newStock) });
-      fetchData();
-    }
-  };
+    const newProduct = {
+      sellerId: currentUser.uid, 
+      storeName: store.storeName,
+      title, 
+      description: productDescription,
+      price: Number(price), 
+      stock: Number(stock),
+      discountPercent: Number(discountPercent) || 0,
+      deliveryFee: Number(productDeliveryFee) || 0,
+      category,
+      isPremium: false, 
+      images: imageUrls, 
+      image: imageUrls[0],
+      variants: variants,
+      createdAt: new Date().toISOString()
+    };
 
-  const handleUpdateDiscount = async (productId: string, currentDiscount: number | undefined) => {
-    const safeDiscount = currentDiscount || 0;
-    const newDiscount = window.prompt("Enter discount percentage (0 to remove, e.g. 10 for 10%):", safeDiscount.toString());
-    if (newDiscount !== null && !isNaN(Number(newDiscount))) {
-      const discountVal = Math.min(100, Math.max(0, Number(newDiscount)));
-      await updateDoc(doc(db, 'products', productId), { discountPercent: discountVal });
-      fetchData();
-    }
-  };
-  const updateOrderStatus = async (orderId: string, newStatus: string, extraData = {}) => {
-    await updateDoc(doc(db, 'orders', orderId), { status: newStatus, ...extraData });
+    const docRef = await addDoc(collection(db, 'products'), newProduct);
+    setProducts([{ id: docRef.id, ...newProduct }, ...products]);
+    setProductMsg('Product added successfully!');
+    setTitle(''); setPrice(''); setStock(''); setDiscountPercent(''); setProductDescription(''); setProductDeliveryFee(''); setProductImages(null); setVariants([]);
+    (document.getElementById('product-images') as HTMLInputElement).value = '';
+    setTimeout(() => setProductMsg(''), 3000);
+  } catch (error) {
+    setProductMsg('Error adding product.');
+  } finally {
+    setUploading(false);
+  }
+};
 
-    if (newStatus === 'delivered') {
-      const order = orders.find(o => o.id === orderId);
-      
-      if (order) {
-        if (order.items) {
-          for (const item of order.items) {
-            try {
-              const productRef = doc(db, 'products', item.productId);
-              const productSnap = await getDoc(productRef);
-              if (productSnap.exists()) {
-                const productData = productSnap.data();
-                const currentStock = Number(productData.stock) || 0;
-                const newStock = Math.max(0, currentStock - item.qty); 
-                
-                let updatedVariants = productData.variants || [];
-                if (item.selectedSize || item.selectedColor) {
-                  updatedVariants = updatedVariants.map((v: any) => {
-                    if (v.size === item.selectedSize && v.color === item.selectedColor) {
-                      return { ...v, qty: Math.max(0, v.qty - item.qty) };
-                    }
-                    return v;
-                  });
-                }
-                await updateDoc(productRef, { stock: newStock, variants: updatedVariants });
-              }
-            } catch (err) { console.error("Stock update failed", err); }
-          }
-        }
+const openEditModal = (productId: string, type: 'stock' | 'discount', currentValue: number | undefined) => {
+  setEditModal({ isOpen: true, productId, type, value: (currentValue || 0).toString() });
+};
 
-        if (order.referredBy && !order.referralPaid) {
+const handleEditSubmit = async () => {
+  if (!editModal.productId || editModal.value === '') return;
+  const val = Number(editModal.value);
+  if (isNaN(val)) return alert("Please enter a valid number.");
+
+  if (editModal.type === 'stock') {
+    await updateDoc(doc(db, 'products', editModal.productId), { stock: Math.max(0, val) });
+  } else {
+    await updateDoc(doc(db, 'products', editModal.productId), { discountPercent: Math.min(100, Math.max(0, val)) });
+  }
+  
+  setEditModal({ isOpen: false, productId: '', type: 'stock', value: '' });
+  fetchData();
+};
+
+const updateOrderStatus = async (orderId: string, newStatus: string, extraData = {}) => {
+  await updateDoc(doc(db, 'orders', orderId), { status: newStatus, ...extraData });
+
+  if (newStatus === 'delivered') {
+    const order = orders.find(o => o.id === orderId);
+    
+    if (order) {
+      if (order.items) {
+        for (const item of order.items) {
           try {
-            const referrerRef = doc(db, 'users', order.referredBy);
-            const referrerSnap = await getDoc(referrerRef);
-            if (referrerSnap.exists()) {
-              const currentBalance = referrerSnap.data().walletBalance || 0;
-              await updateDoc(referrerRef, { walletBalance: currentBalance + 100 });
-              await updateDoc(doc(db, 'orders', orderId), { referralPaid: true });
+            const productRef = doc(db, 'products', item.productId);
+            const productSnap = await getDoc(productRef);
+            if (productSnap.exists()) {
+              const productData = productSnap.data();
+              const currentStock = Number(productData.stock) || 0;
+              const newStock = Math.max(0, currentStock - item.qty); 
+              
+              let updatedVariants = productData.variants || [];
+              if (item.selectedSize || item.selectedColor) {
+                updatedVariants = updatedVariants.map((v: any) => {
+                  if (v.size === item.selectedSize && v.color === item.selectedColor) {
+                    return { ...v, qty: Math.max(0, v.qty - item.qty) };
+                  }
+                  return v;
+                });
+              }
+              await updateDoc(productRef, { stock: newStock, variants: updatedVariants });
             }
-          } catch (err) { console.error("Failed to pay referrer:", err); }
+          } catch (err) { console.error("Stock update failed", err); }
         }
       }
-    }
-    fetchData();
-  };
 
-  const handlePaymentReceived = async (orderId: string) => {
-    await updateOrderStatus(orderId, 'accepted', { paymentVerified: true });
-  };
-
-  const openDispatchModal = (orderId: string) => {
-    setDispatchModal({ isOpen: true, orderId, courier: 'TCS', tracking: '' });
-  };
-
-  const handleDispatchSubmit = async () => {
-    if (!dispatchModal.tracking.trim()) return alert('Please enter a tracking number.');
-    await updateOrderStatus(dispatchModal.orderId, 'dispatched', { 
-      courierName: dispatchModal.courier, 
-      trackingNumber: dispatchModal.tracking 
-    });
-    setDispatchModal({ isOpen: false, orderId: '', courier: 'TCS', tracking: '' });
-  };
-
-  const handleContactAdmin = async () => {
-    if (!currentUser) return;
-    try {
-      const adminQ = query(collection(db, 'users'), where('role', '==', 'admin'));
-      const adminSnap = await getDocs(adminQ);
-      if (adminSnap.empty) return alert("Admin account not found.");
-      
-      const adminId = adminSnap.docs[0].id;
-      const chatId = [currentUser.uid, adminId].sort().join('_');
-      
-      const chatRef = doc(db, 'chats', chatId);
-      const chatSnap = await getDoc(chatRef);
-      
-      if (!chatSnap.exists()) {
-        await setDoc(chatRef, {
-          participants: [currentUser.uid, adminId],
-          lastMessage: "Started a conversation with Admin Support",
-          updatedAt: serverTimestamp(),
-          unreadCount: { [currentUser.uid]: 0, [adminId]: 0 }
-        });
+      if (order.referredBy && !order.referralPaid) {
+        try {
+          const referrerRef = doc(db, 'users', order.referredBy);
+          const referrerSnap = await getDoc(referrerRef);
+          if (referrerSnap.exists()) {
+            const currentBalance = referrerSnap.data().walletBalance || 0;
+            await updateDoc(referrerRef, { walletBalance: currentBalance + 100 });
+            await updateDoc(doc(db, 'orders', orderId), { referralPaid: true });
+          }
+        } catch (err) { console.error("Failed to pay referrer:", err); }
       }
-      navigate(`/chat/${chatId}`);
-    } catch (error) {
-      console.error(error);
-      alert("Failed to connect to Admin.");
     }
-  };
+  }
+  fetchData();
+};
 
-  const handleWhatsAppNotify = (order: any) => {
-    let paymentInstructions = "";
-    if (order.paymentMethod !== 'COD') {
-      paymentInstructions = `\nPlease send the payment via ${order.paymentMethod} to:\n${store.paymentAccounts || '[Seller needs to set account details]'}\n`;
-    }
+const handlePaymentReceived = async (orderId: string) => {
+  await updateOrderStatus(orderId, 'accepted', { paymentVerified: true });
+};
 
-    const text = `Assalam-o-Alaikum ${order.buyerName},\n\nYour order from ${store.storeName} has been CONFIRMED.\n\nOrder ID: #${order.trackingToken.slice(0,8).toUpperCase()}\n\nSubtotal: Rs. ${order.subtotal || order.total}\nDelivery Fees: Rs. ${order.deliveryFee || 0}\nTotal Bill: Rs. ${order.total}\n\nPayment Method: ${order.paymentMethod}\n${paymentInstructions}\nTrack your order here:\nhttps://medicalbank-admin.github.io/KorBazar/#/track/${order.trackingToken}\n\nThank you for supporting a local seller!\n- ${store.storeName} via KorBazar`;
+const openDispatchModal = (orderId: string) => {
+  setDispatchModal({ isOpen: true, orderId, courier: 'TCS', tracking: '' });
+};
+
+const handleDispatchSubmit = async () => {
+  if (!dispatchModal.tracking.trim()) return alert('Please enter a tracking number.');
+  await updateOrderStatus(dispatchModal.orderId, 'dispatched', { 
+    courierName: dispatchModal.courier, 
+    trackingNumber: dispatchModal.tracking 
+  });
+  setDispatchModal({ isOpen: false, orderId: '', courier: 'TCS', tracking: '' });
+};
+
+const handleContactAdmin = async () => {
+  if (!currentUser) return;
+  try {
+    const adminQ = query(collection(db, 'users'), where('role', '==', 'admin'));
+    const adminSnap = await getDocs(adminQ);
+    if (adminSnap.empty) return alert("Admin account not found.");
     
-    const cleanNumber = order.buyerWhatsapp.replace(/^0/, '');
-    window.open(`https://wa.me/92${cleanNumber}?text=${encodeURIComponent(text)}`, '_blank');
+    const adminId = adminSnap.docs[0].id;
+    const chatId = [currentUser.uid, adminId].sort().join('_');
     
-    updateOrderStatus(order.id, 'accepted', { whatsappNotifiedAt: new Date().toISOString() });
-
-    if (order.buyerEmail) {
-      emailjs.send(
-        'service_q90wxjm',       
-        'template_bu0a3in',      
-        {
-          to_name: order.buyerName,
-          to_email: order.buyerEmail, 
-          order_id: order.trackingToken.slice(0, 8).toUpperCase(),
-          order_subtotal: order.subtotal || order.total,          
-          order_shipping: order.deliveryFee || 0,    
-          order_total: order.total,
-          payment_method: order.paymentMethod,
-          tracking_link: `https://medicalbank-admin.github.io/KorBazar/#/track/${order.trackingToken}`,
-        },
-        'yw7E81OSHpJ2l0jJm'        
-      ).catch(err => console.error("Email failed:", err));
+    const chatRef = doc(db, 'chats', chatId);
+    const chatSnap = await getDoc(chatRef);
+    
+    if (!chatSnap.exists()) {
+      await setDoc(chatRef, {
+        participants: [currentUser.uid, adminId],
+        lastMessage: "Started a conversation with Admin Support",
+        updatedAt: serverTimestamp(),
+        unreadCount: { [currentUser.uid]: 0, [adminId]: 0 }
+      });
     }
-  };
+    navigate(`/chat/${chatId}`);
+  } catch (error) {
+    console.error(error);
+    alert("Failed to connect to Admin.");
+  }
+};
 
-  if (loading) return <div className="p-8 text-center text-dark">Loading dashboard...</div>;
-  if (!store) return <div className="p-8 text-center text-alert">You are not registered as a seller.</div>;
-
-  if (store.isFrozen) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4">
-        <div className="bg-red-50 border border-red-200 p-8 rounded-3xl text-center max-w-md">
-          <ShieldAlert size={64} className="text-alert mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-alert mb-2">Store Frozen</h2>
-          <p className="text-gray-700 mb-6">Your store has been temporarily frozen by the Admin. Please contact support on WhatsApp.</p>
-          <a href="https://wa.me/923390251147" target="_blank" rel="noreferrer" className="bg-alert text-white px-6 py-3 rounded-xl font-bold inline-block">Contact Admin</a>
-        </div>
-      </div>
-    );
+const handleWhatsAppNotify = (order: any) => {
+  let paymentInstructions = "";
+  if (order.paymentMethod !== 'COD') {
+    paymentInstructions = `\nPlease send the payment via ${order.paymentMethod} to:\n${store.paymentAccounts || '[Seller needs to set account details]'}\n`;
   }
 
-  const pendingCount = orders.filter(o => o.status === 'new' || (o.status === 'accepted' && !o.paymentVerified && o.paymentMethod !== 'COD')).length;
-  const dispatchedCount = orders.filter(o => o.status === 'dispatched').length;
-  const deliveredCount = orders.filter(o => o.status === 'delivered').length;
-  const cancelledCount = orders.filter(o => o.status === 'cancelled' || o.status === 'rejected').length;
+  const text = `Assalam-o-Alaikum ${order.buyerName},\n\nYour order from ${store.storeName} has been CONFIRMED.\n\nOrder ID: #${order.trackingToken.slice(0,8).toUpperCase()}\n\nSubtotal: Rs. ${order.subtotal || order.total}\nDelivery Fees: Rs. ${order.deliveryFee || 0}\nTotal Bill: Rs. ${order.total}\n\nPayment Method: ${order.paymentMethod}\n${paymentInstructions}\nTrack your order here:\nhttps://medicalbank-admin.github.io/KorBazar/#/track/${order.trackingToken}\n\nThank you for supporting a local seller!\n- ${store.storeName} via KorBazar`;
+  
+  const cleanNumber = order.buyerWhatsapp.replace(/^0/, '');
+  window.open(`https://wa.me/92${cleanNumber}?text=${encodeURIComponent(text)}`, '_blank');
+  
+  updateOrderStatus(order.id, 'accepted', { whatsappNotifiedAt: new Date().toISOString() });
 
-  const filteredOrders = orders.filter(order => {
-    if (orderFilter === 'all') return true;
-    if (orderFilter === 'pending') return order.status === 'new' || (order.status === 'accepted' && !order.paymentVerified && order.paymentMethod !== 'COD');
-    if (orderFilter === 'dispatched') return order.status === 'dispatched';
-    if (orderFilter === 'delivered') return order.status === 'delivered';
-    if (orderFilter === 'cancelled') return order.status === 'cancelled' || order.status === 'rejected';
-    return true;
-  });
+  if (order.buyerEmail) {
+    emailjs.send(
+      'service_q90wxjm',       
+      'template_bu0a3in',      
+      {
+        to_name: order.buyerName,
+        to_email: order.buyerEmail, 
+        order_id: order.trackingToken.slice(0, 8).toUpperCase(),
+        order_subtotal: order.subtotal || order.total,          
+        order_shipping: order.deliveryFee || 0,    
+        order_total: order.total,
+        payment_method: order.paymentMethod,
+        tracking_link: `https://medicalbank-admin.github.io/KorBazar/#/track/${order.trackingToken}`,
+      },
+      'yw7E81OSHpJ2l0jJm'        
+    ).catch(err => console.error("Email failed:", err));
+  }
+};
 
-return (
+if (loading) return <div className="p-8 text-center text-dark">Loading dashboard...</div>;
+if (!store) return <div className="p-8 text-center text-alert">You are not registered as a seller.</div>;
+
+if (store.isFrozen) {
+  return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center px-4">
+      <div className="bg-red-50 border border-red-200 p-8 rounded-3xl text-center max-w-md">
+        <ShieldAlert size={64} className="text-alert mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-alert mb-2">Store Frozen</h2>
+        <p className="text-gray-700 mb-6">Your store has been temporarily frozen by the Admin. Please contact support on WhatsApp.</p>
+        <a href="https://wa.me/923390251147" target="_blank" rel="noreferrer" className="bg-alert text-white px-6 py-3 rounded-xl font-bold inline-block">Contact Admin</a>
+      </div>
+    </div>
+  );
+}
+
+const pendingCount = orders.filter(o => o.status === 'new' || (o.status === 'accepted' && !o.paymentVerified && o.paymentMethod !== 'COD')).length;
+const dispatchedCount = orders.filter(o => o.status === 'dispatched').length;
+const deliveredCount = orders.filter(o => o.status === 'delivered').length;
+const cancelledCount = orders.filter(o => o.status === 'cancelled' || o.status === 'rejected').length;
+
+const filteredOrders = orders.filter(order => {
+  if (orderFilter === 'all') return true;
+  if (orderFilter === 'pending') return order.status === 'new' || (order.status === 'accepted' && !order.paymentVerified && order.paymentMethod !== 'COD');
+  if (orderFilter === 'dispatched') return order.status === 'dispatched';
+  if (orderFilter === 'delivered') return order.status === 'delivered';
+  if (orderFilter === 'cancelled') return order.status === 'cancelled' || order.status === 'rejected';
+  return true;
+});
+
+  return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
+      
+      {/* EDIT MODAL (Stock / Discount) */}
+      {editModal.isOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm p-6 relative">
+            <button onClick={() => setEditModal({ ...editModal, isOpen: false })} className="absolute top-4 right-4 text-gray-400 hover:text-alert"><X size={24} /></button>
+            <h2 className="text-xl font-bold text-dark mb-4 capitalize">Update {editModal.type}</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {editModal.type === 'stock' ? 'New Stock Quantity' : 'Discount Percentage (0-100)'}
+                </label>
+                <input 
+                  type="number" 
+                  value={editModal.value} 
+                  onChange={e => setEditModal({...editModal, value: e.target.value})} 
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" 
+                />
+              </div>
+              <button onClick={handleEditSubmit} className="w-full bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand/90 shadow-md">
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {dispatchModal.isOpen && (
         <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm p-6 relative">
@@ -551,15 +572,16 @@ return (
                        <input type="number" required value={productDeliveryFee} onChange={e => setProductDeliveryFee(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
                      </div>
                      <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                        <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
                          {availableCategories.map(catName => (
-    <option key={catName} value={catName}>{catName}</option>
-  ))}
-</select>
+                           <option key={catName} value={catName}>{catName}</option>
+                         ))}
+                       </select>
                      </div>
                    </div>
 
-                   {/* VARIANTS SECTION */}
+                                      {/* VARIANTS SECTION */}
                    <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl">
                      <div className="flex justify-between items-center mb-3">
                        <label className="block text-sm font-bold text-dark">Product Variants (Sizes/Colors)</label>
@@ -638,12 +660,12 @@ return (
                            <span className={`text-xs font-bold px-2 py-0.5 rounded ${Number(p.stock) > 0 ? 'bg-green-100 text-brand' : 'bg-red-100 text-alert'}`}>
                              Stock: {p.stock !== undefined ? p.stock : 'N/A'}
                            </span>
-                           <button onClick={() => handleUpdateStock(p.id, p.stock)} className="text-blue-600 text-xs font-bold hover:underline mr-2">Edit</button>
+                           <button onClick={() => openEditModal(p.id, 'stock', p.stock)} className="text-blue-600 text-xs font-bold hover:underline mr-2">Edit</button>
                            
                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">
                              Disc: {p.discountPercent || 0}%
                            </span>
-                           <button onClick={() => handleUpdateDiscount(p.id, p.discountPercent)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
+                           <button onClick={() => openEditModal(p.id, 'discount', p.discountPercent)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
                          </div>
                        </div>
                      </div>
@@ -740,4 +762,4 @@ return (
       )}
     </div>
   );
-}
+                                      }
