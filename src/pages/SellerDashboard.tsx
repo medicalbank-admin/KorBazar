@@ -74,14 +74,22 @@ export default function SellerDashboard() {
         setSocialLinks(data.socialLinks || { facebook: '', instagram: '', tiktok: '' });
       }
 
-      const prodQ = query(
-        collection(db, 'products'), 
-        where('sellerId', '==', currentUser.uid),
-        orderBy('createdAt', 'desc'),
-        limit(50)
-      );
-      const prodSnap = await getDocs(prodQ);
-      setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      // Fetch products without strict ordering to ensure nothing is missed
+const prodQ = query(
+  collection(db, 'products'), 
+  where('sellerId', '==', currentUser.uid)
+);
+const prodSnap = await getDocs(prodQ);
+const productsData = prodSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+// Sort them in memory instead of the database
+productsData.sort((a: any, b: any) => {
+  const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+  const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+  return dateB - dateA;
+});
+
+setProducts(productsData);
 
       const orderQ = query(
         collection(db, 'orders'), 
