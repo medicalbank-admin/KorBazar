@@ -62,8 +62,12 @@ export default function App() {
                   </Routes>
                 </main>
                 <footer className="bg-white border-t border-gray-100 py-8 text-center text-sm text-gray-500 pb-24 md:pb-8">
-                  <p className="font-semibold text-dark text-lg mb-2">KorBazar</p>
-                  <p className="mb-4">Khpal Kor, Khpal Bazar.</p>
+                  <img 
+  src="./logo.png" 
+  alt="KorBazar" 
+  className="h-16 w-auto object-contain mx-auto mb-2" 
+  onError={(e) => { e.currentTarget.style.display = 'none'; }} 
+/>
                   <div className="flex justify-center gap-6">
                     <a href="#/terms" className="hover:text-brand">Terms</a>
                     <a href="#/privacy" className="hover:text-brand">Privacy</a>
