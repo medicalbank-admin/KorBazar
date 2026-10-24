@@ -32,7 +32,7 @@ export default function Checkout() {
   const [referralError, setReferralError] = useState('');
   const [isApplyingReferral, setIsApplyingReferral] = useState(false);
 
-  const REFERRAL_DISCOUNT = 100; // Rs. 100 off
+  const REFERRAL_DISCOUNT = 100;
 
   const discountAmount = appliedCoupon ? appliedCoupon.discount : 0;
   const referralDiscount = appliedReferral ? REFERRAL_DISCOUNT : 0;
@@ -137,42 +137,83 @@ export default function Checkout() {
     setLoading(true);
 
     try {
-      const trackingToken = crypto.randomUUID();
-      
-      const orderData = {
-        buyerUid: currentUser?.uid || 'guest',
-        buyerName: formData.name,
-        buyerEmail: formData.email,
-        buyerPhone: formData.phone,
-        buyerWhatsapp: formData.whatsapp,
-        buyerAddress: formData.address,
-        notes: formData.notes,
-        sellerId: cart[0].sellerId,
-        storeName: cart[0].storeName,
-        items: cart.map(i => ({ 
-          productId: i.productId, 
-          title: i.title, 
-          price: i.price, 
-          qty: i.quantity, 
-          deliveryFee: i.deliveryFee || 0 
-        })),
-        subtotal: cartTotal,
-        deliveryFee: cartDeliveryFee,
-        couponCode: appliedCoupon ? appliedCoupon.code : null,
-        discountAmount: discountAmount,
-        referredBy: appliedReferral ? appliedReferral.id : null, // SAVE THE REFERRER ID
-        referralDiscount: referralDiscount, // SAVE THE REFERRAL DISCOUNT AMOUNT
-        total: finalTotal,
-        paymentMethod: paymentMethod,
-        status: 'new',
-        trackingToken: trackingToken,
-        createdAt: new Date().toISOString()
-      };
+      // GROUP CART BY SELLER
+      const groupedBySeller = cart.reduce((acc: any, item) => {
+        if (!acc[item.sellerId]) acc[item.sellerId] = [];
+        acc[item.sellerId].push(item);
+        return acc;
+      }, {});
 
-      await addDoc(collection(db, 'orders'), orderData);
+      const sellerIds = Object.keys(groupedBySeller);
+      const generatedTokens: string[] = [];
+
+      // Create a separate order for each seller
+      for (const sellerId of sellerIds) {
+        const sellerItems = groupedBySeller[sellerId];
+        const sellerStoreName = sellerItems[0].storeName;
+        
+        const sellerSubtotal = sellerItems.reduce((sum: number, i: any) => sum + (i.price * i.quantity), 0);
+        const sellerDelivery = sellerItems.reduce((sum: number, i: any) => sum + ((i.deliveryFee || 0) * i.quantity), 0);
+        
+        // Apply discount proportionally to each seller's order based on subtotal
+        const proportion = cartTotal > 0 ? (sellerSubtotal / cartTotal) : 0;
+        const sellerCouponDiscount = discountAmount * proportion;
+        const sellerReferralDiscount = referralDiscount * proportion;
+        
+        const sellerTotal = Math.max(0, sellerSubtotal + sellerDelivery - sellerCouponDiscount - sellerReferralDiscount);
+        
+        const trackingToken = crypto.randomUUID();
+        generatedTokens.push(trackingToken);
+
+        const orderData = {
+          buyerUid: currentUser?.uid || 'guest',
+          buyerName: formData.name,
+          buyerEmail: formData.email,
+          buyerPhone: formData.phone,
+          buyerWhatsapp: formData.whatsapp,
+          buyerAddress: formData.address,
+          notes: formData.notes,
+          sellerId: sellerId,
+          storeName: sellerStoreName,
+          items: sellerItems.map((i: any) => ({ 
+            productId: i.productId, 
+            title: i.title, 
+            price: i.price, 
+            qty: i.quantity, 
+            deliveryFee: i.deliveryFee || 0,
+            selectedSize: i.selectedSize || null,
+            selectedColor: i.selectedColor || null
+          })),
+          subtotal: sellerSubtotal,
+          deliveryFee: sellerDelivery,
+          couponCode: appliedCoupon ? appliedCoupon.code : null,
+          discountAmount: sellerCouponDiscount,
+          referredBy: appliedReferral ? appliedReferral.id : null,
+          referralDiscount: sellerReferralDiscount,
+          total: sellerTotal,
+          paymentMethod: paymentMethod,
+          status: 'new',
+          trackingToken: trackingToken,
+          createdAt: new Date().toISOString()
+        };
+
+        await addDoc(collection(db, 'orders'), orderData);
+        
+        // Trigger Notification for this specific Seller
+        await addDoc(collection(db, 'notifications'), {
+          userId: sellerId,
+          title: 'New Order Received! 🎉',
+          message: `You have a new order for Rs. ${sellerTotal} from ${formData.name}.`,
+          type: 'order',
+          link: '/seller/dashboard',
+          isRead: false,
+          createdAt: new Date().toISOString()
+        });
+      }
       
       clearCart();
-      navigate(`/track/${trackingToken}`);
+      // Redirect to the tracking page of the first order created
+      navigate(`/track/${generatedTokens[0]}`);
     } catch (error) {
       console.error(error);
       alert('Failed to place order. Try again.');
@@ -183,8 +224,7 @@ export default function Checkout() {
 
   if (cart.length === 0) return null;
   if (fetchingAddress) return <div className="p-12 text-center text-brand font-bold">Loading details...</div>;
-
-  return (
+    return (
     <div className="max-w-3xl mx-auto px-4 py-8 pb-24">
       <h1 className="text-3xl font-bold text-dark mb-6">Checkout</h1>
       
@@ -240,7 +280,6 @@ export default function Checkout() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
           <h2 className="font-bold text-lg text-dark mb-2 flex items-center gap-2"><Ticket size={20} className="text-brand"/> Have a Coupon or Referral?</h2>
           
-          {/* Coupon Input */}
           <div>
             {!appliedCoupon ? (
               <div className="flex gap-2">
@@ -260,7 +299,6 @@ export default function Checkout() {
             {couponMsg && <p className="text-brand text-xs mt-1 font-semibold">{couponMsg}</p>}
           </div>
 
-          {/* Referral Input */}
           <div className="pt-2 border-t border-gray-100">
             {!appliedReferral ? (
               <div className="flex gap-2">
