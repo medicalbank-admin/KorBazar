@@ -4,8 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { collection, addDoc, doc, getDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Ticket, X, Mail } from 'lucide-react';
-import emailjs from '@emailjs/browser';
+import { Ticket, X, Mail, Gift } from 'lucide-react';
 
 export default function Checkout() {
   const { cart, cartTotal, cartDeliveryFee, clearCart } = useCart();
@@ -26,8 +25,18 @@ export default function Checkout() {
   const [couponError, setCouponError] = useState('');
   const [isApplying, setIsApplying] = useState(false);
 
+  // Referral State
+  const [referralCode, setReferralCode] = useState('');
+  const [appliedReferral, setAppliedReferral] = useState<any>(null);
+  const [referralMsg, setReferralMsg] = useState('');
+  const [referralError, setReferralError] = useState('');
+  const [isApplyingReferral, setIsApplyingReferral] = useState(false);
+
+  const REFERRAL_DISCOUNT = 100; // Rs. 100 off
+
   const discountAmount = appliedCoupon ? appliedCoupon.discount : 0;
-  const finalTotal = Math.max(0, cartTotal + cartDeliveryFee - discountAmount);
+  const referralDiscount = appliedReferral ? REFERRAL_DISCOUNT : 0;
+  const finalTotal = Math.max(0, cartTotal + cartDeliveryFee - discountAmount - referralDiscount);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -86,6 +95,42 @@ export default function Checkout() {
     setCouponError('');
   };
 
+  const handleApplyReferral = async () => {
+    if (!referralCode.trim() || !currentUser) return;
+    setIsApplyingReferral(true);
+    setReferralError('');
+    setReferralMsg('');
+
+    try {
+      const q = query(collection(db, 'users'), where('referralCode', '==', referralCode.toUpperCase().trim()));
+      const snap = await getDocs(q);
+      
+      if (snap.empty) {
+        setReferralError('Invalid referral code.');
+      } else {
+        const referrerDoc = snap.docs[0];
+        
+        if (referrerDoc.id === currentUser.uid) {
+          setReferralError('You cannot use your own referral code.');
+        } else {
+          setAppliedReferral({ id: referrerDoc.id, name: referrerDoc.data().email });
+          setReferralMsg(`Referral applied! Rs. ${REFERRAL_DISCOUNT} off.`);
+          setReferralCode('');
+        }
+      }
+    } catch (error) {
+      setReferralError('Failed to apply referral.');
+    } finally {
+      setIsApplyingReferral(false);
+    }
+  };
+
+  const handleRemoveReferral = () => {
+    setAppliedReferral(null);
+    setReferralMsg('');
+    setReferralError('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) return;
@@ -93,7 +138,6 @@ export default function Checkout() {
 
     try {
       const trackingToken = crypto.randomUUID();
-      const trackingLink = `https://medicalbank-admin.github.io/KorBazar/#/track/${trackingToken}`;
       
       const orderData = {
         buyerUid: currentUser?.uid || 'guest',
@@ -116,6 +160,8 @@ export default function Checkout() {
         deliveryFee: cartDeliveryFee,
         couponCode: appliedCoupon ? appliedCoupon.code : null,
         discountAmount: discountAmount,
+        referredBy: appliedReferral ? appliedReferral.id : null, // SAVE THE REFERRER ID
+        referralDiscount: referralDiscount, // SAVE THE REFERRAL DISCOUNT AMOUNT
         total: finalTotal,
         paymentMethod: paymentMethod,
         status: 'new',
@@ -123,43 +169,8 @@ export default function Checkout() {
         createdAt: new Date().toISOString()
       };
 
-      // 1. Save Order to Firestore
       await addDoc(collection(db, 'orders'), orderData);
-
-      // Trigger Notification for Seller
-await addDoc(collection(db, 'notifications'), {
-  userId: cart[0].sellerId,
-  title: 'New Order Received! 🎉',
-  message: `You have a new order for Rs. ${finalTotal} from ${formData.name}.`,
-  type: 'order',
-  link: '/seller/dashboard',
-  isRead: false,
-  createdAt: new Date().toISOString()
-});
-
-      // 2. Send Email Notification with your actual keys
-      if (formData.email) {
-        try {
-          await emailjs.send(
-            'service_q90wxjm',       
-            'template_bu0a3in',      
-            {
-              to_name: formData.name,
-              to_email: formData.email, 
-              order_id: trackingToken.slice(0, 8).toUpperCase(),
-              order_subtotal: cartTotal,          
-              order_shipping: cartDeliveryFee,    
-              order_total: finalTotal,
-              payment_method: paymentMethod,
-              tracking_link: trackingLink,
-            },
-            'yw7E81OSHpJ2l0jJm'        
-          );
-        } catch (emailError) {
-          console.error("Email failed to send, but order was placed:", emailError);
-        }
-      }
-
+      
       clearCart();
       navigate(`/track/${trackingToken}`);
     } catch (error) {
@@ -225,28 +236,49 @@ await addDoc(collection(db, 'notifications'), {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="font-bold text-lg text-dark mb-4 flex items-center gap-2"><Ticket size={20} className="text-brand"/> Have a Coupon?</h2>
+        {/* PROMO CODES SECTION */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+          <h2 className="font-bold text-lg text-dark mb-2 flex items-center gap-2"><Ticket size={20} className="text-brand"/> Have a Coupon or Referral?</h2>
           
-          {!appliedCoupon ? (
-            <div className="flex gap-2">
-              <input type="text" value={couponCode} onChange={e => setCouponCode(e.target.value)} placeholder="Enter code" className="flex-grow px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none uppercase" />
-              <button type="button" onClick={handleApplyCoupon} disabled={isApplying} className="bg-dark text-white px-6 py-3 rounded-xl font-bold hover:bg-black transition-colors disabled:bg-gray-400">
-                {isApplying ? '...' : 'Apply'}
-              </button>
-            </div>
-          ) : (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex justify-between items-center">
-              <div>
-                <p className="font-bold text-brand">{appliedCoupon.code}</p>
-                <p className="text-sm text-green-700">You saved Rs. {appliedCoupon.discount}!</p>
+          {/* Coupon Input */}
+          <div>
+            {!appliedCoupon ? (
+              <div className="flex gap-2">
+                <input type="text" value={couponCode} onChange={e => setCouponCode(e.target.value)} placeholder="Enter coupon code" className="flex-grow px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none uppercase" />
+                <button type="button" onClick={handleApplyCoupon} disabled={isApplying} className="bg-dark text-white px-6 py-3 rounded-xl font-bold hover:bg-black transition-colors disabled:bg-gray-400">Apply</button>
               </div>
-              <button type="button" onClick={handleRemoveCoupon} className="text-alert p-2 hover:bg-red-100 rounded-lg"><X size={20}/></button>
-            </div>
-          )}
-          
-          {couponError && <p className="text-alert text-sm mt-2 font-semibold">{couponError}</p>}
-          {couponMsg && <p className="text-brand text-sm mt-2 font-semibold">{couponMsg}</p>}
+            ) : (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex justify-between items-center">
+                <div>
+                  <p className="font-bold text-brand text-sm">{appliedCoupon.code}</p>
+                  <p className="text-xs text-green-700">You saved Rs. {appliedCoupon.discount}!</p>
+                </div>
+                <button type="button" onClick={handleRemoveCoupon} className="text-alert p-1 hover:bg-red-100 rounded-lg"><X size={18}/></button>
+              </div>
+            )}
+            {couponError && <p className="text-alert text-xs mt-1 font-semibold">{couponError}</p>}
+            {couponMsg && <p className="text-brand text-xs mt-1 font-semibold">{couponMsg}</p>}
+          </div>
+
+          {/* Referral Input */}
+          <div className="pt-2 border-t border-gray-100">
+            {!appliedReferral ? (
+              <div className="flex gap-2">
+                <input type="text" value={referralCode} onChange={e => setReferralCode(e.target.value)} placeholder="Enter friend's referral code" className="flex-grow px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none uppercase" />
+                <button type="button" onClick={handleApplyReferral} disabled={isApplyingReferral} className="bg-brand/10 text-brand px-6 py-3 rounded-xl font-bold hover:bg-brand/20 transition-colors disabled:bg-gray-400">Apply</button>
+              </div>
+            ) : (
+              <div className="bg-brand/5 border border-brand/20 rounded-xl p-3 flex justify-between items-center">
+                <div>
+                  <p className="font-bold text-brand text-sm flex items-center gap-1"><Gift size={14}/> Referral Applied</p>
+                  <p className="text-xs text-brand/80">You saved Rs. {REFERRAL_DISCOUNT}!</p>
+                </div>
+                <button type="button" onClick={handleRemoveReferral} className="text-alert p-1 hover:bg-red-100 rounded-lg"><X size={18}/></button>
+              </div>
+            )}
+            {referralError && <p className="text-alert text-xs mt-1 font-semibold">{referralError}</p>}
+            {referralMsg && <p className="text-brand text-xs mt-1 font-semibold">{referralMsg}</p>}
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -260,8 +292,14 @@ await addDoc(collection(db, 'notifications'), {
           </div>
           {appliedCoupon && (
             <div className="flex justify-between text-brand font-bold mb-2">
-              <span>Discount ({appliedCoupon.code})</span>
+              <span>Coupon Discount</span>
               <span>- Rs. {discountAmount}</span>
+            </div>
+          )}
+          {appliedReferral && (
+            <div className="flex justify-between text-brand font-bold mb-2">
+              <span>Referral Discount</span>
+              <span>- Rs. {referralDiscount}</span>
             </div>
           )}
           <div className="flex justify-between font-bold text-xl text-dark border-t border-gray-100 pt-4 mt-2">
@@ -276,4 +314,4 @@ await addDoc(collection(db, 'notifications'), {
       </form>
     </div>
   );
-          }
+              }
