@@ -1,11 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, ShoppingCart, User, Package, LayoutDashboard, ShieldCheck, Heart } from 'lucide-react';
+import { Home, Search, ShoppingCart, User, Package, LayoutDashboard, ShieldCheck, Heart, MessageSquare } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useChat } from '../context/ChatContext';
 import NotificationBell from './NotificationBell';
 
 export default function Navbar() {
   const location = useLocation();
   const { currentUser, userRole } = useAuth();
+  const { unreadTotal } = useChat(); // <-- ADDED CHAT 
 
   return (
     <>
@@ -33,10 +35,21 @@ export default function Navbar() {
             </>
           ) : (
             <div className="flex items-center gap-4">
-              <span className="text-sm font-bold text-brand uppercase bg-brand/10 px-3 py-1 rounded-full">{userRole || 'buyer'}</span>
-              <NotificationBell />
-              <Link to="/profile" className="font-semibold text-dark hover:text-brand transition-colors">Profile</Link>
-            </div>
+  <span className="text-sm font-bold text-brand uppercase bg-brand/10 px-3 py-1 rounded-full">{userRole || 'buyer'}</span>
+  
+  {/* INBOX ICON FOR DESKTOP */}
+  <Link to="/inbox" className="relative p-2 text-gray-600 hover:text-brand transition-colors">
+    <MessageSquare size={24} />
+    {unreadTotal > 0 && (
+      <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">
+        {unreadTotal}
+      </span>
+    )}
+  </Link>
+
+  <NotificationBell />
+  <Link to="/profile" className="font-semibold text-dark hover:text-brand transition-colors">Profile</Link>
+</div>
           )}
         </div>
       </header>
@@ -47,17 +60,29 @@ export default function Navbar() {
           <img src="./logo.png" alt="KorBazar" className="h-12 w-auto object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           
         </Link>
-        
         <div className="flex items-center gap-2">
-          {currentUser && <NotificationBell />}
-          {!currentUser ? (
-            <Link to="/login" className="font-semibold text-brand">Login</Link>
-          ) : (
-            <Link to={userRole === 'seller' ? '/seller/dashboard' : userRole === 'admin' ? '/admin' : '/profile'} className="font-semibold text-brand flex items-center gap-1 uppercase text-sm bg-brand/10 px-3 py-1.5 rounded-full">
-              <User size={14}/> {userRole || 'buyer'}
-            </Link>
-          )}
-        </div>
+  
+  {/* INBOX ICON FOR MOBILE */}
+  {currentUser && (
+    <Link to="/inbox" className="relative p-2 text-gray-600 hover:text-brand transition-colors">
+      <MessageSquare size={22} />
+      {unreadTotal > 0 && (
+        <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
+          {unreadTotal}
+        </span>
+      )}
+    </Link>
+  )}
+
+  {currentUser && <NotificationBell />}
+  {!currentUser ? (
+    <Link to="/login" className="font-semibold text-brand">Login</Link>
+  ) : (
+    <Link to={userRole === 'seller' ? '/seller/dashboard' : userRole === 'admin' ? '/admin' : '/profile'} className="font-semibold text-brand flex items-center gap-1 uppercase text-sm bg-brand/10 px-3 py-1.5 rounded-full">
+      <User size={14}/> {userRole || 'buyer'}
+    </Link>
+  )}
+</div>
       </header>
 
       {/* Mobile Bottom Nav */}
