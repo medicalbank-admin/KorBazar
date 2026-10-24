@@ -126,6 +126,17 @@ export default function Checkout() {
       // 1. Save Order to Firestore
       await addDoc(collection(db, 'orders'), orderData);
 
+      // Trigger Notification for Seller
+await addDoc(collection(db, 'notifications'), {
+  userId: cart[0].sellerId,
+  title: 'New Order Received! 🎉',
+  message: `You have a new order for Rs. ${finalTotal} from ${formData.name}.`,
+  type: 'order',
+  link: '/seller/dashboard',
+  isRead: false,
+  createdAt: new Date().toISOString()
+});
+
       // 2. Send Email Notification with your actual keys
       if (formData.email) {
         try {
