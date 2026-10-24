@@ -37,7 +37,7 @@ export default function AdSlideshow() {
 
     const adTimer = setInterval(() => {
       setCurrentAdIndex((prevIndex) => (prevIndex + 1) % ads.length);
-    }, 7000); // 7 seconds
+    }, 3000); // 7 seconds
 
     return () => clearInterval(adTimer);
   }, [isVisible, ads.length]);
