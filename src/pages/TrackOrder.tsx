@@ -130,7 +130,6 @@ export default function TrackOrder() {
           </div>
         )}
 
-        {/* COURIER TRACKING INFO - UPDATED TO SHOW COURIER NAME */}
         {order.trackingNumber && (
           <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl flex items-center gap-3 mb-6">
             <Box size={24} />
@@ -147,8 +146,18 @@ export default function TrackOrder() {
           
           <div className="space-y-2 mb-4">
             {order.items.map((item: any, i: number) => (
-              <div key={i} className="flex justify-between text-sm">
-                <span>{item.qty}x {item.title}</span>
+              <div key={i} className="flex justify-between text-sm border-b border-gray-100 pb-2 last:border-0">
+                <div>
+                  <span>{item.qty}x {item.title}</span>
+                  {/* SHOW SELECTED VARIANTS TO BUYER */}
+                  {(item.selectedSize || item.selectedColor) && (
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {item.selectedSize && <span>Size: {item.selectedSize}</span>}
+                      {item.selectedSize && item.selectedColor && <span> | </span>}
+                      {item.selectedColor && <span>Color: {item.selectedColor}</span>}
+                    </div>
+                  )}
+                </div>
                 <span className="font-medium">Rs. {item.price * item.qty}</span>
               </div>
             ))}
@@ -217,4 +226,4 @@ export default function TrackOrder() {
       )}
     </div>
   );
-                                                                                                  }
+            }
