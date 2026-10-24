@@ -174,7 +174,7 @@ export default function SellerDashboard() {
     setDispatchModal({ isOpen: false, orderId: '', courier: 'TCS', tracking: '' });
   };
 
-  const handleWhatsAppNotify = (order: any) => {
+  const handleWhatsAppNotify = async (order: any) => {
     let paymentInstructions = "";
     if (order.paymentMethod !== 'COD') {
       paymentInstructions = `\nPlease send the payment via ${order.paymentMethod} to:\n${store.paymentAccounts || '[Seller needs to set account details]'}\n`;
