@@ -185,6 +185,19 @@ export default function SellerDashboard() {
     const cleanNumber = order.buyerWhatsapp.replace(/^0/, '');
     window.open(`https://wa.me/92${cleanNumber}?text=${encodeURIComponent(text)}`, '_blank');
     updateOrderStatus(order.id, 'accepted', { whatsappNotifiedAt: new Date().toISOString() });
+    
+    // Trigger Notification for Buyer
+if (order.buyerUid && order.buyerUid !== 'guest') {
+  await addDoc(collection(db, 'notifications'), {
+    userId: order.buyerUid,
+    title: 'Order Confirmed! ✅',
+    message: `Your order #${order.trackingToken.slice(0,8).toUpperCase()} has been accepted by ${store.storeName}.`,
+    type: 'order',
+    link: `/track/${order.trackingToken}`,
+    isRead: false,
+    createdAt: new Date().toISOString()
+  });
+}
   };
 
   if (loading) return <div className="p-8 text-center text-dark">Loading dashboard...</div>;
