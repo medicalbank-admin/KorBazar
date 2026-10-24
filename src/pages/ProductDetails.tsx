@@ -144,12 +144,17 @@ export default function ProductDetails() {
 
           <div className="mt-auto space-y-3">
             <button 
-              onClick={handleAddToCart} 
-              disabled={isOutOfStock}
-              className={`w-full font-bold text-lg py-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-md ${isOutOfStock ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-brand text-white hover:bg-brand/90'}`}
-            >
-              <ShoppingCart size={22} /> {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
-            </button>
+  onClick={() => {
+    if (isOutOfStock) {
+      alert("This product is out of stock right now.");
+    } else {
+      handleAddToCart();
+    }
+  }} 
+  className={`w-full font-bold text-lg py-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-md ${isOutOfStock ? 'bg-gray-300 text-gray-500 cursor-pointer' : 'bg-brand text-white hover:bg-brand/90'}`}
+>
+  <ShoppingCart size={22} /> {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+</button>
             
             <a href={whatsappLink} target="_blank" rel="noreferrer" className="w-full bg-white text-dark border-2 border-[#25D366] font-bold text-lg py-4 rounded-xl hover:bg-[#25D366]/10 transition-colors flex items-center justify-center gap-2">
               <MessageCircle size={22} className="text-[#25D366]" /> Ask Seller on WhatsApp
