@@ -20,6 +20,7 @@ import About from './pages/About';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { CartProvider } from './context/CartContext';
 import { FavoritesProvider } from './context/FavoritesContext';
 import { HistoryProvider } from './context/HistoryContext';
@@ -27,6 +28,7 @@ import { HistoryProvider } from './context/HistoryContext';
 export default function App() {
   return (
     <AuthProvider>
+      <NotificationProvider>
       <HistoryProvider>
         <FavoritesProvider>
           <CartProvider>
@@ -74,6 +76,8 @@ export default function App() {
           </CartProvider>
         </FavoritesProvider>
       </HistoryProvider>
+      </NotificationProvider>
     </AuthProvider>
-  );
-}
+    
+);
+} 
