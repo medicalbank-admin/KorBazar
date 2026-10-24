@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import ProductCard from '../components/ProductCard';
+import AdSlideshow from '../components/AdSlideshow';
 
 export default function Home() {
   const [products, setProducts] = useState<any[]>([]);
@@ -52,6 +53,9 @@ export default function Home() {
 
   return (
     <div className="pb-24 md:pb-12">
+      {/* AD SLIDESHOW */}
+      <AdSlideshow />
+
       <section className="px-4 py-16 md:py-24 max-w-7xl mx-auto text-center">
         <h1 className="text-4xl md:text-6xl font-extrabold text-dark mb-6 tracking-tight">
           Khpal Kor, <span className="text-brand">Khpal Bazar.</span>
