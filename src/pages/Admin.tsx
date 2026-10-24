@@ -9,10 +9,12 @@ export default function Admin() {
   const [orders, setOrders] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState<any[]>([]);
+  const [ads, setAds] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'promotions' | 'orders' | 'products' | 'categories' | 'coupons' | 'verification' | 'finance' | 'reports' | 'ads'>('overview');
+  
   const [viewImage, setViewImage] = useState<string | null>(null);
   const [editingSeller, setEditingSeller] = useState<any>(null);
   const [editForm, setEditForm] = useState({ fullName: '', phone: '', storeName: '', bio: '', address: '' });
@@ -20,11 +22,10 @@ export default function Admin() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCoupon, setNewCoupon] = useState({ code: '', discount: '', minAmount: '' });
   const [couponMsg, setCouponMsg] = useState('');
-  const [ads, setAds] = useState<any[]>([]);
-const [newAd, setNewAd] = useState({ title: '', productId: '', imageBase64: '', link: '/explore' });
-const [isUploadingAd, setIsUploadingAd] = useState(false);
+  
+  const [newAd, setNewAd] = useState({ title: '', productId: '', imageBase64: '', link: '/explore' });
+  const [isUploadingAd, setIsUploadingAd] = useState(false);
 
-  // Platform Settings State
   const [fees, setFees] = useState({ standard: 1000, premium: 2000 });
   const [isSavingFees, setIsSavingFees] = useState(false);
 
@@ -49,12 +50,13 @@ const [isUploadingAd, setIsUploadingAd] = useState(false);
 
       const couponSnap = await getDocs(collection(db, 'coupons'));
       setCoupons(couponSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      const reportSnap = await getDocs(collection(db, 'reports'));
-setReports(reportSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      const adsSnap = await getDocs(collection(db, 'ads'));
-setAds(adsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       
-      // Fetch Platform Settings
+      const reportSnap = await getDocs(collection(db, 'reports'));
+      setReports(reportSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      
+      const adsSnap = await getDocs(collection(db, 'ads'));
+      setAds(adsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      
       const settingsSnap = await getDoc(doc(db, 'settings', 'platform'));
       if (settingsSnap.exists()) {
         setFees(settingsSnap.data() as any);
@@ -178,45 +180,47 @@ setAds(adsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       fetchData();
     }
   };
-const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setNewAd({ ...newAd, imageBase64: reader.result as string });
-    };
-    reader.readAsDataURL(file);
-  }
-};
 
-const handleAddAd = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!newAd.title || !newAd.imageBase64) return alert("Please provide a title and image.");
-  setIsUploadingAd(true);
-  try {
-    await addDoc(collection(db, 'ads'), {
-      title: newAd.title,
-      productId: newAd.productId,
-      imageBase64: newAd.imageBase64, // Saving directly as Base64 to bypass Storage limits
-      link: newAd.link,
-      createdAt: new Date().toISOString()
-    });
-    setNewAd({ title: '', productId: '', imageBase64: '', link: '/explore' });
-    fetchData();
-    alert("Ad created successfully!");
-  } catch (error) {
-    alert("Failed to create ad.");
-  } finally {
-    setIsUploadingAd(false);
-  }
-};
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewAd({ ...newAd, imageBase64: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-const handleDeleteAd = async (id: string) => {
-  if(window.confirm("Delete this ad?")) {
-    await deleteDoc(doc(db, 'ads', id));
-    fetchData();
-  }
-};
+  const handleAddAd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAd.title || !newAd.imageBase64) return alert("Please provide a title and image.");
+    setIsUploadingAd(true);
+    try {
+      await addDoc(collection(db, 'ads'), {
+        title: newAd.title,
+        productId: newAd.productId,
+        imageBase64: newAd.imageBase64,
+        link: newAd.link,
+        createdAt: new Date().toISOString()
+      });
+      setNewAd({ title: '', productId: '', imageBase64: '', link: '/explore' });
+      fetchData();
+      alert("Ad created successfully!");
+    } catch (error) {
+      alert("Failed to create ad.");
+    } finally {
+      setIsUploadingAd(false);
+    }
+  };
+
+  const handleDeleteAd = async (id: string) => {
+    if(window.confirm("Delete this ad?")) {
+      await deleteDoc(doc(db, 'ads', id));
+      fetchData();
+    }
+  };
+
   const handleOpenEdit = (seller: any) => {
     setEditingSeller(seller);
     setEditForm({ fullName: seller.fullName || '', phone: seller.phone || '', storeName: seller.storeName || '', bio: seller.bio || '', address: seller.storeAddress || '' });
@@ -240,15 +244,10 @@ const handleDeleteAd = async (id: string) => {
   const premiumSellers = approvedSellers.filter(s => s.plan === 'premium');
   const standardSellers = approvedSellers.filter(s => s.plan !== 'premium');
   
-  // --- FINANCIAL CALCULATIONS ---
-  // Actual Earned Revenue: Only counts sellers who have PAID
   const paidStandardCount = standardSellers.filter(s => s.feeStatus === 'paid').length;
   const paidPremiumCount = premiumSellers.filter(s => s.feeStatus === 'paid').length;
   const actualEarnedRevenue = (paidStandardCount * fees.standard) + (paidPremiumCount * fees.premium);
-
-  // Expected Revenue: Counts all active sellers
   const expectedMonthlyRevenue = (standardSellers.length * fees.standard) + (premiumSellers.length * fees.premium);
-  
   const paidSellersCount = approvedSellers.filter(s => s.feeStatus === 'paid').length;
   const unpaidSellersCount = approvedSellers.length - paidSellersCount;
   return (
@@ -346,7 +345,6 @@ const handleDeleteAd = async (id: string) => {
           <div>
             <h2 className="text-xl font-bold text-dark mb-6 flex items-center gap-2"><Settings size={24}/> Financial Dashboard & Settings</h2>
             
-            {/* FEE SETTINGS FORM */}
             <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl mb-8 flex flex-col md:flex-row items-end gap-4 max-w-3xl">
               <div className="flex-grow">
                 <label className="block text-xs font-bold text-gray-500 mb-1">Standard Monthly Fee (Rs.)</label>
@@ -362,7 +360,6 @@ const handleDeleteAd = async (id: string) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              {/* ACTUAL EARNED REVENUE */}
               <div className="bg-gradient-to-br from-brand to-green-700 text-white p-6 rounded-3xl shadow-md">
                 <div className="flex justify-between items-start mb-4">
                   <div>
@@ -378,7 +375,6 @@ const handleDeleteAd = async (id: string) => {
                 </div>
               </div>
 
-              {/* EXPECTED REVENUE */}
               <div className="bg-gray-50 p-6 rounded-3xl border border-gray-200 shadow-sm">
                 <div className="flex justify-between items-start mb-4">
                   <div>
@@ -445,73 +441,72 @@ const handleDeleteAd = async (id: string) => {
         )}
 
         {activeTab === 'ads' && (
-  <div>
-    <h2 className="text-xl font-bold text-dark mb-6">Manage Advertisements</h2>
-    
-    <form onSubmit={handleAddAd} className="bg-gray-50 p-6 rounded-2xl border border-gray-100 mb-8 max-w-3xl">
-      <div className="grid md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <label className="block text-xs font-bold text-gray-500 mb-1">Ad Title (Internal)</label>
-          <input type="text" required value={newAd.title} onChange={e => setNewAd({...newAd, title: e.target.value})} placeholder="e.g. Eid Sale - Premium Cakes" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:outline-none" />
-        </div>
-        <div>
-          <label className="block text-xs font-bold text-gray-500 mb-1">Link to Product ID (Optional)</label>
-          <input type="text" value={newAd.productId} onChange={e => setNewAd({...newAd, productId: e.target.value})} placeholder="e.g. prod-123" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:outline-none" />
-        </div>
-      </div>
-      
-      <div className="mb-4">
-        <label className="block text-xs font-bold text-gray-500 mb-1">Upload Ad Banner Image (Required)</label>
-        <input type="file" accept="image/*" required onChange={handleImageUpload} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20" />
-        {newAd.imageBase64 && <img src={newAd.imageBase64} alt="Preview" className="mt-3 h-32 object-contain rounded-lg border" />}
-      </div>
-
-      <button type="submit" disabled={isUploadingAd} className="w-full bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand/90 shadow-md flex items-center justify-center gap-2">
-        <Megaphone size={18} /> {isUploadingAd ? 'Publishing Ad...' : 'Create Advertisement'}
-      </button>
-    </form>
-
-    <h3 className="font-bold text-lg text-dark mb-4 border-t border-gray-100 pt-6">Active Ads ({ads.length}/5)</h3>
-    <div className="grid md:grid-cols-2 gap-4">
-      {ads.length === 0 ? (
-        <p className="text-gray-500 col-span-full">No ads created yet.</p>
-      ) : ads.map(ad => (
-        <div key={ad.id} className="bg-white border border-gray-200 p-4 rounded-xl shadow-sm relative">
-          <img src={ad.imageBase64} alt={ad.title} className="w-full h-40 object-cover rounded-lg mb-3" />
-          <p className="font-bold text-dark">{ad.title}</p>
-          <p className="text-xs text-gray-500 mb-3">Product ID: {ad.productId || 'General Link'}</p>
-          <button onClick={() => handleDeleteAd(ad.id)} className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors">
-            <Trash2 size={16} />
-          </button>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
-      
-
-        {activeTab === 'promotions' && (
           <div>
-            <h2 className="text-xl font-bold text-dark mb-2">Premium Promotions</h2>
-            <p className="text-sm text-gray-500 mb-6">Toggle the plan to <strong>Premium</strong> for sellers who have paid.</p>
+            <h2 className="text-xl font-bold text-dark mb-6">Manage Advertisements</h2>
+            
+            <form onSubmit={handleAddAd} className="bg-gray-50 p-6 rounded-2xl border border-gray-100 mb-8 max-w-3xl">
+              <div className="grid md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Ad Title (Internal)</label>
+                  <input type="text" required value={newAd.title} onChange={e => setNewAd({...newAd, title: e.target.value})} placeholder="e.g. Eid Sale - Premium Cakes" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Link to Product ID (Optional)</label>
+                  <input type="text" value={newAd.productId} onChange={e => setNewAd({...newAd, productId: e.target.value})} placeholder="e.g. prod-123" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:outline-none" />
+                </div>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-xs font-bold text-gray-500 mb-1">Upload Ad Banner Image (Required)</label>
+                <input type="file" accept="image/*" required onChange={handleImageUpload} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20" />
+                {newAd.imageBase64 && <img src={newAd.imageBase64} alt="Preview" className="mt-3 h-32 object-contain rounded-lg border" />}
+              </div>
+
+              <button type="submit" disabled={isUploadingAd} className="w-full bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand/90 shadow-md flex items-center justify-center gap-2">
+                <Megaphone size={18} /> {isUploadingAd ? 'Publishing Ad...' : 'Create Advertisement'}
+              </button>
+            </form>
+
+            <h3 className="font-bold text-lg text-dark mb-4 border-t border-gray-100 pt-6">Active Ads ({ads.length}/5)</h3>
             <div className="grid md:grid-cols-2 gap-4">
-              {approvedSellers.map(seller => (
-                <div key={seller.id} className="flex justify-between items-center p-4 border border-gray-100 rounded-xl bg-gray-50">
-                  <div>
-                    <h3 className="font-bold text-dark">{seller.storeName}</h3>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${seller.plan === 'premium' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200 text-gray-600'}`}>
-                      {seller.plan === 'premium' ? 'PREMIUM' : 'STANDARD'}
-                    </span>
-                  </div>
-                  <button onClick={() => toggleSubscription(seller.id, seller.plan)} className={`px-4 py-2 rounded-xl font-bold text-sm text-white ${seller.plan === 'premium' ? 'bg-gray-400 hover:bg-gray-500' : 'bg-yellow-500 hover:bg-yellow-600'}`}>
-                    {seller.plan === 'premium' ? 'Remove Premium' : 'Make Premium'}
+              {ads.length === 0 ? (
+                <p className="text-gray-500 col-span-full">No ads created yet.</p>
+              ) : ads.map(ad => (
+                <div key={ad.id} className="bg-white border border-gray-200 p-4 rounded-xl shadow-sm relative">
+                  <img src={ad.imageBase64} alt={ad.title} className="w-full h-40 object-cover rounded-lg mb-3" />
+                  <p className="font-bold text-dark">{ad.title}</p>
+                  <p className="text-xs text-gray-500 mb-3">Product ID: {ad.productId || 'General Link'}</p>
+                  <button onClick={() => handleDeleteAd(ad.id)} className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors">
+                    <Trash2 size={16} />
                   </button>
                 </div>
               ))}
             </div>
           </div>
         )}
-                  {activeTab === 'categories' && (
+                  {activeTab === 'promotions' && (
+            <div>
+              <h2 className="text-xl font-bold text-dark mb-2">Premium Promotions</h2>
+              <p className="text-sm text-gray-500 mb-6">Toggle the plan to <strong>Premium</strong> for sellers who have paid.</p>
+              <div className="grid md:grid-cols-2 gap-4">
+                {approvedSellers.map(seller => (
+                  <div key={seller.id} className="flex justify-between items-center p-4 border border-gray-100 rounded-xl bg-gray-50">
+                    <div>
+                      <h3 className="font-bold text-dark">{seller.storeName}</h3>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded ${seller.plan === 'premium' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200 text-gray-600'}`}>
+                        {seller.plan === 'premium' ? 'PREMIUM' : 'STANDARD'}
+                      </span>
+                    </div>
+                    <button onClick={() => toggleSubscription(seller.id, seller.plan)} className={`px-4 py-2 rounded-xl font-bold text-sm text-white ${seller.plan === 'premium' ? 'bg-gray-400 hover:bg-gray-500' : 'bg-yellow-500 hover:bg-yellow-600'}`}>
+                      {seller.plan === 'premium' ? 'Remove Premium' : 'Make Premium'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'categories' && (
             <div>
               <h2 className="text-xl font-bold text-dark mb-6">Manage Categories</h2>
               <form onSubmit={handleAddCategory} className="flex gap-3 mb-8 max-w-lg">
@@ -529,68 +524,66 @@ const handleDeleteAd = async (id: string) => {
             </div>
           )}
 
-{activeTab === 'reports' && (
-  <div>
-    <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><Flag className="text-alert"/> Buyer Reports</h2>
-    
-    {reports.filter(r => r.status !== 'resolved').length === 0 ? (
-      <div className="bg-green-50 text-brand p-6 rounded-xl border border-green-200 text-center font-bold mb-8">
-        No active reports. The platform is safe!
-      </div>
-    ) : (
-      <div className="mb-8">
-        <h3 className="font-bold text-gray-500 uppercase text-sm mb-3">Action Needed ({reports.filter(r => r.status !== 'resolved').length})</h3>
-        <div className="space-y-4">
-          {reports.filter(r => r.status !== 'resolved').map(report => (
-            <div key={report.id} className="p-4 border border-red-100 bg-red-50 rounded-xl flex flex-col md:flex-row justify-between gap-4">
-              <div>
-                <h3 className="font-bold text-lg text-alert">{report.reason}</h3>
-                <p className="text-sm text-gray-700">Target: <strong>{report.targetName}</strong> ({report.targetType})</p>
-                <p className="text-sm text-gray-600 mt-2 bg-white p-2 rounded-lg border border-red-100">"{report.details}"</p>
-                <p className="text-xs text-gray-500 mt-1">Reported on: {new Date(report.createdAt).toLocaleDateString()}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={async () => {
-                  await updateDoc(doc(db, 'reports', report.id), { status: 'resolved' });
-                  fetchData();
-                }} className="px-4 py-2 bg-brand text-white rounded-xl font-bold text-sm hover:bg-brand/90 shadow-sm">
-                  Mark Resolved
-                </button>
-                <button onClick={async () => {
-                  if(window.confirm("Delete this report permanently?")) {
-                    await deleteDoc(doc(db, 'reports', report.id));
-                    fetchData();
-                  }
-                }} className="p-2 bg-white text-alert rounded-lg border border-red-200 hover:bg-red-50">
-                  <Trash2 size={18}/>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
+          {activeTab === 'reports' && (
+            <div>
+              <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><Flag className="text-alert"/> Buyer Reports</h2>
+              
+              {reports.filter(r => r.status !== 'resolved').length === 0 ? (
+                <div className="bg-green-50 text-brand p-6 rounded-xl border border-green-200 text-center font-bold mb-8">
+                  No active reports. The platform is safe!
+                </div>
+              ) : (
+                <div className="mb-8">
+                  <h3 className="font-bold text-gray-500 uppercase text-sm mb-3">Action Needed ({reports.filter(r => r.status !== 'resolved').length})</h3>
+                  <div className="space-y-4">
+                    {reports.filter(r => r.status !== 'resolved').map(report => (
+                      <div key={report.id} className="p-4 border border-red-100 bg-red-50 rounded-xl flex flex-col md:flex-row justify-between gap-4">
+                        <div>
+                          <h3 className="font-bold text-lg text-alert">{report.reason}</h3>
+                          <p className="text-sm text-gray-700">Target: <strong>{report.targetName}</strong> ({report.targetType})</p>
+                          <p className="text-sm text-gray-600 mt-2 bg-white p-2 rounded-lg border border-red-100">"{report.details}"</p>
+                          <p className="text-xs text-gray-500 mt-1">Reported on: {new Date(report.createdAt).toLocaleDateString()}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={async () => {
+                            await updateDoc(doc(db, 'reports', report.id), { status: 'resolved' });
+                            fetchData();
+                          }} className="px-4 py-2 bg-brand text-white rounded-xl font-bold text-sm hover:bg-brand/90 shadow-sm">
+                            Mark Resolved
+                          </button>
+                          <button onClick={async () => {
+                            if(window.confirm("Delete this report permanently?")) {
+                              await deleteDoc(doc(db, 'reports', report.id));
+                              fetchData();
+                            }
+                          }} className="p-2 bg-white text-alert rounded-lg border border-red-200 hover:bg-red-50">
+                            <Trash2 size={18}/>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-    {/* RESOLVED REPORTS HISTORY */}
-    {reports.filter(r => r.status === 'resolved').length > 0 && (
-      <div className="border-t border-gray-100 pt-6">
-        <h3 className="font-bold text-gray-500 uppercase text-sm mb-3">Resolved History</h3>
-        <div className="space-y-2">
-          {reports.filter(r => r.status === 'resolved').map(report => (
-            <div key={report.id} className="p-3 bg-gray-50 border border-gray-100 rounded-lg flex justify-between items-center opacity-70">
-              <div>
-                <p className="text-sm font-bold text-gray-600 line-through">{report.reason}</p>
-                <p className="text-xs text-gray-500">{report.targetName}</p>
-              </div>
-              <span className="text-xs font-bold text-brand bg-green-100 px-2 py-1 rounded">RESOLVED</span>
+              {reports.filter(r => r.status === 'resolved').length > 0 && (
+                <div className="border-t border-gray-100 pt-6">
+                  <h3 className="font-bold text-gray-500 uppercase text-sm mb-3">Resolved History</h3>
+                  <div className="space-y-2">
+                    {reports.filter(r => r.status === 'resolved').map(report => (
+                      <div key={report.id} className="p-3 bg-gray-50 border border-gray-100 rounded-lg flex justify-between items-center opacity-70">
+                        <div>
+                          <p className="text-sm font-bold text-gray-600 line-through">{report.reason}</p>
+                          <p className="text-xs text-gray-500">{report.targetName}</p>
+                        </div>
+                        <span className="text-xs font-bold text-brand bg-green-100 px-2 py-1 rounded">RESOLVED</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-      </div>
-    )}
-  </div>
-)}
-
+          )}
 
           {activeTab === 'verification' && (
             <div>
@@ -715,4 +708,4 @@ const handleDeleteAd = async (id: string) => {
       )}
     </div>
   );
-        }
+                                                                                                                                                           }
