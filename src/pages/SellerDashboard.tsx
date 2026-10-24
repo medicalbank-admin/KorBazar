@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { doc, getDoc, updateDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook, Instagram, Globe, ShieldAlert, Star, CreditCard, Box, CheckSquare, X } from 'lucide-react';
+import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook, Instagram, Globe, ShieldAlert, Star, CreditCard, Box, CheckSquare, X, MessageSquare } from 'lucide-react';
+import emailjs from '@emailjs/browser';
 
 const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -29,6 +31,7 @@ const compressImage = (file: File): Promise<string> => {
 
 export default function SellerDashboard() {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [store, setStore] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
@@ -37,14 +40,12 @@ export default function SellerDashboard() {
   
   const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'dispatched' | 'delivered' | 'cancelled'>('all');
 
-  // Store Edit State
   const [storeBio, setStoreBio] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
   const [paymentAccounts, setPaymentAccounts] = useState('');
   const [socialLinks, setSocialLinks] = useState({ facebook: '', instagram: '', tiktok: '' });
   const [storeMsg, setStoreMsg] = useState('');
 
-  // Product Form State
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState(''); 
@@ -56,7 +57,6 @@ export default function SellerDashboard() {
   const [productMsg, setProductMsg] = useState('');
   const [uploading, setUploading] = useState(false);
 
-  // Dispatch Modal State
   const [dispatchModal, setDispatchModal] = useState({ isOpen: false, orderId: '', courier: 'TCS', tracking: '' });
 
   const fetchData = async () => {
@@ -130,7 +130,7 @@ export default function SellerDashboard() {
         title, 
         description: productDescription,
         price: Number(price), 
-        stock: Number(stock), 
+        stock: Number(stock),
         deliveryFee: Number(productDeliveryFee) || 0,
         category,
         isPremium: false, 
@@ -151,53 +151,45 @@ export default function SellerDashboard() {
       setUploading(false);
     }
   };
-const handleUpdateStock = async (productId: string, currentStock: number) => {
-  const newStock = window.prompt("Enter new stock quantity (0 = Out of Stock):", currentStock.toString());
-  if (newStock !== null && !isNaN(Number(newStock))) {
-    await updateDoc(doc(db, 'products', productId), { stock: Number(newStock) });
-    fetchData();
-  }
-};
-  
-  const updateOrderStatus = async (orderId: string, newStatus: string, extraData = {}) => {
-  // 1. Update the order status
-  await updateDoc(doc(db, 'orders', orderId), { status: newStatus, ...extraData });
 
-  // 2. If the status is 'delivered', reduce the stock automatically
-  if (newStatus === 'delivered') {
-    const order = orders.find(o => o.id === orderId);
-    if (order && order.items) {
-      for (const item of order.items) {
-        try {
-          const productRef = doc(db, 'products', item.productId);
-          const productSnap = await getDoc(productRef);
-          
-          if (productSnap.exists()) {
-            const currentStock = Number(productSnap.data().stock) || 0;
-            // Prevent stock from going below 0
-            const newStock = Math.max(0, currentStock - item.qty); 
-            
-            await updateDoc(productRef, { stock: newStock });
-          }
-        } catch (err) {
-          console.error("Failed to update stock for product:", item.productId);
+  const handleUpdateStock = async (productId: string, currentStock: number) => {
+    const newStock = window.prompt("Enter new stock quantity (0 = Out of Stock):", currentStock.toString());
+    if (newStock !== null && !isNaN(Number(newStock))) {
+      await updateDoc(doc(db, 'products', productId), { stock: Number(newStock) });
+      fetchData();
+    }
+  };
+
+  const updateOrderStatus = async (orderId: string, newStatus: string, extraData = {}) => {
+    await updateDoc(doc(db, 'orders', orderId), { status: newStatus, ...extraData });
+
+    if (newStatus === 'delivered') {
+      const order = orders.find(o => o.id === orderId);
+      if (order && order.items) {
+        for (const item of order.items) {
+          try {
+            const productRef = doc(db, 'products', item.productId);
+            const productSnap = await getDoc(productRef);
+            if (productSnap.exists()) {
+              const currentStock = Number(productSnap.data().stock) || 0;
+              const newStock = Math.max(0, currentStock - item.qty); 
+              await updateDoc(productRef, { stock: newStock });
+            }
+          } catch (err) { console.error(err); }
         }
       }
     }
-  }
+    fetchData();
+  };
 
-  fetchData();
-};
   const handlePaymentReceived = async (orderId: string) => {
     await updateOrderStatus(orderId, 'accepted', { paymentVerified: true });
   };
 
-  // NEW: Open Dispatch Modal
   const openDispatchModal = (orderId: string) => {
     setDispatchModal({ isOpen: true, orderId, courier: 'TCS', tracking: '' });
   };
 
-  // NEW: Submit Dispatch
   const handleDispatchSubmit = async () => {
     if (!dispatchModal.tracking.trim()) return alert('Please enter a tracking number.');
     await updateOrderStatus(dispatchModal.orderId, 'dispatched', { 
@@ -207,7 +199,35 @@ const handleUpdateStock = async (productId: string, currentStock: number) => {
     setDispatchModal({ isOpen: false, orderId: '', courier: 'TCS', tracking: '' });
   };
 
-  const handleWhatsAppNotify = async (order: any) => {
+  const handleContactAdmin = async () => {
+    if (!currentUser) return;
+    try {
+      const adminQ = query(collection(db, 'users'), where('role', '==', 'admin'));
+      const adminSnap = await getDocs(adminQ);
+      if (adminSnap.empty) return alert("Admin account not found.");
+      
+      const adminId = adminSnap.docs[0].id;
+      const chatId = [currentUser.uid, adminId].sort().join('_');
+      
+      const chatRef = doc(db, 'chats', chatId);
+      const chatSnap = await getDoc(chatRef);
+      
+      if (!chatSnap.exists()) {
+        await setDoc(chatRef, {
+          participants: [currentUser.uid, adminId],
+          lastMessage: "Started a conversation with Admin Support",
+          updatedAt: serverTimestamp(),
+          unreadCount: { [currentUser.uid]: 0, [adminId]: 0 }
+        });
+      }
+      navigate(`/chat/${chatId}`);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to connect to Admin.");
+    }
+  };
+
+  const handleWhatsAppNotify = (order: any) => {
     let paymentInstructions = "";
     if (order.paymentMethod !== 'COD') {
       paymentInstructions = `\nPlease send the payment via ${order.paymentMethod} to:\n${store.paymentAccounts || '[Seller needs to set account details]'}\n`;
@@ -217,20 +237,26 @@ const handleUpdateStock = async (productId: string, currentStock: number) => {
     
     const cleanNumber = order.buyerWhatsapp.replace(/^0/, '');
     window.open(`https://wa.me/92${cleanNumber}?text=${encodeURIComponent(text)}`, '_blank');
-    updateOrderStatus(order.id, 'accepted', { whatsappNotifiedAt: new Date().toISOString() });
     
-    // Trigger Notification for Buyer
-if (order.buyerUid && order.buyerUid !== 'guest') {
-  await addDoc(collection(db, 'notifications'), {
-    userId: order.buyerUid,
-    title: 'Order Confirmed! ✅',
-    message: `Your order #${order.trackingToken.slice(0,8).toUpperCase()} has been accepted by ${store.storeName}.`,
-    type: 'order',
-    link: `/track/${order.trackingToken}`,
-    isRead: false,
-    createdAt: new Date().toISOString()
-  });
-}
+    updateOrderStatus(order.id, 'accepted', { whatsappNotifiedAt: new Date().toISOString() });
+
+    if (order.buyerEmail) {
+      emailjs.send(
+        'service_q90wxjm',       
+        'template_bu0a3in',      
+        {
+          to_name: order.buyerName,
+          to_email: order.buyerEmail, 
+          order_id: order.trackingToken.slice(0, 8).toUpperCase(),
+          order_subtotal: order.subtotal || order.total,          
+          order_shipping: order.deliveryFee || 0,    
+          order_total: order.total,
+          payment_method: order.paymentMethod,
+          tracking_link: `https://medicalbank-admin.github.io/KorBazar/#/track/${order.trackingToken}`,
+        },
+        'yw7E81OSHpJ2l0jJm'        
+      ).catch(err => console.error("Email failed:", err));
+    }
   };
 
   if (loading) return <div className="p-8 text-center text-dark">Loading dashboard...</div>;
@@ -242,8 +268,8 @@ if (order.buyerUid && order.buyerUid !== 'guest') {
         <div className="bg-red-50 border border-red-200 p-8 rounded-3xl text-center max-w-md">
           <ShieldAlert size={64} className="text-alert mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-alert mb-2">Store Frozen</h2>
-          <p className="text-gray-700 mb-6">Your store has been temporarily frozen by the Admin. This is usually due to pending monthly fees. Please contact KorBazar support on WhatsApp to resolve this and unfreeze your store.</p>
-          <a href="https://wa.me/923000000000" target="_blank" rel="noreferrer" className="bg-alert text-white px-6 py-3 rounded-xl font-bold inline-block">Contact Admin</a>
+          <p className="text-gray-700 mb-6">Your store has been temporarily frozen by the Admin. Please contact support on WhatsApp.</p>
+          <a href="https://wa.me/923390251147" target="_blank" rel="noreferrer" className="bg-alert text-white px-6 py-3 rounded-xl font-bold inline-block">Contact Admin</a>
         </div>
       </div>
     );
@@ -262,173 +288,160 @@ if (order.buyerUid && order.buyerUid !== 'guest') {
     if (orderFilter === 'cancelled') return order.status === 'cancelled' || order.status === 'rejected';
     return true;
   });
+
   return (
-  <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
-    {/* DISPATCH MODAL */}
-    {dispatchModal.isOpen && (
-      <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm p-6 relative">
-          <button onClick={() => setDispatchModal({ ...dispatchModal, isOpen: false })} className="absolute top-4 right-4 text-gray-400 hover:text-alert"><X size={24} /></button>
-          <h2 className="text-xl font-bold text-dark mb-4">Dispatch Order</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Courier Service</label>
-              <select 
-                value={dispatchModal.courier} 
-                onChange={e => setDispatchModal({...dispatchModal, courier: e.target.value})} 
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50"
-              >
-                <option value="TCS">TCS</option>
-                <option value="Leopards">Leopards Courier</option>
-                <option value="M&P">M&P (BlueEx)</option>
-                <option value="Pakistan Post">Pakistan Post</option>
-                <option value="Local Rider">Local Rider</option>
-                <option value="Other">Other</option>
-              </select>
+    <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
+      {dispatchModal.isOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm p-6 relative">
+            <button onClick={() => setDispatchModal({ ...dispatchModal, isOpen: false })} className="absolute top-4 right-4 text-gray-400 hover:text-alert"><X size={24} /></button>
+            <h2 className="text-xl font-bold text-dark mb-4">Dispatch Order</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Courier Service</label>
+                <select value={dispatchModal.courier} onChange={e => setDispatchModal({...dispatchModal, courier: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
+                  <option value="TCS">TCS</option>
+                  <option value="Leopards">Leopards Courier</option>
+                  <option value="M&P">M&P (BlueEx)</option>
+                  <option value="Pakistan Post">Pakistan Post</option>
+                  <option value="Local Rider">Local Rider</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tracking Number</label>
+                <input type="text" value={dispatchModal.tracking} onChange={e => setDispatchModal({...dispatchModal, tracking: e.target.value})} placeholder="e.g. TC123456789" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+              </div>
+              <button onClick={handleDispatchSubmit} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-md flex items-center justify-center gap-2">
+                <Truck size={18} /> Confirm Dispatch
+              </button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tracking Number</label>
-              <input 
-                type="text" 
-                value={dispatchModal.tracking} 
-                onChange={e => setDispatchModal({...dispatchModal, tracking: e.target.value})} 
-                placeholder="e.g. TC123456789" 
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" 
-              />
-            </div>
-            <button onClick={handleDispatchSubmit} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-md flex items-center justify-center gap-2">
-              <Truck size={18} /> Confirm Dispatch
-            </button>
           </div>
         </div>
-      </div>
-    )}
-
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-      <div>
-        <h1 className="text-3xl font-bold text-dark">{store.storeName}</h1>
-        <p className="text-gray-500 font-medium">Professional Seller Dashboard</p>
-      </div>
-      {store.status === 'approved' && (
-        <a href={`#/store/${currentUser?.uid}`} target="_blank" rel="noreferrer" className="bg-dark text-white px-6 py-2 rounded-xl font-semibold hover:bg-black transition-colors">View Public Store</a>
       )}
-    </div>
 
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-      <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
-        <span className="text-3xl font-extrabold text-yellow-600">{pendingCount}</span>
-        <span className="text-xs font-bold text-yellow-700 uppercase mt-1">Action Needed</span>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-dark">{store.storeName}</h1>
+          <p className="text-gray-500 font-medium">Professional Seller Dashboard</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/inbox')} className="bg-brand/10 text-brand px-4 py-2 rounded-xl font-semibold hover:bg-brand/20 transition-colors flex items-center gap-2">
+            <MessageSquare size={18} /> My Inbox
+          </button>
+          <a href={`#/store/${currentUser?.uid}`} target="_blank" rel="noreferrer" className="bg-dark text-white px-6 py-2 rounded-xl font-semibold hover:bg-black transition-colors">View Store</a>
+        </div>
       </div>
-      <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
-        <span className="text-3xl font-extrabold text-blue-600">{dispatchedCount}</span>
-        <span className="text-xs font-bold text-blue-700 uppercase mt-1">Dispatched</span>
-      </div>
-      <div className="bg-green-50 border border-green-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
-        <span className="text-3xl font-extrabold text-brand">{deliveredCount}</span>
-        <span className="text-xs font-bold text-brand uppercase mt-1">Delivered</span>
-      </div>
-      <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
-        <span className="text-3xl font-extrabold text-alert">{cancelledCount}</span>
-        <span className="text-xs font-bold text-alert uppercase mt-1">Cancelled</span>
-      </div>
-    </div>
 
-    <div className="flex overflow-x-auto gap-2 mb-8 border-b border-gray-200 pb-2 scrollbar-hide">
-      <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'orders' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Package size={18}/> Orders</button>
-      <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'products' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><PlusCircle size={18}/> Products</button>
-      <button onClick={() => setActiveTab('store')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'store' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Store size={18}/> Settings</button>
-      <button onClick={() => setActiveTab('subscription')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'subscription' ? 'bg-yellow-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Star size={18}/> Subscription</button>
-      <button onClick={() => setActiveTab('profile')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'profile' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><User size={18}/> Profile</button>
-    </div>
-
-    {store.status !== 'approved' ? (
-      <div className="bg-yellow-50 text-yellow-800 p-8 rounded-2xl border border-yellow-200 text-center">
-        <h2 className="text-xl font-bold mb-2">Account Pending Approval</h2>
-        <p>Your account is under review. Once approved, you can add products and manage your store.</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+          <span className="text-3xl font-extrabold text-yellow-600">{pendingCount}</span>
+          <span className="text-xs font-bold text-yellow-700 uppercase mt-1">Action Needed</span>
+        </div>
+        <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+          <span className="text-3xl font-extrabold text-blue-600">{dispatchedCount}</span>
+          <span className="text-xs font-bold text-blue-700 uppercase mt-1">Dispatched</span>
+        </div>
+        <div className="bg-green-50 border border-green-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+          <span className="text-3xl font-extrabold text-brand">{deliveredCount}</span>
+          <span className="text-xs font-bold text-brand uppercase mt-1">Delivered</span>
+        </div>
+        <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+          <span className="text-3xl font-extrabold text-alert">{cancelledCount}</span>
+          <span className="text-xs font-bold text-alert uppercase mt-1">Cancelled</span>
+        </div>
       </div>
-    ) : (
-      <div>
-        {activeTab === 'orders' && (
-          <div>
-            <div className="flex overflow-x-auto gap-2 mb-6 scrollbar-hide">
-              {['all', 'pending', 'dispatched', 'delivered', 'cancelled'].map(tab => (
-                <button 
-                  key={tab}
-                  onClick={() => setOrderFilter(tab as any)}
-                  className={`px-4 py-2 rounded-lg font-semibold text-sm whitespace-nowrap capitalize transition-colors ${orderFilter === tab ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                >
-                  {tab === 'all' ? 'All Orders' : tab}
-                </button>
-              ))}
-            </div>
 
-            <div className="space-y-4">
-              {filteredOrders.length === 0 ? (
-                <div className="bg-white p-8 text-center rounded-2xl border border-gray-100 text-gray-500">No {orderFilter} orders found.</div>
-              ) : filteredOrders.map(order => (
-                <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row justify-between gap-6">
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-bold text-lg text-dark">Order #{order.trackingToken.slice(0,6).toUpperCase()}</h3>
-                      <span className={`text-xs font-bold px-2 py-1 rounded-full uppercase ${order.status === 'new' ? 'bg-yellow-100 text-yellow-700' : order.status === 'delivered' ? 'bg-green-100 text-brand' : order.status === 'cancelled' || order.status === 'rejected' ? 'bg-red-100 text-alert' : 'bg-blue-100 text-blue-700'}`}>{order.status}</span>
-                      {order.paymentVerified && <span className="text-xs font-bold text-brand bg-green-50 px-2 py-1 rounded-full">PAID</span>}
-                    </div>
-                    <p className="text-sm text-gray-600"><span className="font-semibold text-dark">Buyer:</span> {order.buyerName} ({order.buyerPhone})</p>
-                    <p className="text-sm text-gray-600 mb-2"><span className="font-semibold text-dark">Address:</span> {order.buyerAddress}</p>
-                    <div className="bg-gray-50 p-3 rounded-xl text-sm mb-2 border border-gray-100">
-                      {order.items.map((i:any, idx:number) => <div key={idx}>{i.qty}x {i.title} - Rs. {i.price}</div>)}
-                      <div className="mt-1 pt-1 border-t border-gray-200 text-gray-500 text-xs flex justify-between">
-                        <span>Subtotal: Rs. {order.subtotal || order.total}</span>
-                        <span>Delivery: Rs. {order.deliveryFee || 0}</span>
+      <div className="flex overflow-x-auto gap-2 mb-8 border-b border-gray-200 pb-2 scrollbar-hide">
+        <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'orders' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Package size={18}/> Orders</button>
+        <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'products' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><PlusCircle size={18}/> Products</button>
+        <button onClick={() => setActiveTab('store')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'store' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Store size={18}/> Settings</button>
+        <button onClick={() => setActiveTab('subscription')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'subscription' ? 'bg-yellow-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><Star size={18}/> Subscription</button>
+        <button onClick={() => setActiveTab('profile')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${activeTab === 'profile' ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}><User size={18}/> Profile</button>
+      </div>
+
+      {store.status !== 'approved' ? (
+        <div className="bg-yellow-50 text-yellow-800 p-8 rounded-2xl border border-yellow-200 text-center">
+          <h2 className="text-xl font-bold mb-2">Account Pending Approval</h2>
+          <p>Your account is under review. Once approved, you can add products and manage your store.</p>
+        </div>
+      ) : (
+        <div>
+          {activeTab === 'orders' && (
+            <div>
+              <div className="flex overflow-x-auto gap-2 mb-6 scrollbar-hide">
+                {['all', 'pending', 'dispatched', 'delivered', 'cancelled'].map(tab => (
+                  <button key={tab} onClick={() => setOrderFilter(tab as any)} className={`px-4 py-2 rounded-lg font-semibold text-sm whitespace-nowrap capitalize transition-colors ${orderFilter === tab ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                    {tab === 'all' ? 'All Orders' : tab}
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-4">
+                {filteredOrders.length === 0 ? (
+                  <div className="bg-white p-8 text-center rounded-2xl border border-gray-100 text-gray-500">No {orderFilter} orders found.</div>
+                ) : filteredOrders.map(order => (
+                  <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row justify-between gap-6">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="font-bold text-lg text-dark">Order #{order.trackingToken.slice(0,6).toUpperCase()}</h3>
+                        <span className={`text-xs font-bold px-2 py-1 rounded-full uppercase ${order.status === 'new' ? 'bg-yellow-100 text-yellow-700' : order.status === 'delivered' ? 'bg-green-100 text-brand' : order.status === 'cancelled' || order.status === 'rejected' ? 'bg-red-100 text-alert' : 'bg-blue-100 text-blue-700'}`}>{order.status}</span>
+                        {order.paymentVerified && <span className="text-xs font-bold text-brand bg-green-50 px-2 py-1 rounded-full">PAID</span>}
                       </div>
-                      {order.discountAmount > 0 && (
-                        <div className="mt-1 pt-1 border-t border-gray-200 text-brand font-bold text-xs flex justify-between">
-                          <span>Discount ({order.couponCode})</span>
-                          <span>- Rs. {order.discountAmount}</span>
+                      <p className="text-sm text-gray-600"><span className="font-semibold text-dark">Buyer:</span> {order.buyerName} ({order.buyerPhone})</p>
+                      <p className="text-sm text-gray-600 mb-2"><span className="font-semibold text-dark">Address:</span> {order.buyerAddress}</p>
+                      <div className="bg-gray-50 p-3 rounded-xl text-sm mb-2 border border-gray-100">
+                        {order.items.map((i:any, idx:number) => <div key={idx}>{i.qty}x {i.title} - Rs. {i.price}</div>)}
+                        <div className="mt-1 pt-1 border-t border-gray-200 text-gray-500 text-xs flex justify-between">
+                          <span>Subtotal: Rs. {order.subtotal || order.total}</span>
+                          <span>Delivery: Rs. {order.deliveryFee || 0}</span>
+                        </div>
+                        {order.discountAmount > 0 && (
+                          <div className="mt-1 pt-1 border-t border-gray-200 text-brand font-bold text-xs flex justify-between">
+                            <span>Discount ({order.couponCode})</span>
+                            <span>- Rs. {order.discountAmount}</span>
+                          </div>
+                        )}
+                        {order.notes && <div className="text-brand font-semibold mt-1">Note: {order.notes}</div>}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="font-bold text-dark text-lg">Total: Rs. {order.total}</p>
+                        <span className="text-xs font-bold uppercase bg-gray-200 px-2 py-1 rounded">{order.paymentMethod}</span>
+                      </div>
+                      {order.trackingNumber && (
+                        <div className="mt-3 bg-blue-50 text-blue-800 text-xs p-2 rounded-lg border border-blue-200 font-semibold flex items-center gap-2">
+                          <Box size={14} /> {order.courierName || 'Courier'}: {order.trackingNumber}
                         </div>
                       )}
-                      {order.notes && <div className="text-brand font-semibold mt-1">Note: {order.notes}</div>}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <p className="font-bold text-dark text-lg">Total: Rs. {order.total}</p>
-                      <span className="text-xs font-bold uppercase bg-gray-200 px-2 py-1 rounded">{order.paymentMethod}</span>
+                    
+                    <div className="flex flex-col gap-2 min-w-[200px] justify-center">
+                      {order.status === 'new' && (
+                        <>
+                          <button onClick={() => handleWhatsAppNotify(order)} className="w-full bg-[#25D366] text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-[#20bd5a]"><MessageCircle size={18}/> Accept & Notify</button>
+                          <button onClick={() => updateOrderStatus(order.id, 'rejected', { rejectionReason: 'Out of stock' })} className="w-full bg-red-50 text-alert font-bold py-2.5 rounded-xl border border-red-200 hover:bg-red-100 flex items-center justify-center gap-2"><XCircle size={18}/> Reject</button>
+                        </>
+                      )}
+                      {order.status === 'accepted' && (
+                        <>
+                          {order.paymentMethod !== 'COD' && !order.paymentVerified && (
+                            <button onClick={() => handlePaymentReceived(order.id)} className="w-full bg-green-100 text-brand font-bold py-2.5 rounded-xl border border-green-200 hover:bg-green-200 flex items-center justify-center gap-2 mb-2">
+                              <CheckSquare size={18}/> Mark Payment Received
+                            </button>
+                          )}
+                          <button onClick={() => openDispatchModal(order.id)} className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-700"><Truck size={18}/> Mark Dispatched</button>
+                        </>
+                      )}
+                      {order.status === 'dispatched' && (
+                        <button onClick={() => updateOrderStatus(order.id, 'delivered')} className="w-full bg-brand text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-brand/90"><CheckCircle size={18}/> Mark Delivered</button>
+                      )}
                     </div>
-                    {order.trackingNumber && (
-                      <div className="mt-3 bg-blue-50 text-blue-800 text-xs p-2 rounded-lg border border-blue-200 font-semibold flex items-center gap-2">
-                        <Box size={14} /> {order.courierName || 'Courier'}: {order.trackingNumber}
-                      </div>
-                    )}
                   </div>
-                  
-                  <div className="flex flex-col gap-2 min-w-[200px] justify-center">
-                    {order.status === 'new' && (
-                      <>
-                        <button onClick={() => handleWhatsAppNotify(order)} className="w-full bg-[#25D366] text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-[#20bd5a]"><MessageCircle size={18}/> Accept & Notify</button>
-                        <button onClick={() => updateOrderStatus(order.id, 'rejected', { rejectionReason: 'Out of stock' })} className="w-full bg-red-50 text-alert font-bold py-2.5 rounded-xl border border-red-200 hover:bg-red-100 flex items-center justify-center gap-2"><XCircle size={18}/> Reject</button>
-                      </>
-                    )}
-                    
-                    {order.status === 'accepted' && (
-                      <>
-                        {order.paymentMethod !== 'COD' && !order.paymentVerified && (
-                          <button onClick={() => handlePaymentReceived(order.id)} className="w-full bg-green-100 text-brand font-bold py-2.5 rounded-xl border border-green-200 hover:bg-green-200 flex items-center justify-center gap-2 mb-2">
-                            <CheckSquare size={18}/> Mark Payment Received
-                          </button>
-                        )}
-                        <button onClick={() => openDispatchModal(order.id)} className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-700"><Truck size={18}/> Mark Dispatched</button>
-                      </>
-                    )}
-                    
-                    {order.status === 'dispatched' && (
-                      <button onClick={() => updateOrderStatus(order.id, 'delivered')} className="w-full bg-brand text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-brand/90"><CheckCircle size={18}/> Mark Delivered</button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-                  {activeTab === 'products' && (
+          )}
+
+          {activeTab === 'products' && (
              <div className="grid lg:grid-cols-2 gap-8">
                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                  <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><PlusCircle size={20}/> Add New Product</h2>
@@ -441,30 +454,30 @@ if (order.buyerUid && order.buyerUid !== 'guest') {
                    </div>
                    <div>
                      <label className="block text-sm font-medium text-gray-700 mb-1">Product Description</label>
-                     <textarea required value={productDescription} onChange={e => setProductDescription(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="Describe the item, size, materials, etc." />
+                     <textarea required value={productDescription} onChange={e => setProductDescription(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="Describe the item..." />
                    </div>
                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">Price (Rs.)</label>
-    <input type="number" required value={price} onChange={e => setPrice(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-  </div>
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">Stock Qty</label>
-    <input type="number" required value={stock} onChange={e => setStock(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. 5" />
-  </div>
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Fee (Rs.)</label>
-    <input type="number" required value={productDeliveryFee} onChange={e => setProductDeliveryFee(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-  </div>
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-    <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
-      {availableCategories.map(catName => (
-        <option key={catName} value={catName}>{catName}</option>
-      ))}
-    </select>
-  </div>
-</div>
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-1">Price (Rs.)</label>
+                       <input type="number" required value={price} onChange={e => setPrice(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+                     </div>
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-1">Stock Qty</label>
+                       <input type="number" required value={stock} onChange={e => setStock(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. 5" />
+                     </div>
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Fee (Rs.)</label>
+                       <input type="number" required value={productDeliveryFee} onChange={e => setProductDeliveryFee(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+                     </div>
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                       <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
+                         {availableCategories.map(catName => (
+                           <option key={catName} value={catName}>{catName}</option>
+                         ))}
+                       </select>
+                     </div>
+                   </div>
                    <div>
                      <label className="block text-sm font-medium text-gray-700 mb-1">Product Images (Max 3)</label>
                      <input id="product-images" type="file" multiple accept="image/*" required onChange={e => setProductImages(e.target.files)} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20" />
@@ -482,26 +495,22 @@ if (order.buyerUid && order.buyerUid !== 'guest') {
                      <div key={p.id} className="flex gap-4 items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
                        <img src={p.image} alt={p.title} className="w-16 h-16 object-cover rounded-lg" />
                        <div className="flex-grow">
-  <h4 className="font-bold text-dark">{p.title}</h4>
-  <p className="text-sm text-brand font-semibold">Rs. {p.price} <span className="text-gray-400 text-xs ml-2">+ Rs. {p.deliveryFee || 0} Delivery</span></p>
-  
-  <div className="flex items-center gap-2 mt-1">
-    <span className={`text-xs font-bold px-2 py-0.5 rounded ${Number(p.stock) > 0 ? 'bg-green-100 text-brand' : 'bg-red-100 text-alert'}`}>
-      Stock: {p.stock !== undefined ? p.stock : 'N/A'}
-    </span>
-    <button onClick={() => handleUpdateStock(p.id, p.stock)} className="text-blue-600 text-xs font-bold hover:underline">
-      Edit
-    </button>
-  </div>
-</div>
+                         <h4 className="font-bold text-dark">{p.title}</h4>
+                         <p className="text-sm text-brand font-semibold">Rs. {p.price} <span className="text-gray-400 text-xs ml-2">+ Rs. {p.deliveryFee || 0} Delivery</span></p>
+                         <div className="flex items-center gap-2 mt-1">
+                           <span className={`text-xs font-bold px-2 py-0.5 rounded ${Number(p.stock) > 0 ? 'bg-green-100 text-brand' : 'bg-red-100 text-alert'}`}>
+                             Stock: {p.stock !== undefined ? p.stock : 'N/A'}
+                           </span>
+                           <button onClick={() => handleUpdateStock(p.id, p.stock)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
+                         </div>
+                       </div>
                      </div>
                    ))}
                  </div>
                </div>
              </div>
           )}
-
-          {activeTab === 'store' && (
+       {activeTab === 'store' && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
               <h2 className="text-xl font-bold text-dark mb-4">Store Settings</h2>
               {storeMsg && <div className="bg-green-50 text-brand p-3 rounded-lg text-sm mb-4">{storeMsg}</div>}
@@ -522,7 +531,6 @@ if (order.buyerUid && order.buyerUid !== 'guest') {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Payment Accounts</label>
                   <input type="text" value={paymentAccounts} onChange={e => setPaymentAccounts(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. JazzCash: 03001234567" />
                 </div>
-                
                 <div className="pt-2 border-t border-gray-100">
                   <h3 className="font-semibold text-dark mb-3">Social Media Links</h3>
                   <div className="space-y-3">
@@ -540,7 +548,6 @@ if (order.buyerUid && order.buyerUid !== 'guest') {
                     </div>
                   </div>
                 </div>
-
                 <button type="submit" className="bg-brand text-white font-bold py-3.5 px-8 rounded-xl hover:bg-brand/90 shadow-md mt-4">Save Settings</button>
               </form>
             </div>
@@ -549,29 +556,20 @@ if (order.buyerUid && order.buyerUid !== 'guest') {
           {activeTab === 'subscription' && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
               <h2 className="text-xl font-bold text-dark mb-6 flex items-center gap-2"><CreditCard /> Subscription Plan</h2>
-              
               <div className={`border rounded-2xl p-6 ${store.plan === 'premium' ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-200'}`}>
                 <div className="flex items-center gap-3 mb-2">
                   <Star size={28} className={store.plan === 'premium' ? 'text-yellow-500 fill-yellow-500' : 'text-gray-400'} />
                   <h3 className="text-2xl font-bold text-dark capitalize">{store.plan || 'standard'} Plan</h3>
                 </div>
-                
                 {store.plan === 'premium' ? (
                   <div className="mt-4">
-                    <p className="text-gray-700 text-sm mb-4">Your store is currently featured on the Homepage and highlighted to buyers after checkout. Keep providing great service!</p>
+                    <p className="text-gray-700 text-sm mb-4">Your store is currently featured on the Homepage. Keep providing great service!</p>
                     <span className="inline-block bg-yellow-500 text-white px-4 py-2 rounded-lg font-bold text-sm">Active Premium Status</span>
                   </div>
                 ) : (
                   <div className="mt-4">
-                    <p className="text-gray-700 text-sm mb-4">Upgrade to Premium to feature your products on the Homepage and show them to buyers right after they place an order. Get more visibility and sales!</p>
-                    <a 
-                      href={`https://wa.me/923000000000?text=${encodeURIComponent(`Assalam-o-Alaikum, I want to upgrade my store "${store.storeName}" to the Premium plan on KorBazar.`)}`} 
-                      target="_blank" 
-                      rel="noreferrer" 
-                      className="inline-block bg-dark text-white font-bold py-3 px-6 rounded-xl hover:bg-black transition-colors"
-                    >
-                      Contact Admin to Upgrade
-                    </a>
+                    <p className="text-gray-700 text-sm mb-4">Upgrade to Premium to feature your products on the Homepage and get more visibility!</p>
+                    <a href={`https://wa.me/923000000000?text=${encodeURIComponent(`Assalam-o-Alaikum, I want to upgrade my store "${store.storeName}" to the Premium plan on KorBazar.`)}`} target="_blank" rel="noreferrer" className="inline-block bg-dark text-white font-bold py-3 px-6 rounded-xl hover:bg-black transition-colors">Contact Admin to Upgrade</a>
                   </div>
                 )}
               </div>
@@ -586,6 +584,12 @@ if (order.buyerUid && order.buyerUid !== 'guest') {
                 <p><span className="font-semibold text-dark">CNIC:</span> {store.cnicNumber}</p>
                 <p><span className="font-semibold text-dark">Phone:</span> {store.phone}</p>
                 <p><span className="font-semibold text-dark">City:</span> {store.city}, {store.area}</p>
+                
+                <div className="pt-4 border-t border-gray-100 mt-4">
+                  <button onClick={handleContactAdmin} className="w-full bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand/90 shadow-md flex items-center justify-center gap-2">
+                    <MessageSquare size={20} /> Chat with Admin Support
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -593,4 +597,4 @@ if (order.buyerUid && order.buyerUid !== 'guest') {
       )}
     </div>
   );
-}
+          }
