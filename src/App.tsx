@@ -24,11 +24,15 @@ import { NotificationProvider } from './context/NotificationContext';
 import { CartProvider } from './context/CartContext';
 import { FavoritesProvider } from './context/FavoritesContext';
 import { HistoryProvider } from './context/HistoryContext';
+import { ChatProvider } from './context/ChatContext';
+import Inbox from './pages/Inbox';
+import ChatRoom from './pages/ChatRoom';
 
 export default function App() {
   return (
     <AuthProvider>
       <NotificationProvider>
+        <ChatPtovider> 
       <HistoryProvider>
         <FavoritesProvider>
           <CartProvider>
@@ -54,7 +58,9 @@ export default function App() {
                     <Route path="/seller/dashboard" element={<SellerDashboard />} />
 
                     <Route path="/orders" element={<BuyerOrders />} />
-                    <Route path="/profile" element={<Profile />} />
+<Route path="/profile" element={<Profile />} />
+<Route path="/inbox" element={<Inbox />} />
+<Route path="/chat/:chatId" element={<ChatRoom />} />
                     
                     <Route path="/about" element={<About />} />
                     <Route path="/terms" element={<Terms />} />
@@ -80,6 +86,7 @@ export default function App() {
           </CartProvider>
         </FavoritesProvider>
       </HistoryProvider>
+        </ChatPtovider>  
       </NotificationProvider>
     </AuthProvider>
     
