@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { db } from '../firebase';
-import { collection, getDocs, query, limit } from 'firebase/firestore';
+import { collection, getDocs, query, limit, orderBy } from 'firebase/firestore';
 
 export default function AdSlideshow() {
   const [ads, setAds] = useState<any[]>([]);
@@ -10,11 +10,15 @@ export default function AdSlideshow() {
   const [isVisible, setIsVisible] = useState(false);
   const [canSkip, setCanSkip] = useState(false);
 
-  // Fetch Ads on mount
+  // 1. Fetch Ads on mount (Limit increased to 8)
   useEffect(() => {
     const fetchAds = async () => {
       try {
-        const q = query(collection(db, 'ads'), limit(5));
+        const q = query(
+          collection(db, 'ads'), 
+          orderBy('createdAt', 'desc'), // Shows newest ads first
+          limit(8) // Fetch up to 8 ads
+        );
         const snap = await getDocs(q);
         const adsData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         
@@ -29,20 +33,21 @@ export default function AdSlideshow() {
     fetchAds();
   }, []);
 
-  // Handle 5-second skip timer
+  // 2. Handle 5-second skip timer
   useEffect(() => {
     if (!isVisible) return;
     const skipTimer = setTimeout(() => setCanSkip(true), 5000);
     return () => clearTimeout(skipTimer);
   }, [isVisible]);
 
-  // Handle 12-second ad rotation
+  // 3. Handle 12-second ad rotation with infinite loop
   useEffect(() => {
     if (!isVisible || ads.length <= 1) return;
 
     const adTimer = setInterval(() => {
+      // The modulo operator (%) loops back to 0 when it reaches ads.length
       setCurrentAdIndex((prevIndex) => (prevIndex + 1) % ads.length);
-    }, 12000);
+    }, 12000); // 12 seconds
 
     return () => clearInterval(adTimer);
   }, [isVisible, ads.length]);
@@ -54,7 +59,7 @@ export default function AdSlideshow() {
   return (
     <div className="relative w-full bg-white border-b border-gray-100 pb-6">
       
-      {/* Skip Button */}
+      {/* Skip Button (Shows after 5 seconds) */}
       {canSkip && (
         <button 
           onClick={() => setIsVisible(false)}
@@ -67,15 +72,19 @@ export default function AdSlideshow() {
       {/* Image Container - Clean, No Overlay */}
       <div className="w-full flex justify-center bg-gray-50">
         <img 
+          key={currentAd.id} // Key forces React to re-render for fade animation
           src={currentAd.imageBase64} 
           alt={currentAd.title} 
-          className="w-full max-w-5xl h-auto object-contain"
+          className="w-full max-w-5xl h-auto object-contain animate-fade-in"
         />
       </div>
 
       {/* Text & Button Below the Image */}
       <div className="text-center px-4 mt-6 max-w-2xl mx-auto">
-        <h2 className="text-2xl md:text-3xl font-extrabold text-dark mb-3">
+        <h2 
+          key={`${currentAd.id}-title`} 
+          className="text-2xl md:text-3xl font-extrabold text-dark mb-3 animate-fade-in"
+        >
           {currentAd.title}
         </h2>
         <Link 
@@ -86,7 +95,7 @@ export default function AdSlideshow() {
         </Link>
       </div>
 
-      {/* Ad Indicators (Dots) */}
+      {/* Ad Indicators (Dots for up to 8 ads) */}
       {ads.length > 1 && (
         <div className="flex justify-center gap-2 mt-6">
           {ads.map((_, idx) => (
