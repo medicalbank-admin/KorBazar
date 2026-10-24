@@ -5,14 +5,14 @@ import { db } from '../firebase';
 import { CheckCircle2, ChevronLeft, MessageCircle, MessageSquare, ShoppingCart, Truck, Star } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { useHistory } from '../context/HistoryContext';
+import { useHistory } from '../context/HistoryContext'; // <-- HISTORY IMPORT RESTORED
 
 export default function ProductDetails() {
   const { id } = useParams();
   const { addToCart } = useCart();
-const { currentUser } = useAuth();
-const navigate = useNavigate();
-  const { addToHistory } = useHistory(); // <-- History tracking restored
+  const { currentUser } = useAuth();
+  const { addToHistory } = useHistory(); // <-- HISTORY HOOK RESTORED
+  const navigate = useNavigate();
   
   const [product, setProduct] = useState<any>(null);
   const [seller, setSeller] = useState<any>(null);
@@ -30,7 +30,8 @@ const navigate = useNavigate();
       if (docSnap.exists()) {
         const prodData = { id: docSnap.id, ...docSnap.data() } as any;
         setProduct(prodData);
-        addToHistory(prodData); // <-- Adds product to Recently Viewed
+        
+        addToHistory(prodData); // <-- HISTORY TRACKING RESTORED
 
         const sellerRef = doc(db, 'sellers', prodData.sellerId);
         const sellerSnap = await getDoc(sellerRef);
@@ -54,7 +55,8 @@ const navigate = useNavigate();
   if (!product) return <div className="p-12 text-center text-dark">Product not found.</div>;
 
   const images = product.images?.length > 0 ? product.images : [product.image];
-  const isOutOfStock = product.stock !== undefined && Number(product.stock) <= 0;
+  const stockNum = Number(product.stock) || 0;
+  const isOutOfStock = product.stock !== undefined && stockNum <= 0;
 
   const whatsappMessage = `Assalam-o-Alaikum, I have a question about "${product.title}" (Rs. ${product.price}) on KorBazar.`;
   const cleanNumber = seller?.whatsappNumber?.replace(/^0/, '');
@@ -77,49 +79,46 @@ const navigate = useNavigate();
   };
 
   const handleChatWithSeller = async () => {
-  if (!currentUser) {
-    alert("Please login to chat with the seller.");
-    navigate('/login');
-    return;
-  }
-
-  if (currentUser.uid === product.sellerId) {
-    alert("You cannot chat with your own store.");
-    return;
-  }
-
-  // Create a consistent Chat ID based on both user IDs
-  const chatId = [currentUser.uid, product.sellerId].sort().join('_');
-  
-  try {
-    // Check if chat exists, if not create it
-    const chatRef = doc(db, 'chats', chatId);
-    const chatSnap = await getDoc(chatRef);
-    
-    if (!chatSnap.exists()) {
-      await setDoc(chatRef, {
-        participants: [currentUser.uid, product.sellerId],
-        lastMessage: "Started a new conversation",
-        updatedAt: serverTimestamp(),
-        unreadCount: {
-          [currentUser.uid]: 0,
-          [product.sellerId]: 0
-        }
-      });
+    if (!currentUser) {
+      alert("Please login to chat with the seller.");
+      navigate('/login');
+      return;
     }
+
+    if (currentUser.uid === product.sellerId) {
+      alert("You cannot chat with your own store.");
+      return;
+    }
+
+    const chatId = [currentUser.uid, product.sellerId].sort().join('_');
     
-    navigate(`/chat/${chatId}`);
-  } catch (error) {
-    console.error("Error starting chat:", error);
-    alert("Failed to start chat.");
-  }
-};
+    try {
+      const chatRef = doc(db, 'chats', chatId);
+      const chatSnap = await getDoc(chatRef);
+      
+      if (!chatSnap.exists()) {
+        await setDoc(chatRef, {
+          participants: [currentUser.uid, product.sellerId],
+          lastMessage: "Started a new conversation",
+          updatedAt: serverTimestamp(),
+          unreadCount: {
+            [currentUser.uid]: 0,
+            [product.sellerId]: 0
+          }
+        });
+      }
+      
+      navigate(`/chat/${chatId}`);
+    } catch (error) {
+      console.error("Error starting chat:", error);
+      alert("Failed to start chat.");
+    }
+  };
 
   const averageRating = reviews.length > 0 
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) 
     : 'New';
-
-  return (
+    return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
       <Link to="/explore" className="inline-flex items-center text-gray-500 hover:text-brand mb-6 font-medium">
         <ChevronLeft size={20} /> Back to Explore
@@ -186,26 +185,26 @@ const navigate = useNavigate();
 
           <div className="mt-auto space-y-3">
             <button 
-  onClick={() => {
-    if (isOutOfStock) {
-      alert("This product is out of stock right now.");
-    } else {
-      handleAddToCart();
-    }
-  }} 
-  className={`w-full font-bold text-lg py-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-md ${isOutOfStock ? 'bg-gray-300 text-gray-500 cursor-pointer' : 'bg-brand text-white hover:bg-brand/90'}`}
->
-  <ShoppingCart size={22} /> {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
-</button>
-          <button 
-  onClick={handleChatWithSeller}
-  className="w-full bg-blue-50 text-blue-600 border-2 border-blue-200 font-bold text-lg py-4 rounded-xl hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 mb-3"
->
-  <MessageSquare size={22} /> Chat with Seller
-</button>
-            
-<a href={whatsappLink} target="_blank" rel="noreferrer" className="w-full bg-white text-dark border-2...
-            <a href={whatsappLink} target="_blank" rel="noreferrer" className="w-full bg-white text-dark border-2 border-[#25D366] font-bold text-lg py-4 rounded-xl hover:bg-[#25D366]/10 transition-colors flex items-center justify-center gap-2">
+              onClick={() => {
+                if (isOutOfStock) {
+                  alert("This product is out of stock right now.");
+                } else {
+                  handleAddToCart();
+                }
+              }} 
+              className={`w-full font-bold text-lg py-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-md ${isOutOfStock ? 'bg-gray-300 text-gray-500 cursor-pointer' : 'bg-brand text-white hover:bg-brand/90'}`}
+            >
+              <ShoppingCart size={22} /> {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+            </button>
+
+            <button 
+              onClick={handleChatWithSeller}
+              className="w-full bg-blue-50 text-blue-600 border-2 border-blue-200 font-bold text-lg py-4 rounded-xl hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+            >
+              <MessageSquare size={22} /> Chat with Seller
+            </button>
+
+            <a href={whatsappLink} target="_blank" rel="noreferrer" className="w-full bg-white text-dark border-2 border-[#25D366] font-bold text-lg py-4 rounded-xl hover:bg-[#25D366]/10 transition-colors flex items-center justify-center gap-2 mt-3">
               <MessageCircle size={22} className="text-[#25D366]" /> Ask Seller on WhatsApp
             </a>
           </div>
@@ -238,4 +237,4 @@ const navigate = useNavigate();
       </div>
     </div>
   );
-    }
+              }
