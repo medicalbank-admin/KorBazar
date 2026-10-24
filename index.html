@@ -15,7 +15,7 @@
     <meta property="og:description" content="Discover unique, handmade goods, homemade treats, and verified local sellers in Charsadda." />
     <meta property="og:image" content="https://medicalbank-admin.github.io/KorBazar/logo.png" />
 
-    <!-- Favicon (Tab Icon) -->
+    <!-- Favicon & PWA (Tab Icon & App Install) -->
     <link rel="icon" type="image/png" href="./logo.png" />
     <link rel="apple-touch-icon" href="./logo.png" />
     <link rel="manifest" href="./manifest.json" />
@@ -35,6 +35,16 @@
             },
             fontFamily: {
               sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            },
+            // Custom Animation for the Ads
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+            },
+            animation: {
+              'fade-in': 'fadeIn 1s ease-in-out',
             }
           }
         }
