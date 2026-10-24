@@ -269,7 +269,7 @@ export default function SellerDashboard() {
           <ShieldAlert size={64} className="text-alert mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-alert mb-2">Store Frozen</h2>
           <p className="text-gray-700 mb-6">Your store has been temporarily frozen by the Admin. Please contact support on WhatsApp.</p>
-          <a href="https://wa.me/923000000000" target="_blank" rel="noreferrer" className="bg-alert text-white px-6 py-3 rounded-xl font-bold inline-block">Contact Admin</a>
+          <a href="https://wa.me/923390251147" target="_blank" rel="noreferrer" className="bg-alert text-white px-6 py-3 rounded-xl font-bold inline-block">Contact Admin</a>
         </div>
       </div>
     );
