@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
-import { MessageSquare, ChevronRight } from 'lucide-react';
+import { MessageSquare, ChevronRight, ShieldCheck, Crown, CheckCircle2 } from 'lucide-react';
 
 export default function Inbox() {
   const { currentUser } = useAuth();
@@ -27,20 +27,28 @@ export default function Inbox() {
         const partnerId = chatData.participants.find((id: string) => id !== currentUser.uid);
         
         let partnerName = "User";
-        let partnerRole = "user";
+        let partnerRole = "buyer";
+        let partnerPlan = "standard";
 
         if (partnerId) {
-          // Try to fetch as a seller first
-          const sellerSnap = await getDoc(doc(db, 'sellers', partnerId));
-          if (sellerSnap.exists()) {
-            partnerName = sellerSnap.data().storeName;
-            partnerRole = "seller";
-          } else {
-            // If not a seller, fetch as a user (buyer/admin)
-            const userSnap = await getDoc(doc(db, 'users', partnerId));
-            if (userSnap.exists()) {
-              partnerName = userSnap.data().email.split('@')[0];
-              partnerRole = userSnap.data().role;
+          // 1. Fetch user role first
+          const userSnap = await getDoc(doc(db, 'users', partnerId));
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            partnerRole = userData.role || 'buyer';
+
+            if (partnerRole === 'admin') {
+              partnerName = "ADMIN";
+            } else if (partnerRole === 'seller') {
+              // Fetch seller store details
+              const sellerSnap = await getDoc(doc(db, 'sellers', partnerId));
+              if (sellerSnap.exists()) {
+                partnerName = sellerSnap.data().storeName;
+                partnerPlan = sellerSnap.data().plan || 'standard';
+              }
+            } else {
+              // It's a buyer
+              partnerName = userData.email?.split('@')[0] || 'Buyer';
             }
           }
         }
@@ -50,6 +58,7 @@ export default function Inbox() {
           partnerId,
           partnerName,
           partnerRole,
+          partnerPlan,
           lastMessage: chatData.lastMessage || "New conversation",
           updatedAt: chatData.updatedAt?.toDate() || new Date(),
           unread: chatData.unreadCount?.[currentUser.uid] || 0
@@ -104,8 +113,23 @@ export default function Inbox() {
               
               <div className="flex-grow min-w-0">
                 <div className="flex justify-between items-baseline mb-1">
-                  <h3 className="font-bold text-dark truncate">{chat.partnerName}</h3>
-                  <span className="text-xs text-gray-400 flex-shrink-0">
+                  <h3 className="font-bold text-dark truncate flex items-center gap-1.5">
+                    {chat.partnerName}
+                    
+                    {/* DYNAMIC BADGES IN INBOX */}
+                    {chat.partnerRole === 'admin' && (
+                      <span title="Official Admin"><ShieldCheck size={16} className="text-brand fill-green-100" /></span>
+                    )}
+                    
+                    {chat.partnerRole === 'seller' && chat.partnerPlan === 'premium' && (
+                      <span title="Premium Seller"><Crown size={16} className="text-yellow-500 fill-yellow-100" /></span>
+                    )}
+                    
+                    {chat.partnerRole === 'seller' && chat.partnerPlan !== 'premium' && (
+                      <span title="Verified Seller"><CheckCircle2 size={14} className="text-brand" /></span>
+                    )}
+                  </h3>
+                  <span className="text-xs text-gray-400 flex-shrink-0 ml-2">
                     {chat.updatedAt.toLocaleDateString()}
                   </span>
                 </div>
@@ -129,4 +153,4 @@ export default function Inbox() {
       )}
     </div>
   );
-}
+                        }
