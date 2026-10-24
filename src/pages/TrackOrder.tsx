@@ -130,15 +130,53 @@ export default function TrackOrder() {
           </div>
         )}
 
-        {order.trackingNumber && (
-          <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl flex items-center gap-3 mb-6">
-            <Box size={24} />
-            <div>
-              <p className="font-bold text-sm">Courier Service: {order.courierName || 'Standard Courier'}</p>
-              <p className="text-lg font-mono font-bold">{order.trackingNumber}</p>
+        {/* SMART COURIER TRACKING */}
+        {order.trackingNumber && (() => {
+          const courier = (order.courierName || 'Other').toLowerCase();
+          let trackingUrl = '';
+          
+          if (courier.includes('tcs')) {
+            trackingUrl = `https://www.tcsexpress.com/track/${order.trackingNumber}`;
+          } else if (courier.includes('leopard')) {
+            trackingUrl = `https://www.leopardscourier.com/tracking/${order.trackingNumber}`;
+          } else if (courier.includes('m&p') || courier.includes('blueex')) {
+            trackingUrl = `https://www.mulphilog.com/tracking/${order.trackingNumber}`;
+          } else if (courier.includes('pakistan post')) {
+            trackingUrl = `https://www.pakpost.gov.pk/tracking.php?tracking_id=${order.trackingNumber}`;
+          } else if (courier.includes('postex')) {
+            trackingUrl = `https://postex.pk/tracking?tracking_number=${order.trackingNumber}`;
+          } else if (courier.includes('trax')) {
+            trackingUrl = `https://trax.pk/tracking/${order.trackingNumber}`;
+          } else if (courier.includes('call courier')) {
+            trackingUrl = `https://www.callcourier.com.pk/tracking/${order.trackingNumber}`;
+          } else if (courier.includes('doorway')) {
+            trackingUrl = `https://doorway.pk/tracking/${order.trackingNumber}`; 
+          }
+
+          return (
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <Box size={24} />
+                <div>
+                  <p className="font-bold text-sm">Courier Service: {order.courierName || 'Standard Courier'}</p>
+                  <p className="text-lg font-mono font-bold">{order.trackingNumber}</p>
+                </div>
+              </div>
+              
+              {/* Live Track Button */}
+              {trackingUrl && (
+                <a 
+                  href={trackingUrl} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="w-full md:w-auto bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors text-center shadow-sm"
+                >
+                  Track Live on {order.courierName}
+                </a>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         <div className="bg-gray-50 rounded-2xl p-6 mb-6">
           <h3 className="font-bold text-dark mb-4">Order Summary</h3>
@@ -149,7 +187,6 @@ export default function TrackOrder() {
               <div key={i} className="flex justify-between text-sm border-b border-gray-100 pb-2 last:border-0">
                 <div>
                   <span>{item.qty}x {item.title}</span>
-                  {/* SHOW SELECTED VARIANTS TO BUYER */}
                   {(item.selectedSize || item.selectedColor) && (
                     <div className="text-xs text-gray-500 mt-0.5">
                       {item.selectedSize && <span>Size: {item.selectedSize}</span>}
@@ -226,4 +263,4 @@ export default function TrackOrder() {
       )}
     </div>
   );
-            }
+              }
