@@ -6,7 +6,7 @@ import { auth, db } from '../firebase';
 import { signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
-import { LogOut, Shield, Store, Phone, ChevronRight, Edit3, Check, HelpCircle, LayoutDashboard, MapPin, Lock, Package, Wallet, Bell, Truck, RotateCcw, FileText } from 'lucide-react';
+import { LogOut, User, Shield, Store, ShoppingBag, Heart, Phone, Mail, ChevronRight, Edit3, Check, Copy, HelpCircle, LayoutDashboard, MapPin, Lock, Star, TrendingUp, Package, Users, Wallet, Award, Bell, ShieldAlert, MessageSquare } from 'lucide-react';
 
 export default function Profile() {
   const { currentUser, userRole } = useAuth();
@@ -159,6 +159,10 @@ if (loading) return <div className="p-12 text-center text-brand font-bold">Loadi
 
       {userRole === 'buyer' && (
         <>
+          <Link to="/inbox" className="w-full flex items-center justify-between p-4 mb-6 bg-brand/5 border border-brand/20 rounded-xl hover:bg-brand/10 transition-colors font-bold text-brand">
+  <span className="flex items-center gap-2"><MessageSquare size={18} /> My Inbox (Messages)</span>
+  <ChevronRight size={18} />
+</Link>
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-dark">My Orders</h2>
