@@ -7,16 +7,17 @@ export default function ProductCard({ product, isSellerPremium }: { product: any
   const displayImage = product.images?.[0] || product.image || 'https://placehold.co/400x400?text=No+Image';
   
   // Check if stock is 0 or less
-  const isOutOfStock = product.stock !== undefined && Number(product.stock) <= 0;
+  const stockNum = Number(product.stock) || 0;
+  const isOutOfStock = product.stock !== undefined && stockNum <= 0;
 
   return (
     <Link to={`/product/${product.id}`} className="group bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col border border-gray-100 relative">
-      <div className={`relative aspect-square overflow-hidden bg-gray-50 ${isOutOfStock ? 'opacity-70' : ''}`}>
+      <div className={`relative aspect-square overflow-hidden bg-gray-50 ${isOutOfStock ? 'opacity-60' : ''}`}>
         <img src={displayImage} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         
         {/* OUT OF STOCK OVERLAY */}
         {isOutOfStock && (
-          <div className="absolute inset-0 bg-white/60 flex items-center justify-center backdrop-blur-[1px]">
+          <div className="absolute inset-0 bg-white/40 flex items-center justify-center backdrop-blur-[1px]">
             <span className="bg-alert text-white text-sm font-bold px-4 py-2 rounded-lg shadow-lg rotate-[-10deg]">
               Out of Stock
             </span>
@@ -52,6 +53,17 @@ export default function ProductCard({ product, isSellerPremium }: { product: any
             <Star size={14} className="text-yellow-400 fill-yellow-400" />
             <span className="font-medium">{product.rating || 'New'}</span>
           </div>
+        </div>
+        
+        {/* STOCK STATE */}
+        <div className="mt-2 text-xs font-bold">
+          {isOutOfStock ? (
+            <span className="text-alert">Out of Stock</span>
+          ) : stockNum <= 3 ? (
+            <span className="text-orange-500">Only {stockNum} left in stock!</span>
+          ) : (
+            <span className="text-green-600">In Stock</span>
+          )}
         </div>
       </div>
     </Link>
