@@ -12,8 +12,8 @@ export default function Navbar() {
       {/* Desktop Navbar */}
       <header className="hidden md:flex items-center justify-between px-8 py-6 bg-white shadow-sm sticky top-0 z-50">
         <Link to="/" className="flex-shrink-0 flex items-center gap-2">
-          <img src="./logo.png" alt="KorBazar" className="h-20 w-auto object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-          <span className="font-bold text-2xl text-brand">KorBazar</span>
+          <img src="./logo.png" alt="KorBazar" className="h-22 w-auto object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+          
         </Link>
         
         <nav className="flex gap-8 font-medium text-dark/80">
