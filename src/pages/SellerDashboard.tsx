@@ -329,15 +329,20 @@ export default function SellerDashboard() {
           <h2 className="text-xl font-bold text-dark mb-4">Dispatch Order</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Courier Service</label>
-              <select value={dispatchModal.courier} onChange={e => setDispatchModal({...dispatchModal, courier: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
-                <option value="TCS">TCS</option>
-                <option value="Leopards">Leopards Courier</option>
-                <option value="M&P">M&P (BlueEx)</option>
-                <option value="Pakistan Post">Pakistan Post</option>
-                <option value="Local Rider">Local Rider</option>
-              </select>
-            </div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">Courier Service</label>
+  <select value={dispatchModal.courier} onChange={e => setDispatchModal({...dispatchModal, courier: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
+    <option value="TCS">TCS</option>
+    <option value="Leopards">Leopards Courier</option>
+    <option value="M&P">M&P (BlueEx)</option>
+    <option value="Pakistan Post">Pakistan Post</option>
+    <option value="PostEx">PostEx</option>
+    <option value="Trax">Trax</option>
+    <option value="Call Courier">Call Courier</option>
+    <option value="Doorway">Doorway Delivery Service</option>
+    <option value="Local Rider">Local Rider</option>
+    <option value="Other">Other</option>
+  </select>
+</div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Tracking Number</label>
               <input type="text" value={dispatchModal.tracking} onChange={e => setDispatchModal({...dispatchModal, tracking: e.target.value})} placeholder="e.g. TC123456789" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
