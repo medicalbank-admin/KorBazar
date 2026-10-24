@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Search, ShoppingCart, User, Package, LayoutDashboard, ShieldCheck, Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import NotificationBell from './NotificationBell';
 
 export default function Navbar() {
   const location = useLocation();
@@ -32,11 +33,10 @@ export default function Navbar() {
             </>
           ) : (
             <div className="flex items-center gap-4">
-              <span className="text-sm font-bold text-brand uppercase bg-brand/10 px-3 py-1 rounded-full">{userRole || 'buyer'}</span>
-              <Link to="/profile" className="font-semibold text-dark hover:text-brand transition-colors">Profile</Link>
-            </div>
-          )}
-        </div>
+  <span className="text-sm font-bold text-brand uppercase bg-brand/10 px-3 py-1 rounded-full">{userRole || 'buyer'}</span>
+  <NotificationBell />
+  <Link to="/profile" className="font-semibold text-dark hover:text-brand transition-colors">Profile</Link>
+</div>
       </header>
 
       {/* Mobile Top Bar */}
@@ -45,13 +45,16 @@ export default function Navbar() {
           <img src="./logo.png" alt="KorBazar" className="h-10 w-auto object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           
         </Link>
-        {!currentUser ? (
-          <Link to="/login" className="font-semibold text-brand">Login</Link>
-        ) : (
-          <Link to={userRole === 'seller' ? '/seller/dashboard' : userRole === 'admin' ? '/admin' : '/profile'} className="font-semibold text-brand flex items-center gap-1 uppercase text-sm bg-brand/10 px-3 py-1.5 rounded-full">
-            <User size={14}/> {userRole || 'buyer'}
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+  {currentUser && <NotificationBell />}
+  {!currentUser ? (
+    <Link to="/login" className="font-semibold text-brand">Login</Link>
+  ) : (
+    <Link to={userRole === 'seller' ? '/seller/dashboard' : userRole === 'admin' ? '/admin' : '/profile'} className="font-semibold text-brand flex items-center gap-1 uppercase text-sm bg-brand/10 px-3 py-1.5 rounded-full">
+      <User size={14}/> {userRole || 'buyer'}
+    </Link>
+  )}
+</div>
       </header>
 
       {/* Mobile Bottom Nav */}
