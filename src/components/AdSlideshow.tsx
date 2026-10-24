@@ -14,7 +14,6 @@ export default function AdSlideshow() {
   useEffect(() => {
     const fetchAds = async () => {
       try {
-        // Only fetch up to 5 ads
         const q = query(collection(db, 'ads'), limit(5));
         const snap = await getDocs(q);
         const adsData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -43,7 +42,7 @@ export default function AdSlideshow() {
 
     const adTimer = setInterval(() => {
       setCurrentAdIndex((prevIndex) => (prevIndex + 1) % ads.length);
-    }, 12000); // 12 seconds
+    }, 12000);
 
     return () => clearInterval(adTimer);
   }, [isVisible, ads.length]);
@@ -53,26 +52,35 @@ export default function AdSlideshow() {
   const currentAd = ads[currentAdIndex];
 
   return (
-    <div className="relative w-full h-[300px] md:h-[400px] bg-dark overflow-hidden flex items-center justify-center">
+    <div className="relative w-full bg-white border-b border-gray-100 pb-6">
       
-      {/* Background Image */}
-      <img 
-        src={currentAd.imageBase64} 
-        alt={currentAd.title} 
-        className="absolute inset-0 w-full h-full object-cover opacity-90 transition-opacity duration-1000"
-      />
+      {/* Skip Button */}
+      {canSkip && (
+        <button 
+          onClick={() => setIsVisible(false)}
+          className="absolute top-2 right-2 z-30 bg-black/60 hover:bg-black/80 text-white text-xs font-bold py-1.5 px-3 rounded-full flex items-center gap-1 backdrop-blur-sm transition-all shadow-md"
+        >
+          Skip Ad <X size={14} />
+        </button>
+      )}
 
-      {/* Dark Gradient Overlay for Readability */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10"></div>
+      {/* Image Container - Clean, No Overlay */}
+      <div className="w-full flex justify-center bg-gray-50">
+        <img 
+          src={currentAd.imageBase64} 
+          alt={currentAd.title} 
+          className="w-full max-w-5xl h-auto object-contain"
+        />
+      </div>
 
-      {/* Content (Title & Button) */}
-      <div className="relative z-10 text-center px-4 max-w-2xl mx-auto mt-10">
-        <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4 shadow-sm drop-shadow-md">
+      {/* Text & Button Below the Image */}
+      <div className="text-center px-4 mt-6 max-w-2xl mx-auto">
+        <h2 className="text-2xl md:text-3xl font-extrabold text-dark mb-3">
           {currentAd.title}
         </h2>
         <Link 
           to={currentAd.productId ? `/product/${currentAd.productId}` : currentAd.link} 
-          className="inline-block bg-brand text-white font-bold py-3 px-8 rounded-full hover:bg-brand/90 transition-all shadow-lg text-lg transform hover:scale-105"
+          className="inline-block bg-brand text-white font-bold py-3 px-10 rounded-full hover:bg-brand/90 transition-all shadow-md text-lg transform hover:scale-105"
         >
           Buy Now
         </Link>
@@ -80,26 +88,16 @@ export default function AdSlideshow() {
 
       {/* Ad Indicators (Dots) */}
       {ads.length > 1 && (
-        <div className="absolute bottom-16 flex gap-2 z-20">
+        <div className="flex justify-center gap-2 mt-6">
           {ads.map((_, idx) => (
             <div 
               key={idx} 
-              className={`w-2 h-2 rounded-full transition-colors ${idx === currentAdIndex ? 'bg-brand' : 'bg-white/50'}`}
+              className={`w-2.5 h-2.5 rounded-full transition-colors ${idx === currentAdIndex ? 'bg-brand' : 'bg-gray-300'}`}
             />
           ))}
         </div>
       )}
 
-      {/* Skip Button (Shows after 5 seconds) */}
-      {canSkip && (
-        <button 
-          onClick={() => setIsVisible(false)}
-          className="absolute top-4 right-4 z-30 bg-black/50 hover:bg-black/80 text-white text-xs font-bold py-1.5 px-3 rounded-full flex items-center gap-1 backdrop-blur-sm transition-all"
-        >
-          Skip Ad <X size={14} />
-        </button>
-      )}
-
     </div>
   );
-            }
+}
