@@ -183,7 +183,7 @@ export default function ProductDetails() {
             </div>
           )}
 
-          <div className="mt-auto space-y-3">
+                    <div className="mt-auto space-y-3">
             <button 
               onClick={() => {
                 if (isOutOfStock) {
@@ -237,4 +237,4 @@ export default function ProductDetails() {
       </div>
     </div>
   );
-              }
+                        }
