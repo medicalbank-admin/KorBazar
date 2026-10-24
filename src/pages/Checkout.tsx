@@ -4,7 +4,8 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { collection, addDoc, doc, getDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Ticket, X } from 'lucide-react';
+import { Ticket, X, Mail } from 'lucide-react';
+import emailjs from '@emailjs/browser';
 
 export default function Checkout() {
   const { cart, cartTotal, cartDeliveryFee, clearCart } = useCart();
@@ -14,7 +15,7 @@ export default function Checkout() {
   const [fetchingAddress, setFetchingAddress] = useState(true);
 
   const [formData, setFormData] = useState({
-    name: '', phone: '', whatsapp: '', address: '', notes: ''
+    name: '', phone: '', whatsapp: '', address: '', notes: '', email: ''
   });
   const [paymentMethod, setPaymentMethod] = useState('COD');
 
@@ -25,7 +26,6 @@ export default function Checkout() {
   const [couponError, setCouponError] = useState('');
   const [isApplying, setIsApplying] = useState(false);
 
-  // Calculate Total
   const discountAmount = appliedCoupon ? appliedCoupon.discount : 0;
   const finalTotal = Math.max(0, cartTotal + cartDeliveryFee - discountAmount);
 
@@ -38,6 +38,7 @@ export default function Checkout() {
           const data = userDoc.data();
           setFormData(prev => ({
             ...prev,
+            email: currentUser.email || '',
             phone: data.mobile || '',
             whatsapp: data.whatsapp || data.mobile || '',
             address: data.defaultAddress || ''
@@ -92,10 +93,12 @@ export default function Checkout() {
 
     try {
       const trackingToken = crypto.randomUUID();
+      const trackingLink = `https://medicalbank-admin.github.io/KorBazar/#/track/${trackingToken}`;
       
       const orderData = {
         buyerUid: currentUser?.uid || 'guest',
         buyerName: formData.name,
+        buyerEmail: formData.email,
         buyerPhone: formData.phone,
         buyerWhatsapp: formData.whatsapp,
         buyerAddress: formData.address,
@@ -120,7 +123,32 @@ export default function Checkout() {
         createdAt: new Date().toISOString()
       };
 
+      // 1. Save Order to Firestore
       await addDoc(collection(db, 'orders'), orderData);
+
+      // 2. Send Email Notification with your actual keys
+      if (formData.email) {
+        try {
+          await emailjs.send(
+            'service_q90wxjm',       
+            'template_bu0a3in',      
+            {
+              to_name: formData.name,
+              to_email: formData.email, 
+              order_id: trackingToken.slice(0, 8).toUpperCase(),
+              order_subtotal: cartTotal,          
+              order_shipping: cartDeliveryFee,    
+              order_total: finalTotal,
+              payment_method: paymentMethod,
+              tracking_link: trackingLink,
+            },
+            'yw7E81OSHpJ2l0jJm'        
+          );
+        } catch (emailError) {
+          console.error("Email failed to send, but order was placed:", emailError);
+        }
+      }
+
       clearCart();
       navigate(`/track/${trackingToken}`);
     } catch (error) {
@@ -133,7 +161,8 @@ export default function Checkout() {
 
   if (cart.length === 0) return null;
   if (fetchingAddress) return <div className="p-12 text-center text-brand font-bold">Loading details...</div>;
-    return (
+
+  return (
     <div className="max-w-3xl mx-auto px-4 py-8 pb-24">
       <h1 className="text-3xl font-bold text-dark mb-6">Checkout</h1>
       
@@ -143,6 +172,15 @@ export default function Checkout() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
             <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email Address (For Receipt)</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Mail size={18} className="text-gray-400" />
+              </div>
+              <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" placeholder="you@example.com" />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -174,24 +212,14 @@ export default function Checkout() {
               </label>
             ))}
           </div>
-          {paymentMethod !== 'COD' && (
-            <p className="text-sm text-gray-500 mt-3">You will receive payment instructions on WhatsApp after the seller confirms your order.</p>
-          )}
         </div>
 
-        {/* COUPON SECTION */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <h2 className="font-bold text-lg text-dark mb-4 flex items-center gap-2"><Ticket size={20} className="text-brand"/> Have a Coupon?</h2>
           
           {!appliedCoupon ? (
             <div className="flex gap-2">
-              <input 
-                type="text" 
-                value={couponCode} 
-                onChange={e => setCouponCode(e.target.value)} 
-                placeholder="Enter code (e.g. EID2024)" 
-                className="flex-grow px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none uppercase" 
-              />
+              <input type="text" value={couponCode} onChange={e => setCouponCode(e.target.value)} placeholder="Enter code" className="flex-grow px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none uppercase" />
               <button type="button" onClick={handleApplyCoupon} disabled={isApplying} className="bg-dark text-white px-6 py-3 rounded-xl font-bold hover:bg-black transition-colors disabled:bg-gray-400">
                 {isApplying ? '...' : 'Apply'}
               </button>
@@ -237,4 +265,4 @@ export default function Checkout() {
       </form>
     </div>
   );
-            }
+          }
