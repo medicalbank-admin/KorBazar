@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit, startAfter } from 'firebase/firestore';
 import { db } from '../firebase';
 import ProductCard from '../components/ProductCard';
 import AdSlideshow from '../components/AdSlideshow';
@@ -10,50 +10,91 @@ export default function Home() {
   const [categories, setCategories] = useState<any[]>([]);
   const [premiumSellerIds, setPremiumSellerIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [lastDoc, setLastDoc] = useState<any>(null);
+  const [hasMore, setHasMore] = useState(true);
+
+  const fetchData = async () => {
+    try {
+      // 1. Fetch Categories
+      const catSnap = await getDocs(collection(db, 'categories'));
+      setCategories(catSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+      // 2. Fetch Sellers
+      const sellersSnap = await getDocs(collection(db, 'sellers'));
+      const activeSellerIds: string[] = [];
+      const premiumIds: string[] = [];
+      
+      sellersSnap.docs.forEach(d => {
+        const data = d.data();
+        if (data.status === 'approved' && !data.isFrozen) {
+          activeSellerIds.push(d.id);
+          if (data.plan === 'premium') premiumIds.push(d.id);
+        }
+      });
+      setPremiumSellerIds(premiumIds);
+
+      // 3. Fetch Initial 20 Products (Sorted by Newest)
+      const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'), limit(20));
+      const querySnapshot = await getDocs(q);
+      
+      const allProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+      const activeProducts = allProducts.filter(p => activeSellerIds.includes(p.sellerId));
+      
+      setProducts(activeProducts);
+      setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
+      setHasMore(querySnapshot.docs.length === 20); // If we got less than 20, there are no more
+      
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch Categories
-        const catSnap = await getDocs(collection(db, 'categories'));
-        setCategories(catSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-
-        // Fetch Sellers (to check premium status and freeze status)
-        const sellersSnap = await getDocs(collection(db, 'sellers'));
-        const activeSellerIds: string[] = [];
-        const premiumIds: string[] = [];
-        
-        sellersSnap.docs.forEach(d => {
-          const data = d.data();
-          if (data.status === 'approved' && !data.isFrozen) {
-            activeSellerIds.push(d.id);
-            if (data.plan === 'premium') premiumIds.push(d.id);
-          }
-        });
-        setPremiumSellerIds(premiumIds);
-
-        // Fetch Products
-        const querySnapshot = await getDocs(collection(db, 'products'));
-        const allProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-        
-        const activeProducts = allProducts.filter(p => activeSellerIds.includes(p.sellerId));
-        activeProducts.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setProducts(activeProducts);
-        
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
 
+  const handleLoadMore = async () => {
+    if (!lastDoc || loadingMore) return;
+    setLoadingMore(true);
+
+    try {
+      const q = query(
+        collection(db, 'products'), 
+        orderBy('createdAt', 'desc'), 
+        startAfter(lastDoc), 
+        limit(20)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      const newProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+      
+      // Filter based on active sellers (we need to re-fetch active sellers or store them in state if we want to be perfectly accurate, but for simplicity, we'll assume the active list is the same)
+      const sellersSnap = await getDocs(collection(db, 'sellers'));
+      const activeSellerIds = sellersSnap.docs
+        .filter(d => d.data().status === 'approved' && !d.data().isFrozen)
+        .map(d => d.id);
+        
+      const filteredNewProducts = newProducts.filter(p => activeSellerIds.includes(p.sellerId));
+
+      setProducts(prev => [...prev, ...filteredNewProducts]);
+      setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
+      setHasMore(querySnapshot.docs.length === 20);
+
+    } catch (error) {
+      console.error("Error loading more:", error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const premiumProducts = products.filter(p => premiumSellerIds.includes(p.sellerId)).slice(0, 8);
   const standardProducts = products.filter(p => !premiumSellerIds.includes(p.sellerId));
 
   return (
     <div className="pb-24 md:pb-12">
-      {/* AD SLIDESHOW */}
       <AdSlideshow />
 
       <section className="px-4 py-16 md:py-24 max-w-7xl mx-auto text-center">
@@ -84,13 +125,13 @@ export default function Home() {
       </section>
 
       {/* FEATURED PREMIUM PRODUCTS */}
-      {products.filter(p => premiumSellerIds.includes(p.sellerId)).length > 0 && (
+      {premiumProducts.length > 0 && (
         <section className="px-4 max-w-7xl mx-auto mb-16">
           <div className="flex justify-between items-end mb-6">
             <h2 className="text-2xl font-bold text-dark">Featured Shops & Products</h2>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {products.filter(p => premiumSellerIds.includes(p.sellerId)).slice(0, 8).map(product => (
+            {premiumProducts.map(product => (
               <ProductCard key={product.id} product={product} isSellerPremium={true} />
             ))}
           </div>
@@ -116,7 +157,20 @@ export default function Home() {
           </div>
         )}
         
-        <div className="mt-12 text-center">
+        {/* LOAD MORE BUTTON */}
+        {hasMore && !loading && (
+          <div className="mt-12 text-center">
+            <button 
+              onClick={handleLoadMore} 
+              disabled={loadingMore}
+              className="inline-block w-full md:w-auto bg-gray-200 text-dark px-12 py-4 rounded-full font-bold text-lg hover:bg-gray-300 transition-all disabled:opacity-50"
+            >
+              {loadingMore ? 'Loading...' : 'Load More Products'}
+            </button>
+          </div>
+        )}
+
+        <div className="mt-6 text-center">
           <Link to="/explore" className="inline-block w-full md:w-auto bg-dark text-white px-12 py-4 rounded-full font-bold text-lg hover:bg-black transition-all">
             Explore All Shops & Products
           </Link>
