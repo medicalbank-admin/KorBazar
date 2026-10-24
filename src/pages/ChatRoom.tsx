@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment } from 'firebase/firestore';
-import { ChevronLeft, Send } from 'lucide-react';
+import { ChevronLeft, Send, CheckCircle2, Crown, ShieldCheck } from 'lucide-react';
 
 export default function ChatRoom() {
   const { chatId } = useParams();
@@ -28,7 +28,6 @@ export default function ChatRoom() {
   useEffect(() => {
     if (!currentUser || !chatId) return;
 
-    // 1. Fetch Chat details to get partner ID
     const fetchChatDetails = async () => {
       const chatRef = doc(db, 'chats', chatId);
       const chatSnap = await getDoc(chatRef);
@@ -38,17 +37,29 @@ export default function ChatRoom() {
         const partnerId = chatData.participants.find((id: string) => id !== currentUser.uid);
         
         if (partnerId) {
-          // Try seller first
-          const sellerSnap = await getDoc(doc(db, 'sellers', partnerId));
-          if (sellerSnap.exists()) {
-            setPartner({ id: partnerId, name: sellerSnap.data().storeName });
-          } else {
-            // Fallback to user
-            const userSnap = await getDoc(doc(db, 'users', partnerId));
-            if (userSnap.exists()) {
-              setPartner({ id: partnerId, name: userSnap.data().email.split('@')[0] });
+          // 1. Fetch user role
+          const userSnap = await getDoc(doc(db, 'users', partnerId));
+          const userData = userSnap.data();
+          const role = userData?.role || 'buyer';
+          
+          let partnerName = "User";
+          let partnerPlan = "standard";
+
+          if (role === 'admin') {
+            partnerName = "ADMIN";
+          } else if (role === 'seller') {
+            // Fetch seller store details
+            const sellerSnap = await getDoc(doc(db, 'sellers', partnerId));
+            if (sellerSnap.exists()) {
+              partnerName = sellerSnap.data().storeName;
+              partnerPlan = sellerSnap.data().plan || 'standard';
             }
+          } else {
+            // It's a buyer
+            partnerName = userData?.email?.split('@')[0] || 'Buyer';
           }
+
+          setPartner({ id: partnerId, name: partnerName, role, plan: partnerPlan });
         }
 
         // Mark messages as read for the current user
@@ -61,7 +72,7 @@ export default function ChatRoom() {
 
     fetchChatDetails();
 
-    // 2. Listen to messages in real-time
+    // Listen to messages in real-time
     const messagesQ = query(
       collection(db, 'chats', chatId, 'messages'),
       orderBy('createdAt', 'asc')
@@ -85,21 +96,18 @@ export default function ChatRoom() {
     if (!newMessage.trim() || !currentUser || !chatId || !partner) return;
 
     const text = newMessage.trim();
-    setNewMessage(''); // Clear input immediately for fast UX
+    setNewMessage(''); 
 
     try {
-      // 1. Add the message to the subcollection
       await addDoc(collection(db, 'chats', chatId, 'messages'), {
         text,
         senderId: currentUser.uid,
         createdAt: serverTimestamp()
       });
 
-      // 2. Update the main chat document
       await updateDoc(doc(db, 'chats', chatId), {
         lastMessage: text,
         updatedAt: serverTimestamp(),
-        // Increment unread count for the partner
         [`unreadCount.${partner.id}`]: increment(1)
       });
     } catch (error) {
@@ -123,8 +131,26 @@ export default function ChatRoom() {
           {partner?.name.charAt(0).toUpperCase() || 'U'}
         </div>
         <div>
-          <h2 className="font-bold text-dark leading-tight">{partner?.name || 'Loading...'}</h2>
-          <p className="text-xs text-brand font-semibold">Real-time Chat</p>
+          <h2 className="font-bold text-dark leading-tight flex items-center gap-1.5">
+            {partner?.name || 'Loading...'}
+            
+            {/* DYNAMIC BADGES */}
+            {partner?.role === 'admin' && (
+              <span title="Official Admin"><ShieldCheck size={18} className="text-brand fill-green-100" /></span>
+            )}
+            
+            {partner?.role === 'seller' && partner?.plan === 'premium' && (
+              <span title="Premium Seller"><Crown size={18} className="text-yellow-500 fill-yellow-100" /></span>
+            )}
+            
+            {partner?.role === 'seller' && partner?.plan !== 'premium' && (
+              <span title="Verified Seller"><CheckCircle2 size={16} className="text-brand" /></span>
+            )}
+
+          </h2>
+          <p className="text-xs text-brand font-semibold">
+            {partner?.role === 'admin' ? 'Support Team' : 'Real-time Chat'}
+          </p>
         </div>
       </div>
 
@@ -174,4 +200,4 @@ export default function ChatRoom() {
       </form>
     </div>
   );
-}
+    }
