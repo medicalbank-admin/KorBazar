@@ -6,7 +6,7 @@ import { auth, db } from '../firebase';
 import { signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
-import { MessageSquare, ChevronRight, LogOut, Lock, Bell, Wallet, Package, FileText, Truck, RotateCcw, Store, Shield, LayoutDashboard, MapPin, HelpCircle, Edit3, Check, Phone } from 'lucide-react';
+import { MessageSquare, ChevronRight, LogOut, Gift, Wallet, Lock, Copy, Bell, Wallet, Package, FileText, Truck, RotateCcw, Store, Shield, LayoutDashboard, MapPin, HelpCircle, Edit3, Check, Phone } from 'lucide-react';
 
 export default function Profile() {
   const { currentUser, userRole } = useAuth();
@@ -18,7 +18,8 @@ export default function Profile() {
   const [storeData, setStoreData] = useState<any>(null);
   const [buyerOrders, setBuyerOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
+  const [referralCode, setReferralCode] = useState('');
+  const [walletBalance, setWalletBalance] = useState(0);
   const [isEditingContact, setIsEditingContact] = useState(false);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [mobile, setMobile] = useState('');
@@ -30,19 +31,33 @@ export default function Profile() {
   const [resetMsg, setResetMsg] = useState('');
 
   useEffect(() => {
-    const fetchProfileData = async () => {
-      if (!currentUser || !userRole) return;
+  const fetchProfileData = async () => {
+    if (!currentUser || !userRole) return;
 
-      try {
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setUserData(data);
-          setMobile(data.mobile || '');
-          setWhatsapp(data.whatsapp || '');
-          setDefaultAddress(data.defaultAddress || '');
-          setReceiveUpdates(data.receiveUpdates !== false);
+    try {
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        setUserData(data);
+        setMobile(data.mobile || '');
+        setWhatsapp(data.whatsapp || '');
+        setDefaultAddress(data.defaultAddress || '');
+        setReceiveUpdates(data.receiveUpdates !== false);
+        
+        setWalletBalance(data.walletBalance || 0);
+
+        // Generate referral code if it doesn't exist
+        if (data.referralCode) {
+          setReferralCode(data.referralCode);
+        } else {
+          const newCode = `KOR-${currentUser.uid.substring(0, 5).toUpperCase()}`;
+          setReferralCode(newCode);
+          // Save it to database for future
+          await updateDoc(doc(db, 'users', currentUser.uid), { referralCode: newCode });
         }
+      }
+      // ... rest of your fetching logic for buyer stats or seller stats
+      
 
         if (userRole === 'seller') {
           const storeDoc = await getDoc(doc(db, 'sellers', currentUser.uid));
@@ -159,6 +174,42 @@ if (loading) return <div className="p-12 text-center text-brand font-bold">Loadi
 
       {userRole === 'buyer' && (
         <>
+          {/* WALLET & REFERRAL CARD */}
+<div className="bg-gradient-to-r from-brand/10 to-green-50 border border-brand/20 rounded-3xl p-6 mb-6">
+  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    
+    {/* Wallet Balance */}
+    <div className="flex items-center gap-3">
+      <div className="w-12 h-12 bg-brand text-white rounded-full flex items-center justify-center shadow-sm">
+        <Wallet size={24} />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-gray-600">My Wallet Balance</p>
+        <p className="text-2xl font-extrabold text-brand">Rs. {walletBalance}</p>
+      </div>
+    </div>
+
+    {/* Referral Code */}
+    <div className="bg-white border border-brand/20 rounded-xl p-3 shadow-sm w-full md:w-auto">
+      <p className="text-xs font-bold text-gray-500 uppercase mb-1 flex items-center gap-1"><Gift size={14} /> Invite & Earn</p>
+      <div className="flex items-center gap-2">
+        <span className="font-mono font-bold text-dark tracking-wider text-lg">{referralCode}</span>
+        <button 
+          onClick={() => {
+            navigator.clipboard.writeText(referralCode);
+            alert('Referral code copied!');
+          }}
+          className="p-1.5 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+          title="Copy Code"
+        >
+          <Copy size={16} />
+        </button>
+      </div>
+      <p className="text-[10px] text-gray-500 mt-1">Share this code. You get Rs. 100 when they order!</p>
+    </div>
+
+  </div>
+</div>
           <Link to="/inbox" className="w-full flex items-center justify-between p-4 mb-6 bg-brand/5 border border-brand/20 rounded-xl hover:bg-brand/10 transition-colors font-bold text-brand">
   <span className="flex items-center gap-2"><MessageSquare size={18} /> My Inbox (Messages)</span>
   <ChevronRight size={18} />
