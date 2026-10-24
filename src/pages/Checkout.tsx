@@ -41,6 +41,7 @@ export default function Checkout() {
   useEffect(() => {
     const fetchUserData = async () => {
       if (!currentUser) { setFetchingAddress(false); return; }
+      
       try {
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
         if (userDoc.exists()) {
@@ -137,7 +138,6 @@ export default function Checkout() {
     setLoading(true);
 
     try {
-      // GROUP CART BY SELLER
       const groupedBySeller = cart.reduce((acc: any, item) => {
         if (!acc[item.sellerId]) acc[item.sellerId] = [];
         acc[item.sellerId].push(item);
@@ -147,7 +147,6 @@ export default function Checkout() {
       const sellerIds = Object.keys(groupedBySeller);
       const generatedTokens: string[] = [];
 
-      // Create a separate order for each seller
       for (const sellerId of sellerIds) {
         const sellerItems = groupedBySeller[sellerId];
         const sellerStoreName = sellerItems[0].storeName;
@@ -155,7 +154,6 @@ export default function Checkout() {
         const sellerSubtotal = sellerItems.reduce((sum: number, i: any) => sum + (i.price * i.quantity), 0);
         const sellerDelivery = sellerItems.reduce((sum: number, i: any) => sum + ((i.deliveryFee || 0) * i.quantity), 0);
         
-        // Apply discount proportionally to each seller's order based on subtotal
         const proportion = cartTotal > 0 ? (sellerSubtotal / cartTotal) : 0;
         const sellerCouponDiscount = discountAmount * proportion;
         const sellerReferralDiscount = referralDiscount * proportion;
@@ -199,7 +197,6 @@ export default function Checkout() {
 
         await addDoc(collection(db, 'orders'), orderData);
         
-        // Trigger Notification for this specific Seller
         await addDoc(collection(db, 'notifications'), {
           userId: sellerId,
           title: 'New Order Received! 🎉',
@@ -212,7 +209,6 @@ export default function Checkout() {
       }
       
       clearCart();
-      // Redirect to the tracking page of the first order created
       navigate(`/track/${generatedTokens[0]}`);
     } catch (error) {
       console.error(error);
@@ -227,6 +223,16 @@ export default function Checkout() {
     return (
     <div className="max-w-3xl mx-auto px-4 py-8 pb-24">
       <h1 className="text-3xl font-bold text-dark mb-6">Checkout</h1>
+
+      {/* GUEST LOGIN PROMPT */}
+      {!currentUser && (
+        <div className="bg-brand/10 border border-brand/20 rounded-xl p-4 mb-6 flex flex-col md:flex-row items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-brand">Already have an account? Login for a faster checkout.</p>
+          <button type="button" onClick={() => navigate('/login')} className="bg-brand text-white px-6 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-brand/90 transition-colors">
+            Login
+          </button>
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
@@ -299,24 +305,26 @@ export default function Checkout() {
             {couponMsg && <p className="text-brand text-xs mt-1 font-semibold">{couponMsg}</p>}
           </div>
 
-          <div className="pt-2 border-t border-gray-100">
-            {!appliedReferral ? (
-              <div className="flex gap-2">
-                <input type="text" value={referralCode} onChange={e => setReferralCode(e.target.value)} placeholder="Enter friend's referral code" className="flex-grow px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none uppercase" />
-                <button type="button" onClick={handleApplyReferral} disabled={isApplyingReferral} className="bg-brand/10 text-brand px-6 py-3 rounded-xl font-bold hover:bg-brand/20 transition-colors disabled:bg-gray-400">Apply</button>
-              </div>
-            ) : (
-              <div className="bg-brand/5 border border-brand/20 rounded-xl p-3 flex justify-between items-center">
-                <div>
-                  <p className="font-bold text-brand text-sm flex items-center gap-1"><Gift size={14}/> Referral Applied</p>
-                  <p className="text-xs text-brand/80">You saved Rs. {REFERRAL_DISCOUNT}!</p>
+          {currentUser && (
+            <div className="pt-2 border-t border-gray-100">
+              {!appliedReferral ? (
+                <div className="flex gap-2">
+                  <input type="text" value={referralCode} onChange={e => setReferralCode(e.target.value)} placeholder="Enter friend's referral code" className="flex-grow px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none uppercase" />
+                  <button type="button" onClick={handleApplyReferral} disabled={isApplyingReferral} className="bg-brand/10 text-brand px-6 py-3 rounded-xl font-bold hover:bg-brand/20 transition-colors disabled:bg-gray-400">Apply</button>
                 </div>
-                <button type="button" onClick={handleRemoveReferral} className="text-alert p-1 hover:bg-red-100 rounded-lg"><X size={18}/></button>
-              </div>
-            )}
-            {referralError && <p className="text-alert text-xs mt-1 font-semibold">{referralError}</p>}
-            {referralMsg && <p className="text-brand text-xs mt-1 font-semibold">{referralMsg}</p>}
-          </div>
+              ) : (
+                <div className="bg-brand/5 border border-brand/20 rounded-xl p-3 flex justify-between items-center">
+                  <div>
+                    <p className="font-bold text-brand text-sm flex items-center gap-1"><Gift size={14}/> Referral Applied</p>
+                    <p className="text-xs text-brand/80">You saved Rs. {REFERRAL_DISCOUNT}!</p>
+                  </div>
+                  <button type="button" onClick={handleRemoveReferral} className="text-alert p-1 hover:bg-red-100 rounded-lg"><X size={18}/></button>
+                </div>
+              )}
+              {referralError && <p className="text-alert text-xs mt-1 font-semibold">{referralError}</p>}
+              {referralMsg && <p className="text-brand text-xs mt-1 font-semibold">{referralMsg}</p>}
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
