@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket, TrendingUp, Banknote, Settings, Flag } from 'lucide-react';
+import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket, TrendingUp, Banknote, Settings, Flag, Megaphone, Image } from 'lucide-react';
 
 export default function Admin() {
   const [sellers, setSellers] = useState<any[]>([]);
@@ -12,7 +12,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState<any[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'promotions' | 'orders' | 'products' | 'categories' | 'coupons' | 'verification' | 'finance' | 'reports'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'promotions' | 'orders' | 'products' | 'categories' | 'coupons' | 'verification' | 'finance' | 'reports' | 'ads'>('overview');
   const [viewImage, setViewImage] = useState<string | null>(null);
   const [editingSeller, setEditingSeller] = useState<any>(null);
   const [editForm, setEditForm] = useState({ fullName: '', phone: '', storeName: '', bio: '', address: '' });
@@ -20,6 +20,9 @@ export default function Admin() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCoupon, setNewCoupon] = useState({ code: '', discount: '', minAmount: '' });
   const [couponMsg, setCouponMsg] = useState('');
+  const [ads, setAds] = useState<any[]>([]);
+const [newAd, setNewAd] = useState({ title: '', productId: '', imageBase64: '', link: '/explore' });
+const [isUploadingAd, setIsUploadingAd] = useState(false);
 
   // Platform Settings State
   const [fees, setFees] = useState({ standard: 1000, premium: 2000 });
@@ -48,6 +51,8 @@ export default function Admin() {
       setCoupons(couponSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       const reportSnap = await getDocs(collection(db, 'reports'));
 setReports(reportSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const adsSnap = await getDocs(collection(db, 'ads'));
+setAds(adsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       
       // Fetch Platform Settings
       const settingsSnap = await getDoc(doc(db, 'settings', 'platform'));
@@ -173,7 +178,45 @@ setReports(reportSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       fetchData();
     }
   };
+const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setNewAd({ ...newAd, imageBase64: reader.result as string });
+    };
+    reader.readAsDataURL(file);
+  }
+};
 
+const handleAddAd = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!newAd.title || !newAd.imageBase64) return alert("Please provide a title and image.");
+  setIsUploadingAd(true);
+  try {
+    await addDoc(collection(db, 'ads'), {
+      title: newAd.title,
+      productId: newAd.productId,
+      imageBase64: newAd.imageBase64, // Saving directly as Base64 to bypass Storage limits
+      link: newAd.link,
+      createdAt: new Date().toISOString()
+    });
+    setNewAd({ title: '', productId: '', imageBase64: '', link: '/explore' });
+    fetchData();
+    alert("Ad created successfully!");
+  } catch (error) {
+    alert("Failed to create ad.");
+  } finally {
+    setIsUploadingAd(false);
+  }
+};
+
+const handleDeleteAd = async (id: string) => {
+  if(window.confirm("Delete this ad?")) {
+    await deleteDoc(doc(db, 'ads', id));
+    fetchData();
+  }
+};
   const handleOpenEdit = (seller: any) => {
     setEditingSeller(seller);
     setEditForm({ fullName: seller.fullName || '', phone: seller.phone || '', storeName: seller.storeName || '', bio: seller.bio || '', address: seller.storeAddress || '' });
