@@ -21,7 +21,7 @@ import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import Inbox from './pages/Inbox';
 import ChatRoom from './pages/ChatRoom';
-
+import TrackSearch from './pages/TrackSearch';
 import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ChatProvider } from './context/ChatContext';
@@ -49,6 +49,7 @@ export default function App() {
                         <Route path="/cart" element={<Cart />} />
                         <Route path="/checkout" element={<Checkout />} />
                         <Route path="/track/:token" element={<TrackOrder />} />
+                        <Route path="/track" element={<TrackSearch />} />
                         <Route path="/favorites" element={<Favorites />} />
                         
                         <Route path="/login" element={<Login />} />
