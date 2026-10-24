@@ -5,14 +5,26 @@ import { useFavorites } from '../context/FavoritesContext';
 export default function ProductCard({ product, isSellerPremium }: { product: any, isSellerPremium?: boolean }) {
   const { toggleFavorite, isFavorite } = useFavorites();
   const displayImage = product.images?.[0] || product.image || 'https://placehold.co/400x400?text=No+Image';
+  
+  // Check if stock exists and is 0 or less
+  const isOutOfStock = product.stock !== undefined && Number(product.stock) <= 0;
 
   return (
     <Link to={`/product/${product.id}`} className="group bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col border border-gray-100 relative">
-      <div className="relative aspect-square overflow-hidden bg-gray-50">
+      <div className={`relative aspect-square overflow-hidden bg-gray-50 ${isOutOfStock ? 'opacity-60' : ''}`}>
         <img src={displayImage} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         
+        {/* Out of Stock Overlay */}
+        {isOutOfStock && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <span className="bg-white text-alert font-bold px-4 py-2 rounded-lg shadow-lg rotate-[-10deg]">
+              Out of Stock
+            </span>
+          </div>
+        )}
+
         {/* Premium Badge */}
-        {isSellerPremium && (
+        {isSellerPremium && !isOutOfStock && (
           <span className="absolute top-3 left-3 bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-1 border border-yellow-200">
             <Crown size={12} className="fill-yellow-500 text-yellow-500" /> Premium
           </span>
@@ -20,7 +32,7 @@ export default function ProductCard({ product, isSellerPremium }: { product: any
 
         <button 
           onClick={(e) => { e.preventDefault(); toggleFavorite(product.id); }}
-          className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white text-gray-500 hover:text-red-500 transition-colors shadow-sm"
+          className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white text-gray-500 hover:text-red-500 transition-colors shadow-sm z-10"
         >
           <Heart size={18} className={isFavorite(product.id) ? "fill-red-500 text-red-500" : ""} />
         </button>
