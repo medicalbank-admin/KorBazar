@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 
-type CartItem = {
+export type CartItem = {
   productId: string;
   title: string;
   price: number;
@@ -10,15 +10,20 @@ type CartItem = {
   quantity: number;
   deliveryFee?: number;
   description?: string;
+  selectedSize?: string;  // NEW
+  selectedColor?: string; // NEW
+  cartItemId: string;     // NEW: Unique ID for this specific variant in the cart
 };
 
 type CartContextType = {
   cart: CartItem[];
-  addToCart: (item: Omit<CartItem, 'quantity'>) => void;
-  removeFromCart: (productId: string) => void;
+  addToCart: (item: Omit<CartItem, 'quantity' | 'cartItemId'>) => void;
+  removeFromCart: (cartItemId: string) => void;
+  updateQuantity: (cartItemId: string, newQuantity: number) => void;
   clearCart: () => void;
   cartTotal: number;
   cartDeliveryFee: number;
+  cartItemCount: number; // NEW: For the Navbar badge
 };
 
 const CartContext = createContext<CartContextType>({} as CartContextType);
@@ -33,35 +38,40 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.setItem('korbazar-cart', JSON.stringify(cart));
   }, [cart]);
 
-  const addToCart = (item: Omit<CartItem, 'quantity'>) => {
+  const addToCart = (item: Omit<CartItem, 'quantity' | 'cartItemId'>) => {
     setCart(prev => {
-      const existing = prev.find(i => i.productId === item.productId);
+      // Create a unique ID based on product ID + size + color
+      const uniqueId = `${item.productId}-${item.selectedSize || 'nosize'}-${item.selectedColor || 'nocolor'}`;
+      
+      // Check if this exact variant is already in the cart
+      const existing = prev.find(i => i.cartItemId === uniqueId);
+      
       if (existing) {
-        return prev.map(i => i.productId === item.productId ? { ...i, quantity: i.quantity + 1 } : i);
+        return prev.map(i => i.cartItemId === uniqueId ? { ...i, quantity: i.quantity + 1 } : i);
       }
-      if (prev.length > 0 && prev[0].sellerId !== item.sellerId) {
-        if (window.confirm('Your cart has items from another store. Clear cart and add this item?')) {
-          return [{ ...item, quantity: 1 }];
-        }
-        return prev;
-      }
-      return [...prev, { ...item, quantity: 1 }];
+      
+      // If it's a new item, add it
+      return [...prev, { ...item, quantity: 1, cartItemId: uniqueId }];
     });
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart(prev => prev.filter(i => i.productId !== productId));
+  const removeFromCart = (cartItemId: string) => {
+    setCart(prev => prev.filter(i => i.cartItemId !== cartItemId));
+  };
+
+  const updateQuantity = (cartItemId: string, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    setCart(prev => prev.map(i => i.cartItemId === cartItemId ? { ...i, quantity: newQuantity } : i));
   };
 
   const clearCart = () => setCart([]);
   
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  
-  // Calculate delivery fee: sum of all items' delivery fees (or highest, let's sum them for simplicity)
   const cartDeliveryFee = cart.reduce((sum, item) => sum + (item.deliveryFee || 0) * item.quantity, 0);
+  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0); // Total physical items
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, clearCart, cartTotal, cartDeliveryFee }}>
+    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, cartDeliveryFee, cartItemCount }}>
       {children}
     </CartContext.Provider>
   );
