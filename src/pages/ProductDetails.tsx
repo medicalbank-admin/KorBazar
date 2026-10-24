@@ -9,7 +9,7 @@ import { useHistory } from '../context/HistoryContext';
 export default function ProductDetails() {
   const { id } = useParams();
   const { addToCart } = useCart();
-  const { addToHistory } = useHistory();
+  const { addToHistory } = useHistory(); // <-- History tracking restored
   
   const [product, setProduct] = useState<any>(null);
   const [seller, setSeller] = useState<any>(null);
@@ -27,15 +27,12 @@ export default function ProductDetails() {
       if (docSnap.exists()) {
         const prodData = { id: docSnap.id, ...docSnap.data() } as any;
         setProduct(prodData);
-        addToHistory(prodData);
+        addToHistory(prodData); // <-- Adds product to Recently Viewed
 
         const sellerRef = doc(db, 'sellers', prodData.sellerId);
         const sellerSnap = await getDoc(sellerRef);
         if (sellerSnap.exists()) setSeller(sellerSnap.data());
 
-        // Fetch reviews for this product
-        // Note: We can't do array-contains on productIds in a simple query if we also order by createdAt, 
-        // so we'll fetch reviews for the store and filter client-side for simplicity.
         const revQ = query(collection(db, 'reviews'), where('sellerId', '==', prodData.sellerId));
         const revSnap = await getDocs(revQ);
         const productReviews = revSnap.docs
@@ -48,18 +45,21 @@ export default function ProductDetails() {
       setLoading(false);
     };
     fetchProduct();
-  }, [id]);
+  }, [id, addToHistory]);
 
   if (loading) return <div className="p-12 text-center text-dark">Loading product...</div>;
   if (!product) return <div className="p-12 text-center text-dark">Product not found.</div>;
 
   const images = product.images?.length > 0 ? product.images : [product.image];
+  const isOutOfStock = product.stock !== undefined && Number(product.stock) <= 0;
 
   const whatsappMessage = `Assalam-o-Alaikum, I have a question about "${product.title}" (Rs. ${product.price}) on KorBazar.`;
   const cleanNumber = seller?.whatsappNumber?.replace(/^0/, '');
   const whatsappLink = `https://wa.me/92${cleanNumber}?text=${encodeURIComponent(whatsappMessage)}`;
 
   const handleAddToCart = () => {
+    if (isOutOfStock) return;
+    
     addToCart({
       productId: product.id,
       title: product.title,
@@ -86,8 +86,15 @@ export default function ProductDetails() {
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row mb-8">
         {/* Images Section */}
         <div className="w-full md:w-1/2 p-4">
-          <div className="aspect-square rounded-2xl overflow-hidden bg-gray-50 mb-4">
-            <img src={images[activeImage]} alt={product.title} className="w-full h-full object-cover" />
+          <div className="aspect-square rounded-2xl overflow-hidden bg-gray-50 mb-4 relative">
+            <img src={images[activeImage]} alt={product.title} className={`w-full h-full object-cover ${isOutOfStock ? 'opacity-50' : ''}`} />
+            {isOutOfStock && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="bg-alert text-white font-bold px-6 py-3 rounded-xl shadow-lg text-lg rotate-[-10deg]">
+                  Out of Stock
+                </span>
+              </div>
+            )}
           </div>
           {images.length > 1 && (
             <div className="flex gap-2 overflow-x-auto">
@@ -138,9 +145,10 @@ export default function ProductDetails() {
           <div className="mt-auto space-y-3">
             <button 
               onClick={handleAddToCart} 
-              className="w-full bg-brand text-white font-bold text-lg py-4 rounded-xl hover:bg-brand/90 transition-colors flex items-center justify-center gap-2 shadow-md"
+              disabled={isOutOfStock}
+              className={`w-full font-bold text-lg py-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-md ${isOutOfStock ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-brand text-white hover:bg-brand/90'}`}
             >
-              <ShoppingCart size={22} /> Add to Cart
+              <ShoppingCart size={22} /> {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
             </button>
             
             <a href={whatsappLink} target="_blank" rel="noreferrer" className="w-full bg-white text-dark border-2 border-[#25D366] font-bold text-lg py-4 rounded-xl hover:bg-[#25D366]/10 transition-colors flex items-center justify-center gap-2">
@@ -176,4 +184,4 @@ export default function ProductDetails() {
       </div>
     </div>
   );
-                  }
+    }
