@@ -161,11 +161,15 @@ export default function SellerDashboard() {
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: string, extraData = {}) => {
-    await updateDoc(doc(db, 'orders', orderId), { status: newStatus, ...extraData });
+  // 1. Update the order status
+  await updateDoc(doc(db, 'orders', orderId), { status: newStatus, ...extraData });
 
-    if (newStatus === 'delivered') {
-      const order = orders.find(o => o.id === orderId);
-      if (order && order.items) {
+  if (newStatus === 'delivered') {
+    const order = orders.find(o => o.id === orderId);
+    
+    if (order) {
+      // 2. Reduce Stock
+      if (order.items) {
         for (const item of order.items) {
           try {
             const productRef = doc(db, 'products', item.productId);
@@ -175,12 +179,33 @@ export default function SellerDashboard() {
               const newStock = Math.max(0, currentStock - item.qty); 
               await updateDoc(productRef, { stock: newStock });
             }
-          } catch (err) { console.error(err); }
+          } catch (err) { console.error("Stock update failed", err); }
+        }
+      }
+
+      // 3. Pay the Referrer (Rs. 100)
+      if (order.referredBy && !order.referralPaid) {
+        try {
+          const referrerRef = doc(db, 'users', order.referredBy);
+          const referrerSnap = await getDoc(referrerRef);
+          
+          if (referrerSnap.exists()) {
+            const currentBalance = referrerSnap.data().walletBalance || 0;
+            await updateDoc(referrerRef, {
+              walletBalance: currentBalance + 100
+            });
+            
+            // Mark the order so we don't pay them twice if the status is toggled
+            await updateDoc(doc(db, 'orders', orderId), { referralPaid: true });
+          }
+        } catch (err) {
+          console.error("Failed to pay referrer:", err);
         }
       }
     }
-    fetchData();
-  };
+  }
+  fetchData();
+};
 
   const handlePaymentReceived = async (orderId: string) => {
     await updateOrderStatus(orderId, 'accepted', { paymentVerified: true });
