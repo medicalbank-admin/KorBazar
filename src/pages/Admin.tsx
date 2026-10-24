@@ -439,33 +439,68 @@ setReports(reportSnap.docs.map(d => ({ id: d.id, ...d.data() })));
             </div>
           )}
 
-        {activeTab === 'reports' && (
+{activeTab === 'reports' && (
   <div>
     <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><Flag className="text-alert"/> Buyer Reports</h2>
-    {reports.length === 0 ? <p className="text-gray-500">No reports yet. The platform is safe!</p> : reports.map(report => (
-      <div key={report.id} className="p-4 border border-red-100 bg-red-50 rounded-xl mb-4 flex flex-col md:flex-row justify-between gap-4">
-        <div>
-          <h3 className="font-bold text-lg text-alert">{report.reason}</h3>
-          <p className="text-sm text-gray-700">Target: <strong>{report.targetName}</strong> ({report.targetType})</p>
-          <p className="text-sm text-gray-600 mt-2 bg-white p-2 rounded-lg border border-red-100">"{report.details}"</p>
-          <p className="text-xs text-gray-500 mt-1">Reported on: {new Date(report.createdAt).toLocaleDateString()}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={async () => {
-            await updateDoc(doc(db, 'reports', report.id), { status: 'resolved' });
-            fetchData();
-          }} className="px-4 py-2 bg-brand text-white rounded-xl font-bold text-sm">Mark Resolved</button>
-          <button onClick={async () => {
-            if(window.confirm("Delete this report?")) {
-              await deleteDoc(doc(db, 'reports', report.id));
-              fetchData();
-            }
-          }} className="p-2 bg-white text-alert rounded-lg border border-red-200"><Trash2 size={18}/></button>
+    
+    {reports.filter(r => r.status !== 'resolved').length === 0 ? (
+      <div className="bg-green-50 text-brand p-6 rounded-xl border border-green-200 text-center font-bold mb-8">
+        No active reports. The platform is safe!
+      </div>
+    ) : (
+      <div className="mb-8">
+        <h3 className="font-bold text-gray-500 uppercase text-sm mb-3">Action Needed ({reports.filter(r => r.status !== 'resolved').length})</h3>
+        <div className="space-y-4">
+          {reports.filter(r => r.status !== 'resolved').map(report => (
+            <div key={report.id} className="p-4 border border-red-100 bg-red-50 rounded-xl flex flex-col md:flex-row justify-between gap-4">
+              <div>
+                <h3 className="font-bold text-lg text-alert">{report.reason}</h3>
+                <p className="text-sm text-gray-700">Target: <strong>{report.targetName}</strong> ({report.targetType})</p>
+                <p className="text-sm text-gray-600 mt-2 bg-white p-2 rounded-lg border border-red-100">"{report.details}"</p>
+                <p className="text-xs text-gray-500 mt-1">Reported on: {new Date(report.createdAt).toLocaleDateString()}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={async () => {
+                  await updateDoc(doc(db, 'reports', report.id), { status: 'resolved' });
+                  fetchData();
+                }} className="px-4 py-2 bg-brand text-white rounded-xl font-bold text-sm hover:bg-brand/90 shadow-sm">
+                  Mark Resolved
+                </button>
+                <button onClick={async () => {
+                  if(window.confirm("Delete this report permanently?")) {
+                    await deleteDoc(doc(db, 'reports', report.id));
+                    fetchData();
+                  }
+                }} className="p-2 bg-white text-alert rounded-lg border border-red-200 hover:bg-red-50">
+                  <Trash2 size={18}/>
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-    ))}
+    )}
+
+    {/* RESOLVED REPORTS HISTORY */}
+    {reports.filter(r => r.status === 'resolved').length > 0 && (
+      <div className="border-t border-gray-100 pt-6">
+        <h3 className="font-bold text-gray-500 uppercase text-sm mb-3">Resolved History</h3>
+        <div className="space-y-2">
+          {reports.filter(r => r.status === 'resolved').map(report => (
+            <div key={report.id} className="p-3 bg-gray-50 border border-gray-100 rounded-lg flex justify-between items-center opacity-70">
+              <div>
+                <p className="text-sm font-bold text-gray-600 line-through">{report.reason}</p>
+                <p className="text-xs text-gray-500">{report.targetName}</p>
+              </div>
+              <span className="text-xs font-bold text-brand bg-green-100 px-2 py-1 rounded">RESOLVED</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
   </div>
 )}
+
 
           {activeTab === 'verification' && (
             <div>
