@@ -33,23 +33,27 @@ const compressImage = (file: File): Promise<string> => {
 export default function SellerDashboard() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  
+  // Core Data States
   const [store, setStore] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
-  // Agreement Modal State
-const [showAgreement, setShowAgreement] = useState(false);
-const [hasAgreed, setHasAgreed] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'store' | 'subscription' | 'profile'>('orders');
-  
   const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'dispatched' | 'delivered' | 'cancelled'>('all');
 
+  // Agreement Modal State
+  const [showAgreement, setShowAgreement] = useState(false);
+  const [hasAgreed, setHasAgreed] = useState(false);
+
+  // Store Profile States
   const [storeBio, setStoreBio] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
   const [paymentAccounts, setPaymentAccounts] = useState('');
   const [socialLinks, setSocialLinks] = useState({ facebook: '', instagram: '', tiktok: '' });
   const [storeMsg, setStoreMsg] = useState('');
 
+  // Product Form States
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState(''); 
@@ -61,14 +65,11 @@ const [hasAgreed, setHasAgreed] = useState(false);
   const [productImages, setProductImages] = useState<FileList | null>(null);
   const [productMsg, setProductMsg] = useState('');
   const [uploading, setUploading] = useState(false);
-
   const [variants, setVariants] = useState<any[]>([]);
-  const [dispatchModal, setDispatchModal] = useState({ isOpen: false, orderId: '', courier: 'TCS', tracking: '' });
 
-  // Edit Modal State
+  // Modals State
+  const [dispatchModal, setDispatchModal] = useState({ isOpen: false, orderId: '', courier: 'TCS', tracking: '' });
   const [editModal, setEditModal] = useState({ isOpen: false, productId: '', type: 'stock', value: '' });
-  
-  // Reject Order Modal State
   const [rejectOrderModal, setRejectOrderModal] = useState({ isOpen: false, orderId: '', reason: 'Out of stock' });
 
   const defaultCategories = [
@@ -76,57 +77,57 @@ const [hasAgreed, setHasAgreed] = useState(false);
     "Candles", "Gift Hampers", "Customized Mugs & Photo Frames", "Resin Art & Keychains", 
     "Wedding and Festive Sweets", "Home Decor", "Essential Oils & Natural Hair Care"
   ];
-
   const fetchData = async () => {
-    if (!currentUser) return;
-    try {
-      const docSnap = await getDoc(doc(db, 'sellers', currentUser.uid));
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setStore(data);
-        setStoreBio(data.bio || '');
-        setStoreAddress(data.storeAddress || '');
-        setPaymentAccounts(data.paymentAccounts || '');
-        setSocialLinks(data.socialLinks || { facebook: '', instagram: '', tiktok: '' });
-      }
-
-      const prodQ = query(collection(db, 'products'), where('sellerId', '==', currentUser.uid));
-      const prodSnap = await getDocs(prodQ);
-      const productsData = prodSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      productsData.sort((a: any, b: any) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      });
-      setProducts(productsData);
-
-      const orderQ = query(collection(db, 'orders'), where('sellerId', '==', currentUser.uid));
-      const orderSnap = await getDocs(orderQ);
-      const ordersData = orderSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      ordersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setOrders(ordersData);
-      // Check if seller has agreed to terms
-const sellerSnap = await getDoc(doc(db, 'sellers', currentUser.uid));
-if (sellerSnap.exists() && !sellerSnap.data().agreementSigned) {
-  setShowAgreement(true);
-}
-
-      const catSnap = await getDocs(collection(db, 'categories'));
-      const cats = catSnap.docs.map(d => d.data().name);
-      const finalCats = cats.length > 0 ? cats : defaultCategories;
+  if (!currentUser) return;
+  try {
+    const docSnap = await getDoc(doc(db, 'sellers', currentUser.uid));
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      setStore(data);
+      setStoreBio(data.bio || '');
+      setStoreAddress(data.storeAddress || '');
+      setPaymentAccounts(data.paymentAccounts || '');
+      setSocialLinks(data.socialLinks || { facebook: '', instagram: '', tiktok: '' });
       
-      setAvailableCategories(finalCats);
-      if (finalCats.length > 0 && !category) setCategory(finalCats[0]);
-
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      setLoading(false);
+      // Check agreement status here instead of fetching twice
+      if (!data.agreementSigned) {
+        setShowAgreement(true);
+      }
     }
-  };
 
-  useEffect(() => { fetchData(); }, [currentUser]);
-  const handleUpdateStore = async (e: React.FormEvent) => {
+    const prodQ = query(collection(db, 'products'), where('sellerId', '==', currentUser.uid));
+    const prodSnap = await getDocs(prodQ);
+    const productsData = prodSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    productsData.sort((a: any, b: any) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
+    setProducts(productsData);
+
+    const orderQ = query(collection(db, 'orders'), where('sellerId', '==', currentUser.uid));
+    const orderSnap = await getDocs(orderQ);
+    const ordersData = orderSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    ordersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    setOrders(ordersData);
+
+    const catSnap = await getDocs(collection(db, 'categories'));
+    const cats = catSnap.docs.map(d => d.data().name);
+    const finalCats = cats.length > 0 ? cats : defaultCategories;
+    
+    setAvailableCategories(finalCats);
+    if (finalCats.length > 0 && !category) setCategory(finalCats[0]);
+
+  } catch (error) {
+    console.error("Error fetching data:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+useEffect(() => { fetchData(); }, [currentUser]);
+
+const handleUpdateStore = async (e: React.FormEvent) => {
   e.preventDefault();
   if (!currentUser) return;
   setStoreMsg('Saving...');
@@ -141,7 +142,7 @@ if (sellerSnap.exists() && !sellerSnap.data().agreementSigned) {
   setTimeout(() => setStoreMsg(''), 3000);
 };
 
-  const handleSignAgreement = async () => {
+const handleSignAgreement = async () => {
   if (!hasAgreed) return alert("Please check the box to agree to the terms.");
   if (!currentUser) return;
   
@@ -351,8 +352,7 @@ const handleWhatsAppNotify = (order: any) => {
     ).catch(err => console.error("Email failed:", err));
   }
 };
-
-if (loading) return <div className="p-8 text-center text-dark">Loading dashboard...</div>;
+  if (loading) return <div className="p-8 text-center text-dark">Loading dashboard...</div>;
 if (!store) return <div className="p-8 text-center text-alert">You are not registered as a seller.</div>;
 
 if (store.isFrozen) {
@@ -385,56 +385,57 @@ const filteredOrders = orders.filter(order => {
   <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
     
     {/* AGREEMENT MODAL */}
-{showAgreement && (
-  <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
-    <div className="bg-white rounded-3xl shadow-xl w-full max-w-lg p-8 relative">
-      <div className="text-center mb-6">
-        <div className="w-20 h-20 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-4">
-          <FileText size={40} />
+    {showAgreement && (
+      <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-xl w-full max-w-lg p-8 relative">
+          <div className="text-center mb-6">
+            <div className="w-20 h-20 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileText size={40} />
+            </div>
+            <h2 className="text-2xl font-bold text-dark mb-2">Welcome to KorBazar!</h2>
+            <p className="text-gray-600">Before you start selling, you must review and sign the official Seller Agreement.</p>
+          </div>
+
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6 text-sm text-gray-600">
+            <p className="mb-2">This document contains:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Your store details (CNIC & Store Name)</li>
+              <li>Platform fees & commissions</li>
+              <li>Guide on using the dashboard</li>
+              <li>Terms of Service & Privacy Policy</li>
+            </ul>
+          </div>
+
+          <button 
+            onClick={() => generateAgreementPDF(store)}
+            className="w-full bg-dark text-white font-bold py-3 rounded-xl hover:bg-black transition-colors mb-4 flex items-center justify-center gap-2"
+          >
+            <FileText size={18} /> Download Agreement PDF
+          </button>
+
+          <label className="flex items-start gap-3 p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 mb-6">
+            <input 
+              type="checkbox" 
+              checked={hasAgreed}
+              onChange={(e) => setHasAgreed(e.target.checked)}
+              className="mt-1 w-5 h-5 text-brand rounded focus:ring-brand" 
+            />
+            <span className="text-sm text-gray-700 font-medium">
+              I have downloaded and read the agreement. I confirm that I agree to the Terms, Privacy Policy, Fees, and Commissions of KorBazar.
+            </span>
+          </label>
+
+          <button 
+            onClick={handleSignAgreement}
+            disabled={!hasAgreed}
+            className={`w-full font-bold py-3.5 rounded-xl transition-colors ${hasAgreed ? 'bg-brand text-white hover:bg-brand/90' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+          >
+            Agree & Enter Dashboard
+          </button>
         </div>
-        <h2 className="text-2xl font-bold text-dark mb-2">Welcome to KorBazar!</h2>
-        <p className="text-gray-600">Before you start selling, you must review and sign the official Seller Agreement.</p>
       </div>
+    )}
 
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6 text-sm text-gray-600">
-        <p className="mb-2">This document contains:</p>
-        <ul className="list-disc pl-5 space-y-1">
-          <li>Your store details (CNIC & Store Name)</li>
-          <li>Platform fees & commissions</li>
-          <li>Guide on using the dashboard</li>
-          <li>Terms of Service & Privacy Policy</li>
-        </ul>
-      </div>
-
-      <button 
-        onClick={() => generateAgreementPDF(store)}
-        className="w-full bg-dark text-white font-bold py-3 rounded-xl hover:bg-black transition-colors mb-4 flex items-center justify-center gap-2"
-      >
-        <FileText size={18} /> Download Agreement PDF
-      </button>
-
-      <label className="flex items-start gap-3 p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 mb-6">
-        <input 
-          type="checkbox" 
-          checked={hasAgreed}
-          onChange={(e) => setHasAgreed(e.target.checked)}
-          className="mt-1 w-5 h-5 text-brand rounded focus:ring-brand" 
-        />
-        <span className="text-sm text-gray-700 font-medium">
-          I have downloaded and read the agreement. I confirm that I agree to the Terms, Privacy Policy, Fees, and Commissions of KorBazar.
-        </span>
-      </label>
-
-      <button 
-        onClick={handleSignAgreement}
-        disabled={!hasAgreed}
-        className={`w-full font-bold py-3.5 rounded-xl transition-colors ${hasAgreed ? 'bg-brand text-white hover:bg-brand/90' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-      >
-        Agree & Enter Dashboard
-      </button>
-    </div>
-  </div>
-)}
     {/* EDIT MODAL (Stock / Discount) */}
     {editModal.isOpen && (
       <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4">
@@ -573,322 +574,323 @@ const filteredOrders = orders.filter(order => {
       </div>
     ) : (
       <div>
-                  {activeTab === 'orders' && (
-            <div>
-              <div className="flex overflow-x-auto gap-2 mb-6 scrollbar-hide">
-                {['all', 'pending', 'dispatched', 'delivered', 'cancelled'].map(tab => (
-                  <button key={tab} onClick={() => setOrderFilter(tab as any)} className={`px-4 py-2 rounded-lg font-semibold text-sm whitespace-nowrap capitalize transition-colors ${orderFilter === tab ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                    {tab === 'all' ? 'All Orders' : tab}
-                  </button>
-                ))}
-              </div>
-
-              <div className="space-y-4">
-                {filteredOrders.length === 0 ? (
-                  <div className="bg-white p-8 text-center rounded-2xl border border-gray-100 text-gray-500">No {orderFilter} orders found.</div>
-                ) : filteredOrders.map(order => (
-                  <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row justify-between gap-6">
-                    <div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-bold text-lg text-dark">Order #{order.trackingToken.slice(0,6).toUpperCase()}</h3>
-                        <span className={`text-xs font-bold px-2 py-1 rounded-full uppercase ${order.status === 'new' ? 'bg-yellow-100 text-yellow-700' : order.status === 'delivered' ? 'bg-green-100 text-brand' : order.status === 'cancelled' || order.status === 'rejected' ? 'bg-red-100 text-alert' : 'bg-blue-100 text-blue-700'}`}>{order.status}</span>
-                        {order.paymentVerified && <span className="text-xs font-bold text-brand bg-green-50 px-2 py-1 rounded-full">PAID</span>}
-                      </div>
-                      <p className="text-sm text-gray-600"><span className="font-semibold text-dark">Buyer:</span> {order.buyerName} ({order.buyerPhone})</p>
-                      <p className="text-sm text-gray-600 mb-2"><span className="font-semibold text-dark">Address:</span> {order.buyerAddress}</p>
-                      <div className="bg-gray-50 p-3 rounded-xl text-sm mb-2 border border-gray-100">
-                        {order.items.map((i:any, idx:number) => (
-                          <div key={idx}>
-                            {i.qty}x {i.title} - Rs. {i.price}
-                            {(i.selectedSize || i.selectedColor) && (
-                              <span className="text-xs text-gray-500 ml-1">({i.selectedSize} {i.selectedColor})</span>
-                            )}
-                          </div>
-                        ))}
-                        <div className="mt-1 pt-1 border-t border-gray-200 text-gray-500 text-xs flex justify-between">
-                          <span>Subtotal: Rs. {order.subtotal || order.total}</span>
-                          <span>Delivery: Rs. {order.deliveryFee || 0}</span>
-                        </div>
-                        {order.discountAmount > 0 && (
-                          <div className="mt-1 pt-1 border-t border-gray-200 text-brand font-bold text-xs flex justify-between">
-                            <span>Discount ({order.couponCode})</span>
-                            <span>- Rs. {order.discountAmount}</span>
-                          </div>
-                        )}
-                        {order.notes && <div className="text-brand font-semibold mt-1">Note: {order.notes}</div>}
-                      </div>
-                      <div className="border-t border-gray-200 pt-2 mt-2">
-  <div className="flex items-center justify-between text-sm mb-1">
-    <span className="text-gray-600">Buyer Pays:</span>
-    <span className="font-bold text-dark">Rs. {order.total}</span>
-  </div>
-  <div className="flex items-center justify-between text-sm mb-1">
-    <span className="text-gray-600">Platform Fee:</span>
-    <span className="font-bold text-alert">- Rs. 10</span>
-  </div>
-  <div className="flex items-center justify-between">
-    <span className="font-bold text-brand">Your Net Payout:</span>
-    <span className="font-extrabold text-brand text-lg">Rs. {order.total - 10}</span>
-  </div>
-  <div className="flex justify-end mt-1">
-    <span className="text-xs font-bold uppercase bg-gray-200 px-2 py-1 rounded">{order.paymentMethod}</span>
-  </div>
-</div>
-                      {order.trackingNumber && (
-                        <div className="mt-3 bg-blue-50 text-blue-800 text-xs p-2 rounded-lg border border-blue-200 font-semibold flex items-center gap-2">
-                          <Box size={14} /> {order.courierName || 'Courier'}: {order.trackingNumber}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex flex-col gap-2 min-w-[200px] justify-center">
-                      {order.status === 'new' && (
-                        <>
-                          <button onClick={() => handleWhatsAppNotify(order)} className="w-full bg-[#25D366] text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-[#20bd5a]"><MessageCircle size={18}/> Accept & Notify</button>
-                          <button onClick={() => handleOpenRejectOrder(order.id)} className="w-full bg-red-50 text-alert font-bold py-2.5 rounded-xl border border-red-200 hover:bg-red-100 flex items-center justify-center gap-2"><XCircle size={18}/> Reject</button>
-                        </>
-                      )}
-                      {order.status === 'accepted' && (
-                        <>
-                          {order.paymentMethod !== 'COD' && !order.paymentVerified && (
-                            <button onClick={() => handlePaymentReceived(order.id)} className="w-full bg-green-100 text-brand font-bold py-2.5 rounded-xl border border-green-200 hover:bg-green-200 flex items-center justify-center gap-2 mb-2">
-                              <CheckSquare size={18}/> Mark Payment Received
-                            </button>
-                          )}
-                          <button onClick={() => openDispatchModal(order.id)} className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-700"><Truck size={18}/> Mark Dispatched</button>
-                        </>
-                      )}
-                      {order.status === 'dispatched' && (
-                        <button onClick={() => updateOrderStatus(order.id, 'delivered')} className="w-full bg-brand text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-brand/90"><CheckCircle size={18}/> Mark Delivered</button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+        {/* THE REST OF THE TABS HERE (Orders, Products, Store, Subscription, Profile) */}
+                {activeTab === 'orders' && (
+          <div>
+            <div className="flex overflow-x-auto gap-2 mb-6 scrollbar-hide">
+              {['all', 'pending', 'dispatched', 'delivered', 'cancelled'].map(tab => (
+                <button key={tab} onClick={() => setOrderFilter(tab as any)} className={`px-4 py-2 rounded-lg font-semibold text-sm whitespace-nowrap capitalize transition-colors ${orderFilter === tab ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                  {tab === 'all' ? 'All Orders' : tab}
+                </button>
+              ))}
             </div>
-          )}
 
-          {activeTab === 'products' && (
-             <div className="grid lg:grid-cols-2 gap-8">
-               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                 <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><PlusCircle size={20}/> Add New Product</h2>
-                 {productMsg && <div className={`p-3 rounded-lg text-sm mb-4 ${productMsg.includes('Error') ? 'bg-red-50 text-alert' : 'bg-green-50 text-brand'}`}>{productMsg}</div>}
-                 
-                 <form onSubmit={handleAddProduct} className="space-y-4">
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">Product Title</label>
-                     <input type="text" required value={title} onChange={e => setTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">Product Description</label>
-                     <textarea required value={productDescription} onChange={e => setProductDescription(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="Describe the item..." />
-                   </div>
-                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-1">Price (Rs.)</label>
-                       <input type="number" required value={price} onChange={e => setPrice(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-                     </div>
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-1">Stock Qty</label>
-                       <input type="number" required value={stock} onChange={e => setStock(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. 5" />
-                     </div>
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-1">Discount (%)</label>
-                       <input type="number" min="0" max="100" value={discountPercent} onChange={e => setDiscountPercent(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. 10" />
-                     </div>
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Fee (Rs.)</label>
-                       <input type="number" required value={productDeliveryFee} onChange={e => setProductDeliveryFee(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-                     </div>
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                       <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
-                         {availableCategories.map(catName => (
-                           <option key={catName} value={catName}>{catName}</option>
-                         ))}
-                       </select>
-                     </div>
-                   </div>
+            <div className="space-y-4">
+              {filteredOrders.length === 0 ? (
+                <div className="bg-white p-8 text-center rounded-2xl border border-gray-100 text-gray-500">No {orderFilter} orders found.</div>
+              ) : filteredOrders.map(order => (
+                <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row justify-between gap-6">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-bold text-lg text-dark">Order #{order.trackingToken.slice(0,6).toUpperCase()}</h3>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-full uppercase ${order.status === 'new' ? 'bg-yellow-100 text-yellow-700' : order.status === 'delivered' ? 'bg-green-100 text-brand' : order.status === 'cancelled' || order.status === 'rejected' ? 'bg-red-100 text-alert' : 'bg-blue-100 text-blue-700'}`}>{order.status}</span>
+                      {order.paymentVerified && <span className="text-xs font-bold text-brand bg-green-50 px-2 py-1 rounded-full">PAID</span>}
+                    </div>
+                    <p className="text-sm text-gray-600"><span className="font-semibold text-dark">Buyer:</span> {order.buyerName} ({order.buyerPhone})</p>
+                    <p className="text-sm text-gray-600 mb-2"><span className="font-semibold text-dark">Address:</span> {order.buyerAddress}</p>
+                    <div className="bg-gray-50 p-3 rounded-xl text-sm mb-2 border border-gray-100">
+                      {order.items.map((i:any, idx:number) => (
+                        <div key={idx}>
+                          {i.qty}x {i.title} - Rs. {i.price}
+                          {(i.selectedSize || i.selectedColor) && (
+                            <span className="text-xs text-gray-500 ml-1">({i.selectedSize} {i.selectedColor})</span>
+                          )}
+                        </div>
+                      ))}
+                      <div className="mt-1 pt-1 border-t border-gray-200 text-gray-500 text-xs flex justify-between">
+                        <span>Subtotal: Rs. {order.subtotal || order.total}</span>
+                        <span>Delivery: Rs. {order.deliveryFee || 0}</span>
+                      </div>
+                      {order.discountAmount > 0 && (
+                        <div className="mt-1 pt-1 border-t border-gray-200 text-brand font-bold text-xs flex justify-between">
+                          <span>Discount ({order.couponCode})</span>
+                          <span>- Rs. {order.discountAmount}</span>
+                        </div>
+                      )}
+                      {order.notes && <div className="text-brand font-semibold mt-1">Note: {order.notes}</div>}
+                    </div>
+                    <div className="border-t border-gray-200 pt-2 mt-2">
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <span className="text-gray-600">Buyer Pays:</span>
+                        <span className="font-bold text-dark">Rs. {order.total}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <span className="text-gray-600">Platform Fee:</span>
+                        <span className="font-bold text-alert">- Rs. 10</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-brand">Your Net Payout:</span>
+                        <span className="font-extrabold text-brand text-lg">Rs. {order.total - 10}</span>
+                      </div>
+                      <div className="flex justify-end mt-1">
+                        <span className="text-xs font-bold uppercase bg-gray-200 px-2 py-1 rounded">{order.paymentMethod}</span>
+                      </div>
+                    </div>
+                    {order.trackingNumber && (
+                      <div className="mt-3 bg-blue-50 text-blue-800 text-xs p-2 rounded-lg border border-blue-200 font-semibold flex items-center gap-2">
+                        <Box size={14} /> {order.courierName || 'Courier'}: {order.trackingNumber}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex flex-col gap-2 min-w-[200px] justify-center">
+                    {order.status === 'new' && (
+                      <>
+                        <button onClick={() => handleWhatsAppNotify(order)} className="w-full bg-[#25D366] text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-[#20bd5a]"><MessageCircle size={18}/> Accept & Notify</button>
+                        <button onClick={() => handleOpenRejectOrder(order.id)} className="w-full bg-red-50 text-alert font-bold py-2.5 rounded-xl border border-red-200 hover:bg-red-100 flex items-center justify-center gap-2"><XCircle size={18}/> Reject</button>
+                      </>
+                    )}
+                    {order.status === 'accepted' && (
+                      <>
+                        {order.paymentMethod !== 'COD' && !order.paymentVerified && (
+                          <button onClick={() => handlePaymentReceived(order.id)} className="w-full bg-green-100 text-brand font-bold py-2.5 rounded-xl border border-green-200 hover:bg-green-200 flex items-center justify-center gap-2 mb-2">
+                            <CheckSquare size={18}/> Mark Payment Received
+                          </button>
+                        )}
+                        <button onClick={() => openDispatchModal(order.id)} className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-700"><Truck size={18}/> Mark Dispatched</button>
+                      </>
+                    )}
+                    {order.status === 'dispatched' && (
+                      <button onClick={() => updateOrderStatus(order.id, 'delivered')} className="w-full bg-brand text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-brand/90"><CheckCircle size={18}/> Mark Delivered</button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-                   {/* VARIANTS SECTION */}
-                   <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl">
-                     <div className="flex justify-between items-center mb-3">
-                       <label className="block text-sm font-bold text-dark">Product Variants (Sizes/Colors)</label>
+        {activeTab === 'products' && (
+           <div className="grid lg:grid-cols-2 gap-8">
+             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+               <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><PlusCircle size={20}/> Add New Product</h2>
+               {productMsg && <div className={`p-3 rounded-lg text-sm mb-4 ${productMsg.includes('Error') ? 'bg-red-50 text-alert' : 'bg-green-50 text-brand'}`}>{productMsg}</div>}
+               
+               <form onSubmit={handleAddProduct} className="space-y-4">
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Product Title</label>
+                   <input type="text" required value={title} onChange={e => setTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+                 </div>
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Product Description</label>
+                   <textarea required value={productDescription} onChange={e => setProductDescription(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="Describe the item..." />
+                 </div>
+                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-1">Price (Rs.)</label>
+                     <input type="number" required value={price} onChange={e => setPrice(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+                   </div>
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-1">Stock Qty</label>
+                     <input type="number" required value={stock} onChange={e => setStock(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. 5" />
+                   </div>
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-1">Discount (%)</label>
+                     <input type="number" min="0" max="100" value={discountPercent} onChange={e => setDiscountPercent(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. 10" />
+                   </div>
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Fee (Rs.)</label>
+                     <input type="number" required value={productDeliveryFee} onChange={e => setProductDeliveryFee(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+                   </div>
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                     <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
+                       {availableCategories.map(catName => (
+                         <option key={catName} value={catName}>{catName}</option>
+                       ))}
+                     </select>
+                   </div>
+                 </div>
+
+                 {/* VARIANTS SECTION */}
+                 <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl">
+                   <div className="flex justify-between items-center mb-3">
+                     <label className="block text-sm font-bold text-dark">Product Variants (Sizes/Colors)</label>
+                     <button 
+                       type="button" 
+                       onClick={() => setVariants([...variants, { size: '', color: '', qty: 1 }])}
+                       className="text-xs bg-brand/10 text-brand px-3 py-1.5 rounded-lg font-bold hover:bg-brand/20 transition-colors flex items-center gap-1"
+                     >
+                       <Plus size={14} /> Add Variant
+                     </button>
+                   </div>
+                   
+                   {variants.length === 0 ? (
+                     <p className="text-xs text-gray-500">No variants added. If this product has sizes or colors, add them here.</p>
+                   ) : variants.map((v, index) => (
+                     <div key={index} className="flex gap-2 items-center mb-2">
+                       <input 
+                         type="text" 
+                         placeholder="Size (e.g. M, 42)" 
+                         value={v.size} 
+                         onChange={(e) => {
+                           const newV = [...variants]; newV[index].size = e.target.value; setVariants(newV);
+                         }} 
+                         className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand focus:outline-none" 
+                       />
+                       <input 
+                         type="text" 
+                         placeholder="Color (e.g. Red)" 
+                         value={v.color} 
+                         onChange={(e) => {
+                           const newV = [...variants]; newV[index].color = e.target.value; setVariants(newV);
+                         }} 
+                         className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand focus:outline-none" 
+                       />
+                       <input 
+                         type="number" 
+                         placeholder="Qty" 
+                         value={v.qty} 
+                         onChange={(e) => {
+                           const newV = [...variants]; newV[index].qty = Number(e.target.value); setVariants(newV);
+                         }} 
+                         className="w-20 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand focus:outline-none" 
+                       />
                        <button 
                          type="button" 
-                         onClick={() => setVariants([...variants, { size: '', color: '', qty: 1 }])}
-                         className="text-xs bg-brand/10 text-brand px-3 py-1.5 rounded-lg font-bold hover:bg-brand/20 transition-colors flex items-center gap-1"
+                         onClick={() => setVariants(variants.filter((_, i) => i !== index))}
+                         className="p-2 text-alert hover:bg-red-50 rounded-lg"
                        >
-                         <Plus size={14} /> Add Variant
+                         <Trash2 size={16} />
                        </button>
-                     </div>
-                     
-                     {variants.length === 0 ? (
-                       <p className="text-xs text-gray-500">No variants added. If this product has sizes or colors, add them here.</p>
-                     ) : variants.map((v, index) => (
-                       <div key={index} className="flex gap-2 items-center mb-2">
-                         <input 
-                           type="text" 
-                           placeholder="Size (e.g. M, 42)" 
-                           value={v.size} 
-                           onChange={(e) => {
-                             const newV = [...variants]; newV[index].size = e.target.value; setVariants(newV);
-                           }} 
-                           className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand focus:outline-none" 
-                         />
-                         <input 
-                           type="text" 
-                           placeholder="Color (e.g. Red)" 
-                           value={v.color} 
-                           onChange={(e) => {
-                             const newV = [...variants]; newV[index].color = e.target.value; setVariants(newV);
-                           }} 
-                           className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand focus:outline-none" 
-                         />
-                         <input 
-                           type="number" 
-                           placeholder="Qty" 
-                           value={v.qty} 
-                           onChange={(e) => {
-                             const newV = [...variants]; newV[index].qty = Number(e.target.value); setVariants(newV);
-                           }} 
-                           className="w-20 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand focus:outline-none" 
-                         />
-                         <button 
-                           type="button" 
-                           onClick={() => setVariants(variants.filter((_, i) => i !== index))}
-                           className="p-2 text-alert hover:bg-red-50 rounded-lg"
-                         >
-                           <Trash2 size={16} />
-                         </button>
-                       </div>
-                     ))}
-                   </div>
-
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">Product Images (Max 3)</label>
-                     <input id="product-images" type="file" multiple accept="image/*" required onChange={e => setProductImages(e.target.files)} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20" />
-                   </div>
-                   <button type="submit" disabled={uploading} className="w-full bg-brand text-white font-bold py-3.5 rounded-xl hover:bg-brand/90 shadow-md disabled:bg-gray-400">
-                     {uploading ? 'Saving...' : 'Save Product'}
-                   </button>
-                 </form>
-               </div>
-
-               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                 <h2 className="text-xl font-bold text-dark mb-4">Your Listed Products ({products.length})</h2>
-                 <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                   {products.length === 0 ? <p className="text-gray-500 text-sm">No products listed yet.</p> : products.map(p => (
-                     <div key={p.id} className="flex gap-4 items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
-                       <img src={p.image} alt={p.title} className="w-16 h-16 object-cover rounded-lg" />
-                       <div className="flex-grow">
-                         <h4 className="font-bold text-dark">{p.title}</h4>
-                         <p className="text-sm text-brand font-semibold">Rs. {p.price} <span className="text-gray-400 text-xs ml-2">+ Rs. {p.deliveryFee || 0} Delivery</span></p>
-                         
-                         <div className="flex flex-wrap items-center gap-2 mt-1">
-                           <span className={`text-xs font-bold px-2 py-0.5 rounded ${Number(p.stock) > 0 ? 'bg-green-100 text-brand' : 'bg-red-100 text-alert'}`}>
-                             Stock: {p.stock !== undefined ? p.stock : 'N/A'}
-                           </span>
-                           <button onClick={() => openEditModal(p.id, 'stock', p.stock)} className="text-blue-600 text-xs font-bold hover:underline mr-2">Edit</button>
-                           
-                           <span className="text-xs font-bold px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">
-                             Disc: {p.discountPercent || 0}%
-                           </span>
-                           <button onClick={() => openEditModal(p.id, 'discount', p.discountPercent)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
-                         </div>
-                       </div>
                      </div>
                    ))}
                  </div>
+
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Product Images (Max 3)</label>
+                   <input id="product-images" type="file" multiple accept="image/*" required onChange={e => setProductImages(e.target.files)} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20" />
+                 </div>
+                 <button type="submit" disabled={uploading} className="w-full bg-brand text-white font-bold py-3.5 rounded-xl hover:bg-brand/90 shadow-md disabled:bg-gray-400">
+                   {uploading ? 'Saving...' : 'Save Product'}
+                 </button>
+               </form>
+             </div>
+
+             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+               <h2 className="text-xl font-bold text-dark mb-4">Your Listed Products ({products.length})</h2>
+               <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                 {products.length === 0 ? <p className="text-gray-500 text-sm">No products listed yet.</p> : products.map(p => (
+                   <div key={p.id} className="flex gap-4 items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
+                     <img src={p.image} alt={p.title} className="w-16 h-16 object-cover rounded-lg" />
+                     <div className="flex-grow">
+                       <h4 className="font-bold text-dark">{p.title}</h4>
+                       <p className="text-sm text-brand font-semibold">Rs. {p.price} <span className="text-gray-400 text-xs ml-2">+ Rs. {p.deliveryFee || 0} Delivery</span></p>
+                       
+                       <div className="flex flex-wrap items-center gap-2 mt-1">
+                         <span className={`text-xs font-bold px-2 py-0.5 rounded ${Number(p.stock) > 0 ? 'bg-green-100 text-brand' : 'bg-red-100 text-alert'}`}>
+                           Stock: {p.stock !== undefined ? p.stock : 'N/A'}
+                         </span>
+                         <button onClick={() => openEditModal(p.id, 'stock', p.stock)} className="text-blue-600 text-xs font-bold hover:underline mr-2">Edit</button>
+                         
+                         <span className="text-xs font-bold px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">
+                           Disc: {p.discountPercent || 0}%
+                         </span>
+                         <button onClick={() => openEditModal(p.id, 'discount', p.discountPercent)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
+                       </div>
+                     </div>
+                   </div>
+                 ))}
                </div>
              </div>
-          )}
+           </div>
+        )}
 
-                    {activeTab === 'store' && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
-              <h2 className="text-xl font-bold text-dark mb-4">Store Settings</h2>
-              {storeMsg && <div className="bg-green-50 text-brand p-3 rounded-lg text-sm mb-4">{storeMsg}</div>}
-              <form onSubmit={handleUpdateStore} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Store Name (Locked)</label>
-                  <input type="text" disabled value={store.storeName} className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Store Address</label>
-                  <input type="text" value={storeAddress} onChange={e => setStoreAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Store Bio</label>
-                  <textarea value={storeBio} onChange={e => setStoreBio(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Accounts</label>
-                  <input type="text" value={paymentAccounts} onChange={e => setPaymentAccounts(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. JazzCash: 03001234567" />
-                </div>
-                <div className="pt-2 border-t border-gray-100">
-                  <h3 className="font-semibold text-dark mb-3">Social Media Links</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Facebook size={20} className="text-blue-600" />
-                      <input type="url" placeholder="Facebook URL" value={socialLinks.facebook} onChange={e => setSocialLinks({...socialLinks, facebook: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Instagram size={20} className="text-pink-600" />
-                      <input type="url" placeholder="Instagram URL" value={socialLinks.instagram} onChange={e => setSocialLinks({...socialLinks, instagram: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Globe size={20} className="text-dark" />
-                      <input type="url" placeholder="TikTok URL" value={socialLinks.tiktok} onChange={e => setSocialLinks({...socialLinks, tiktok: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
-                    </div>
-                  </div>
-                </div>
-                <button type="submit" className="bg-brand text-white font-bold py-3.5 px-8 rounded-xl hover:bg-brand/90 shadow-md mt-4">Save Settings</button>
-              </form>
-            </div>
-          )}
-
-          {activeTab === 'subscription' && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
-              <h2 className="text-xl font-bold text-dark mb-6 flex items-center gap-2"><CreditCard /> Subscription Plan</h2>
-              <div className={`border rounded-2xl p-6 ${store.plan === 'premium' ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-200'}`}>
-                <div className="flex items-center gap-3 mb-2">
-                  <Star size={28} className={store.plan === 'premium' ? 'text-yellow-500 fill-yellow-500' : 'text-gray-400'} />
-                  <h3 className="text-2xl font-bold text-dark capitalize">{store.plan || 'standard'} Plan</h3>
-                </div>
-                {store.plan === 'premium' ? (
-                  <div className="mt-4">
-                    <p className="text-gray-700 text-sm mb-4">Your store is currently featured on the Homepage. Keep providing great service!</p>
-                    <span className="inline-block bg-yellow-500 text-white px-4 py-2 rounded-lg font-bold text-sm">Active Premium Status</span>
-                  </div>
-                ) : (
-                  <div className="mt-4">
-                    <p className="text-gray-700 text-sm mb-4">Upgrade to Premium to feature your products on the Homepage and get more visibility!</p>
-                    <a href={`https://wa.me/923390251147?text=${encodeURIComponent(`Assalam-o-Alaikum, I want to upgrade my store "${store.storeName}" to the Premium plan on KorBazar.`)}`} target="_blank" rel="noreferrer" className="inline-block bg-dark text-white font-bold py-3 px-6 rounded-xl hover:bg-black transition-colors">Contact Admin to Upgrade</a>
-                  </div>
-                )}
+        {activeTab === 'store' && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
+            <h2 className="text-xl font-bold text-dark mb-4">Store Settings</h2>
+            {storeMsg && <div className="bg-green-50 text-brand p-3 rounded-lg text-sm mb-4">{storeMsg}</div>}
+            <form onSubmit={handleUpdateStore} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Store Name (Locked)</label>
+                <input type="text" disabled value={store.storeName} className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed" />
               </div>
-            </div>
-          )}
-
-          {activeTab === 'profile' && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
-              <h2 className="text-xl font-bold text-dark mb-4">My Profile</h2>
-              <div className="space-y-4 text-gray-700">
-                <p><span className="font-semibold text-dark">Full Name:</span> {store.fullName}</p>
-                <p><span className="font-semibold text-dark">CNIC:</span> {store.cnicNumber}</p>
-                <p><span className="font-semibold text-dark">Phone:</span> {store.phone}</p>
-                <p><span className="font-semibold text-dark">City:</span> {store.city}, {store.area}</p>
-                
-                <div className="pt-4 border-t border-gray-100 mt-4">
-                  <button onClick={handleContactAdmin} className="w-full bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand/90 shadow-md flex items-center justify-center gap-2">
-                    <MessageSquare size={20} /> Chat with Admin Support
-                  </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Store Address</label>
+                <input type="text" value={storeAddress} onChange={e => setStoreAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Store Bio</label>
+                <textarea value={storeBio} onChange={e => setStoreBio(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Accounts</label>
+                <input type="text" value={paymentAccounts} onChange={e => setPaymentAccounts(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. JazzCash: 03001234567" />
+              </div>
+              <div className="pt-2 border-t border-gray-100">
+                <h3 className="font-semibold text-dark mb-3">Social Media Links</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Facebook size={20} className="text-blue-600" />
+                    <input type="url" placeholder="Facebook URL" value={socialLinks.facebook} onChange={e => setSocialLinks({...socialLinks, facebook: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Instagram size={20} className="text-pink-600" />
+                    <input type="url" placeholder="Instagram URL" value={socialLinks.instagram} onChange={e => setSocialLinks({...socialLinks, instagram: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Globe size={20} className="text-dark" />
+                    <input type="url" placeholder="TikTok URL" value={socialLinks.tiktok} onChange={e => setSocialLinks({...socialLinks, tiktok: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
+                  </div>
                 </div>
               </div>
+              <button type="submit" className="bg-brand text-white font-bold py-3.5 px-8 rounded-xl hover:bg-brand/90 shadow-md mt-4">Save Settings</button>
+            </form>
+          </div>
+        )}
+
+        {activeTab === 'subscription' && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
+            <h2 className="text-xl font-bold text-dark mb-6 flex items-center gap-2"><CreditCard /> Subscription Plan</h2>
+            <div className={`border rounded-2xl p-6 ${store.plan === 'premium' ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="flex items-center gap-3 mb-2">
+                <Star size={28} className={store.plan === 'premium' ? 'text-yellow-500 fill-yellow-500' : 'text-gray-400'} />
+                <h3 className="text-2xl font-bold text-dark capitalize">{store.plan || 'standard'} Plan</h3>
+              </div>
+              {store.plan === 'premium' ? (
+                <div className="mt-4">
+                  <p className="text-gray-700 text-sm mb-4">Your store is currently featured on the Homepage. Keep providing great service!</p>
+                  <span className="inline-block bg-yellow-500 text-white px-4 py-2 rounded-lg font-bold text-sm">Active Premium Status</span>
+                </div>
+              ) : (
+                <div className="mt-4">
+                  <p className="text-gray-700 text-sm mb-4">Upgrade to Premium to feature your products on the Homepage and get more visibility!</p>
+                  <a href={`https://wa.me/923390251147?text=${encodeURIComponent(`Assalam-o-Alaikum, I want to upgrade my store "${store.storeName}" to the Premium plan on KorBazar.`)}`} target="_blank" rel="noreferrer" className="inline-block bg-dark text-white font-bold py-3 px-6 rounded-xl hover:bg-black transition-colors">Contact Admin to Upgrade</a>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-                      }
+          </div>
+        )}
+
+        {activeTab === 'profile' && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
+            <h2 className="text-xl font-bold text-dark mb-4">My Profile</h2>
+            <div className="space-y-4 text-gray-700">
+              <p><span className="font-semibold text-dark">Full Name:</span> {store.fullName}</p>
+              <p><span className="font-semibold text-dark">CNIC:</span> {store.cnicNumber}</p>
+              <p><span className="font-semibold text-dark">Phone:</span> {store.phone}</p>
+              <p><span className="font-semibold text-dark">City:</span> {store.city}, {store.area}</p>
+              
+              <div className="pt-4 border-t border-gray-100 mt-4">
+                <button onClick={handleContactAdmin} className="w-full bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand/90 shadow-md flex items-center justify-center gap-2">
+                  <MessageSquare size={20} /> Chat with Admin Support
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+);
+}
