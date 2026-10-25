@@ -12,13 +12,13 @@ type CategoryNode = {
   children?: CategoryNode[];
 };
 
-const buildCategoryTree = (categoryList: CategoryNode[]): CategoryNode[] => {
-  const byId = new Map<string, CategoryNode & { children: CategoryNode[] }>();
+const buildCategoryTree = (categoryList: CategoryNode[]): any[] => {
+  const byId = new Map<string, any>();
   categoryList.forEach((cat) => {
     byId.set(cat.id, { ...cat, children: [] });
   });
 
-  const roots: Array<CategoryNode & { children: CategoryNode[] }> = [];
+  const roots: any[] = [];
 
   categoryList.forEach((cat) => {
     const node = byId.get(cat.id);
@@ -34,14 +34,12 @@ const buildCategoryTree = (categoryList: CategoryNode[]): CategoryNode[] => {
     }
   });
 
-  const sortChildren = (
-    items: Array<CategoryNode & { children: CategoryNode[] }>
-  ): Array<CategoryNode & { children: CategoryNode[] }> =>
+  const sortChildren = (items: any[]): any[] =>
     [...items]
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((item) => ({
         ...item,
-        children: sortChildren(item.children ?? []),
+        children: sortChildren(item.children || []),
       }));
 
   return sortChildren(roots);
@@ -68,7 +66,7 @@ export default function Explore() {
           getDocs(collection(db, 'sellers')),
         ]);
 
-        const categoryDocs: any[] = catSnap.docs.map((d) => ({
+        const categoryDocs = catSnap.docs.map((d) => ({
           id: d.id,
           ...d.data(),
           parentId: d.data().parentId ?? null,
@@ -245,4 +243,4 @@ export default function Explore() {
       </div>
     </div>
   );
-          }
+      }
