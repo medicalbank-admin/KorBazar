@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, setDoc, getDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, setDoc, getDoc, query, where, limit, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 
 import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket, TrendingUp, Banknote, Settings, Flag, Megaphone, ArrowLeft, History, Wallet } from 'lucide-react';
@@ -39,10 +39,32 @@ const [rejectModal, setRejectModal] = useState({ isOpen: false, sellerId: '', re
 
   const fetchData = async () => {
     setLoading(true);
-    try {
-      const sellersSnap = await getDocs(collection(db, 'sellers'));
-      const sellersData: any[] = sellersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      //  monthly fees on the 1st of the month
+    // 1. Fetch ALL data in parallel to make it super fast
+const [
+  sellersSnap,
+  productsSnap,
+  ordersSnap,
+  catSnap,
+  couponSnap,
+  reportSnap,
+  adsSnap,
+  settingsSnap
+] = await Promise.all([
+  getDocs(collection(db, 'sellers')),
+  // LIMIT: Only load the 200 newest products
+  getDocs(query(collection(db, 'products'), orderBy('createdAt', 'desc'), limit(200))),
+  // LIMIT: Only load the 200 newest orders
+  getDocs(query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(200))),
+  getDocs(collection(db, 'categories')),
+  getDocs(collection(db, 'coupons')),
+  getDocs(collection(db, 'reports')),
+  getDocs(collection(db, 'ads')),
+  getDoc(doc(db, 'settings', 'platform'))
+]);
+
+const sellersData: any[] = sellersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+// --- Monthly fees logic (kept exactly as you had it) ---
 const today = new Date();
 if (today.getDate() === 1) {
   for (const seller of sellersData) {
@@ -50,38 +72,26 @@ if (today.getDate() === 1) {
       const lastPaid = seller.lastFeePaidDate ? new Date(seller.lastFeePaidDate) : null;
       if (!lastPaid || lastPaid.getMonth() !== today.getMonth()) {
         await updateDoc(doc(db, 'sellers', seller.id), { feeStatus: 'pending' });
-        seller.feeStatus = 'pending'; // Update local state so UI reflects immediately
+        seller.feeStatus = 'pending'; 
       }
     }
   }
 }
-      sellersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setSellers(sellersData);
 
-      const productsSnap = await getDocs(collection(db, 'products'));
-      setProducts(productsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+sellersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+setSellers(sellersData);
 
-      const ordersSnap = await getDocs(collection(db, 'orders'));
-      const ordersData = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      ordersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setOrders(ordersData);
+// Set the rest of the data (no need to sort products/orders in JS anymore, Firestore did it)
+setProducts(productsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+setOrders(ordersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+setCategories(catSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+setCoupons(couponSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+setReports(reportSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+setAds(adsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-      const catSnap = await getDocs(collection(db, 'categories'));
-      setCategories(catSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-
-      const couponSnap = await getDocs(collection(db, 'coupons'));
-      setCoupons(couponSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      
-      const reportSnap = await getDocs(collection(db, 'reports'));
-      setReports(reportSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      
-      const adsSnap = await getDocs(collection(db, 'ads'));
-      setAds(adsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      
-      const settingsSnap = await getDoc(doc(db, 'settings', 'platform'));
-      if (settingsSnap.exists()) {
-        setFees(settingsSnap.data() as any);
-      }
+if (settingsSnap.exists()) {
+  setFees(settingsSnap.data() as any);
+}
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
