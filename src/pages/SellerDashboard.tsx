@@ -129,12 +129,11 @@ const fetchData = async () => {
       parentId: d.data().parentId ?? null
     }));
 
-    const tree = buildCategoryTree(categoryDocs);
+        const tree = buildCategoryTree(categoryDocs);
     setCategoryTree(tree);
 
     if (categoryDocs.length > 0 && !category) {
-  setCategory(categoryDocs[0].name as string);
-    };
+      setCategory(categoryDocs[0].name as string);
     }
 
   } catch (error) {
