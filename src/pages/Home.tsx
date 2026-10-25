@@ -13,7 +13,7 @@ import SellerCTA from '../components/SellerCTA';
 import RecentlyViewed from '../components/RecentlyViewed';
 import NewsletterSignup from '../components/NewsletterSignup';
 import FAQ from '../components/FAQ';
-import { Menu, Search, ShoppingCart, User, ChevronRight } from 'lucide-react';
+import { Menu, ShoppingCart, User, ChevronRight } from 'lucide-react';
 
 export default function Home() {
   const [products, setProducts] = useState<any[]>([]);
