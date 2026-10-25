@@ -190,6 +190,7 @@ export default function Checkout() {
           referredBy: appliedReferral ? appliedReferral.id : null,
           referralDiscount: sellerReferralDiscount,
           total: sellerTotal,
+          platformFee: 10, // <-- Platform Fee 
           paymentMethod: paymentMethod,
           status: 'new',
           trackingToken: trackingToken,
