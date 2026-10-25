@@ -8,6 +8,7 @@ import TrustBadges from '../components/TrustBadges';
 import TrendingProducts from '../components/TrendingProducts';
 import DiscountDeals from '../components/DiscountDeals';
 import NewArrivals from '../components/NewArrivals';
+import ShopByCategory from '../components/ShopByCategory';
 import FeaturedStores from '../components/FeaturedStores';
 import SellerCTA from '../components/SellerCTA';
 import RecentlyViewed from '../components/RecentlyViewed';
@@ -185,10 +186,11 @@ export default function Home() {
         </div>
 
         {/* 4. NEW COMPONENTS (Trending, Deals) */}
-        <div className="px-4 md:px-0">
-          <TrendingProducts />
-          <DiscountDeals />
-        </div>
+<div className="px-4 md:px-0">
+  <TrendingProducts />
+  <DiscountDeals />
+  <ShopByCategory />  {/* <--- ADD IT HERE */}
+</div>
 
         {/* 5. MAIN PRODUCT SECTIONS */}
         <div className="px-4 md:px-0 space-y-6 md:space-y-8 mt-6">
