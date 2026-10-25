@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket, TrendingUp, Banknote, Settings, Flag, Megaphone } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket, TrendingUp, Banknote, Settings, Flag, Megaphone, ArrowLeft, History, Wallet, Calendar } from 'lucide-react';
 
 export default function Admin() {
   const [sellers, setSellers] = useState<any[]>([]);
@@ -11,6 +12,11 @@ export default function Admin() {
   const [coupons, setCoupons] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
   const [ads, setAds] = useState<any[]>([]);
+  const navigate = useNavigate();
+const [selectedSeller, setSelectedSeller] = useState<any>(null);
+const [sellerOrders, setSellerOrders] = useState<any[]>([]);
+const [sellerPaymentHistory, setSellerPaymentHistory] = useState<any[]>([]);
+const [paymentModal, setPaymentModal] = useState({ isOpen: false, amount: '', type: 'order_fee' });
   const [loading, setLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'promotions' | 'orders' | 'products' | 'categories' | 'coupons' | 'verification' | 'finance' | 'reports' | 'ads'>('overview');
@@ -36,6 +42,19 @@ const [rejectModal, setRejectModal] = useState({ isOpen: false, sellerId: '', re
     try {
       const sellersSnap = await getDocs(collection(db, 'sellers'));
       const sellersData = sellersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Auto-reset monthly fees on the 1st of the month
+const today = new Date();
+if (today.getDate() === 1) {
+  for (const seller of sellersData) {
+    if (seller.feeStatus === 'paid') {
+      const lastPaid = seller.lastFeePaidDate ? new Date(seller.lastFeePaidDate) : null;
+      if (!lastPaid || lastPaid.getMonth() !== today.getMonth()) {
+        await updateDoc(doc(db, 'sellers', seller.id), { feeStatus: 'pending' });
+        seller.feeStatus = 'pending'; // Update local state so UI reflects immediately
+      }
+    }
+  }
+}
       sellersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setSellers(sellersData);
 
@@ -234,6 +253,64 @@ const handleConfirmReject = async () => {
     setEditForm({ fullName: seller.fullName || '', phone: seller.phone || '', storeName: seller.storeName || '', bio: seller.bio || '', address: seller.storeAddress || '' });
   };
 
+  const handleOpenSeller = (seller: any) => {
+  setSelectedSeller(seller);
+  // Filter orders for this seller
+  const sOrders = orders.filter(o => o.sellerId === seller.id);
+  setSellerOrders(sOrders);
+  
+  // Fetch payment history for this seller
+  const fetchPayments = async () => {
+    try {
+      const q = query(collection(db, 'payment_history'), where('sellerId', '==', seller.id));
+      const snap = await getDocs(q);
+      const history = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      history.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setSellerPaymentHistory(history);
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+    }
+  };
+  fetchPayments();
+};
+  const handleProcessPayment = async () => {
+  if (!selectedSeller || !paymentModal.amount) return;
+  const amountPaid = Number(paymentModal.amount);
+
+  if (paymentModal.type === 'order_fee') {
+    const currentPaid = selectedSeller.orderFeePaid || 0;
+    const newPaid = currentPaid + amountPaid;
+    await updateDoc(doc(db, 'sellers', selectedSeller.id), { orderFeePaid: newPaid });
+    
+    // Log to history
+    await addDoc(collection(db, 'payment_history'), {
+      sellerId: selectedSeller.id,
+      amount: amountPaid,
+      type: 'Order Fee Payment',
+      date: new Date().toISOString()
+    });
+    
+    setSelectedSeller({ ...selectedSeller, orderFeePaid: newPaid });
+  } else if (paymentModal.type === 'monthly_fee') {
+    await updateDoc(doc(db, 'sellers', selectedSeller.id), { 
+      feeStatus: 'paid', 
+      lastFeePaidDate: new Date().toISOString() 
+    });
+    
+    await addDoc(collection(db, 'payment_history'), {
+      sellerId: selectedSeller.id,
+      amount: selectedSeller.plan === 'premium' ? fees.premium : fees.standard,
+      type: 'Monthly Subscription',
+      date: new Date().toISOString()
+    });
+    
+    setSelectedSeller({ ...selectedSeller, feeStatus: 'paid' });
+    fetchData(); // refresh main list
+  }
+  
+  setPaymentModal({ isOpen: false, amount: '', type: 'order_fee' });
+};
+  
   const handleSaveEdit = async () => {
     if (!editingSeller) return;
     setSaveMsg('Saving...');
