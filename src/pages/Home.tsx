@@ -13,7 +13,7 @@ import SellerCTA from '../components/SellerCTA';
 import RecentlyViewed from '../components/RecentlyViewed';
 import NewsletterSignup from '../components/NewsletterSignup';
 import FAQ from '../components/FAQ';
-import { Menu, ShoppingCart, User, ChevronRight } from 'lucide-react';
+import { Menu, ChevronRight } from 'lucide-react';
 
 export default function Home() {
   const [products, setProducts] = useState<any[]>([]);
@@ -105,26 +105,9 @@ export default function Home() {
   return (
     <div className="bg-[#f4f5f7] min-h-screen pb-12">
       
-      {/* DESKTOP HEADER (Search & Icons) - Hidden on Mobile */}
-      <div className="bg-white border-b border-gray-200 py-3 px-4 hidden md:block shadow-sm relative z-20">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link to="/" className="text-2xl font-black text-brand tracking-tighter">KOR BAZAR</Link>
-          
-          <div className="flex-grow max-w-2xl mx-8 flex">
-            <input type="text" placeholder="Search for products, brands..." className="w-full px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:border-brand" />
-            <button className="bg-brand text-white px-6 font-bold rounded-r-lg hover:bg-brand/90">Search</button>
-          </div>
-
-          <div className="flex items-center gap-6 text-gray-600 text-sm font-medium">
-            <Link to="/orders" className="flex flex-col items-center hover:text-brand"><ShoppingCart size={20} className="mb-1" /> Orders</Link>
-            <Link to="/profile" className="flex flex-col items-center hover:text-brand"><User size={20} className="mb-1" /> Profile</Link>
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-7xl mx-auto px-0 md:px-4 pt-0 md:pt-6">
         
-        {/* AD SLIDESHOW (Mobile Only - keeps your current top banner) */}
+        {/* AD SLIDESHOW (Mobile Only) */}
         <div className="md:hidden mb-4">
           <AdSlideshow />
         </div>
@@ -168,8 +151,13 @@ export default function Home() {
                   Shop Now <ChevronRight size={16} />
                 </Link>
               </div>
-              {/* Hero Image */}
-              <img src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=800&auto=format&fit=crop" alt="Hero" className="absolute right-0 bottom-0 h-full object-cover opacity-90 hidden md:block" style={{ maskImage: 'linear-gradient(to right, transparent, black 20%)', WebkitMaskImage: 'linear-gradient(to right, transparent, black 20%)' }} />
+              {/* Hero Image - Opacity lowered so text is readable */}
+              <img 
+                src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=800&auto=format&fit=crop" 
+                alt="Hero" 
+                className="absolute right-0 bottom-0 h-full object-cover opacity-40 hidden md:block" 
+                style={{ maskImage: 'linear-gradient(to right, transparent, black 40%)', WebkitMaskImage: 'linear-gradient(to right, transparent, black 40%)' }} 
+              />
             </div>
             
             {/* Small Vertical Banner */}
@@ -202,7 +190,7 @@ export default function Home() {
           <DiscountDeals />
         </div>
 
-        {/* 5. MAIN PRODUCT SECTIONS (Like the reference image) */}
+        {/* 5. MAIN PRODUCT SECTIONS */}
         <div className="px-4 md:px-0 space-y-6 md:space-y-8 mt-6">
           
           {/* FEATURED PREMIUM PRODUCTS */}
@@ -273,4 +261,4 @@ export default function Home() {
       </div>
     </div>
   );
-                  }
+          }
