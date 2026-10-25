@@ -13,38 +13,40 @@ const FEATURED_CATEGORIES = [
 
 export default function ShopByCategory() {
   return (
-    <section className="max-w-7xl mx-auto px-4 py-8 md:py-12">
-      <div className="flex justify-between items-end mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-dark">Shop by Category</h2>
-          <p className="text-sm text-gray-500">Find exactly what you're looking for</p>
-        </div>
-        <Link to="/explore" className="text-brand font-bold text-sm hover:underline hidden md:block">
-          View All Categories
-        </Link>
+  <section className="max-w-7xl mx-auto px-4 py-8 md:py-12">
+    <div className="flex justify-between items-end mb-6">
+      <div>
+        <h2 className="text-2xl font-bold text-dark">Shop by Category</h2>
+        <p className="text-sm text-gray-500">Find exactly what you're looking for</p>
       </div>
+      <Link to="/explore" className="text-brand font-bold text-sm hover:underline hidden md:block">
+        View All Categories
+      </Link>
+    </div>
 
-      {/* Grid of circular images */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-4 md:gap-6">
-        {FEATURED_CATEGORIES.map((cat, index) => (
-          <Link 
-            key={index} 
-            to={`/explore?cat=${encodeURIComponent(cat.name)}`}
-            className="flex flex-col items-center group"
-          >
-            <div className="w-20 h-20 md:w-32 md:h-32 rounded-full overflow-hidden mb-3 border-2 border-transparent group-hover:border-brand transition-all shadow-sm group-hover:shadow-md">
-              <img 
-                src={cat.image} 
-                alt={cat.name} 
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
-              />
-            </div>
-            <span className="text-xs md:text-sm font-semibold text-dark text-center group-hover:text-brand transition-colors">
-              {cat.name}
-            </span>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
+    {/* Grid of circular images - Fixed spacing for mobile */}
+    <div className="grid grid-cols-3 md:grid-cols-6 gap-x-2 gap-y-6 md:gap-6">
+      {FEATURED_CATEGORIES.map((cat, index) => (
+        <Link 
+          key={index} 
+          to={`/explore?cat=${encodeURIComponent(cat.name)}`}
+          className="flex flex-col items-center group w-full"
+        >
+          {/* Image Container */}
+          <div className="w-20 h-20 md:w-32 md:h-32 rounded-full overflow-hidden mb-3 border-2 border-transparent group-hover:border-brand transition-all shadow-sm group-hover:shadow-md shrink-0">
+            <img 
+              src={cat.image} 
+              alt={cat.name} 
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
+            />
+          </div>
+          {/* Text Container - fixed width to prevent overlap */}
+          <span className="text-xs md:text-sm font-semibold text-dark text-center group-hover:text-brand transition-colors w-full px-1 leading-tight line-clamp-2">
+            {cat.name}
+          </span>
+        </Link>
+      ))}
+    </div>
+  </section>
+);
       }
