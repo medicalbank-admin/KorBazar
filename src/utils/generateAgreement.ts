@@ -55,8 +55,8 @@ export const generateAgreementPDF = (sellerData: any) => {
     startY: 30,
     head: [['Type', 'Amount', 'Description']],
     body: [
-      ['Standard Plan', 'Rs. 800 / month', 'Basic store visibility and product listing.'],
-      ['Premium Plan', 'Rs. 1800 / month', 'Featured on homepage, higher visibility, premium badge.'],
+      ['Standard Plan', 'Rs. 1,000 / month', 'Basic store visibility and product listing.'],
+      ['Premium Plan', 'Rs. 2,000 / month', 'Featured on homepage, higher visibility, premium badge.'],
       ['Platform Fee', 'Rs. 10 / order', 'Deducted automatically from your payout upon order delivery.'],
     ],
     theme: 'striped',
@@ -64,13 +64,18 @@ export const generateAgreementPDF = (sellerData: any) => {
     styles: { fontSize: 10 },
   });
 
+  // Use type casting (doc as any) to fix TypeScript errors
+  const lastY = (doc as any).lastAutoTable.finalY;
+
   doc.setFontSize(12);
-  doc.text("How Payouts Work:", 14, doc.lastAutoTable.finalY + 15);
+  doc.setFont("helvetica", "bold");
+  doc.text("How Payouts Work:", 14, lastY + 15);
+  
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text("When an order is delivered, the total amount paid by the buyer is collected.", 14, doc.lastAutoTable.finalY + 22);
-  doc.text("The Rs. 10 platform fee is deducted from this amount.", 14, doc.lastAutoTable.finalY + 28);
-  doc.text("The remaining balance (Net Payout) is owed to you by the platform.", 14, doc.lastAutoTable.finalY + 34);
+  doc.text("When an order is delivered, the total amount paid by the buyer is collected.", 14, lastY + 22);
+  doc.text("The Rs. 10 platform fee is deducted from this amount.", 14, lastY + 28);
+  doc.text("The remaining balance (Net Payout) is owed to you by the platform.", 14, lastY + 34);
 
   // --- PAGE 3: PLATFORM GUIDE ---
   doc.addPage();
@@ -122,7 +127,7 @@ export const generateAgreementPDF = (sellerData: any) => {
 
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text("Privacy Policy", 14, doc.lastAutoTable.finalY + 90); // Adjust based on text height
+  doc.text("Privacy Policy", 14, 140); 
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
@@ -132,10 +137,10 @@ export const generateAgreementPDF = (sellerData: any) => {
     "3. Security: We use industry-standard security measures (Firebase) to protect your data. However, no method of transmission over the internet is 100% secure.",
     180
   );
-  doc.text(privacyText, 14, doc.lastAutoTable.finalY + 100);
+  doc.text(privacyText, 14, 150);
 
-  // Footer
-  const pageCount = doc.internal.getNumberOfPages();
+  // Footer (Using type casting to fix getNumberOfPages)
+  const pageCount = (doc as any).internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
