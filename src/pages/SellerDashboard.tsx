@@ -40,8 +40,10 @@ export default function SellerDashboard() {
   const [discountPercent, setDiscountPercent] = useState('');
   const [productDescription, setProductDescription] = useState('');
   const [productDeliveryFee, setProductDeliveryFee] = useState('');
-  const [category, setCategory] = useState('');
-  const [availableCategories, setAvailableCategories] = useState<any[]>([]);
+  // Around lines 36–47
+const [category, setCategory] = useState('');
+const [availableCategories, setAvailableCategories] = useState<any[]>([]);
+const [categoryTree, setCategoryTree] = useState<any[]>([]);
   const [productImages, setProductImages] = useState<FileList | null>(null);
   const [productMsg, setProductMsg] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -57,7 +59,39 @@ export default function SellerDashboard() {
     "Candles", "Gift Hampers", "Customized Mugs & Photo Frames", "Resin Art & Keychains", 
     "Wedding and Festive Sweets", "Home Decor", "Essential Oils & Natural Hair Care"
   ];
-  const fetchData = async () => {
+  // Add helper before fetchData around lines 55–59
+const buildCategoryTree = (categories: any[]) => {
+  const byId = new Map<string, any>();
+  categories.forEach((cat) => {
+    byId.set(cat.id, { ...cat, children: [] });
+  });
+
+  const roots: any[] = [];
+
+  categories.forEach((cat) => {
+    const node = byId.get(cat.id);
+    if (!node) return;
+
+    if (cat.parentId) {
+      const parent = byId.get(cat.parentId);
+      if (parent) parent.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  });
+
+  const sortChildren = (items: any[]) =>
+    [...items]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((item) => ({
+        ...item,
+        children: sortChildren(item.children || []),
+      }));
+
+  return sortChildren(roots);
+  
+};// Replace fetchData around lines 60–112
+const fetchData = async () => {
   if (!currentUser) return;
   try {
     const docSnap = await getDoc(doc(db, 'sellers', currentUser.uid));
@@ -68,41 +102,48 @@ export default function SellerDashboard() {
       setStoreAddress(data.storeAddress || '');
       setPaymentAccounts(data.paymentAccounts || '');
       setSocialLinks(data.socialLinks || { facebook: '', instagram: '', tiktok: '' });
-      
-      // Check agreement status here instead of fetching twice
+
       if (!data.agreementSigned) {
         setShowAgreement(true);
       }
     }
 
-    // Fetch Products (Latest 100)
-const prodQ = query(
-  collection(db, 'products'), 
-  where('sellerId', '==', currentUser.uid),
-  orderBy('createdAt', 'desc'),
-  limit(100)
-);
-const prodSnap = await getDocs(prodQ);
-const productsData = prodSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-setProducts(productsData);
+    const prodQ = query(
+      collection(db, 'products'),
+      where('sellerId', '==', currentUser.uid),
+      orderBy('createdAt', 'desc'),
+      limit(100)
+    );
+    const prodSnap = await getDocs(prodQ);
+    const productsData = prodSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setProducts(productsData);
 
-// Fetch Orders (Latest 100)
-const orderQ = query(
-  collection(db, 'orders'), 
-  where('sellerId', '==', currentUser.uid),
-  orderBy('createdAt', 'desc'),
-  limit(100)
-);
-const orderSnap = await getDocs(orderQ);
-const ordersData = orderSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-setOrders(ordersData);
+    const orderQ = query(
+      collection(db, 'orders'),
+      where('sellerId', '==', currentUser.uid),
+      orderBy('createdAt', 'desc'),
+      limit(100)
+    );
+    const orderSnap = await getDocs(orderQ);
+    const ordersData = orderSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setOrders(ordersData);
 
     const catSnap = await getDocs(collection(db, 'categories'));
-    const cats = catSnap.docs.map(d => d.data().name);
-    const finalCats = cats.length > 0 ? cats : defaultCategories;
-    
-    setAvailableCategories(finalCats);
-    if (finalCats.length > 0 && !category) setCategory(finalCats[0]);
+    const categoryDocs = catSnap.docs.map(d => ({
+      id: d.id,
+      ...d.data(),
+      parentId: d.data().parentId ?? null
+    }));
+
+    const tree = buildCategoryTree(categoryDocs);
+    setCategoryTree(tree);
+
+    const flatCategories = categoryDocs.map(cat => cat.name);
+    setAvailableCategories(flatCategories);
+
+    if (flatCategories.length > 0 && !category) {
+      setCategory(flatCategories[0]);
+    }
 
   } catch (error) {
     console.error("Error fetching data:", error);
@@ -143,6 +184,7 @@ const handleSignAgreement = async () => {
   }
 };
 
+// Replace handleAddProduct around lines 146–187
 const handleAddProduct = async (e: React.FormEvent) => {
   e.preventDefault();
   if (!currentUser || !store) return;
@@ -157,17 +199,17 @@ const handleAddProduct = async (e: React.FormEvent) => {
     }
 
     const newProduct = {
-      sellerId: currentUser.uid, 
+      sellerId: currentUser.uid,
       storeName: store.storeName,
-      title, 
+      title,
       description: productDescription,
-      price: Number(price), 
+      price: Number(price),
       stock: Number(stock),
       discountPercent: Number(discountPercent) || 0,
       deliveryFee: Number(productDeliveryFee) || 0,
       category,
-      isPremium: false, 
-      images: imageUrls, 
+      isPremium: false,
+      images: imageUrls,
       image: imageUrls[0],
       variants: variants,
       createdAt: new Date().toISOString()
@@ -176,7 +218,14 @@ const handleAddProduct = async (e: React.FormEvent) => {
     const docRef = await addDoc(collection(db, 'products'), newProduct);
     setProducts([{ id: docRef.id, ...newProduct }, ...products]);
     setProductMsg('Product added successfully!');
-    setTitle(''); setPrice(''); setStock(''); setDiscountPercent(''); setProductDescription(''); setProductDeliveryFee(''); setProductImages(null); setVariants([]);
+    setTitle('');
+    setPrice('');
+    setStock('');
+    setDiscountPercent('');
+    setProductDescription('');
+    setProductDeliveryFee('');
+    setProductImages(null);
+    setVariants([]);
     (document.getElementById('product-images') as HTMLInputElement).value = '';
     setTimeout(() => setProductMsg(''), 3000);
   } catch (error) {
@@ -185,6 +234,7 @@ const handleAddProduct = async (e: React.FormEvent) => {
     setUploading(false);
   }
 };
+
 
 const openEditModal = (productId: string, type: 'stock' | 'discount', currentValue: number | undefined) => {
   setEditModal({ isOpen: true, productId, type, value: (currentValue || 0).toString() });
@@ -689,13 +739,33 @@ const filteredOrders = orders.filter(order => {
                      <input type="number" required value={productDeliveryFee} onChange={e => setProductDeliveryFee(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
                    </div>
                    <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                     <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
-                       {availableCategories.map(catName => (
-                         <option key={catName} value={catName}>{catName}</option>
-                       ))}
-                     </select>
-                   </div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+  <select
+    value={category}
+    onChange={e => setCategory(e.target.value)}
+    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50"
+  >
+    {categoryTree.length === 0 ? (
+      <option value="">No categories available</option>
+    ) : (
+      categoryTree.map(main => {
+        if (main.children && main.children.length > 0) {
+          return (
+            <optgroup key={main.id} label={main.name}>
+              {main.children.map((sub: any) => (
+                <option key={sub.id} value={sub.name}>{sub.name}</option>
+              ))}
+            </optgroup>
+          );
+        }
+
+        return (
+          <option key={main.id} value={main.name}>{main.name}</option>
+        );
+      })
+    )}
+  </select>
+</div>
                  </div>
 
                  {/* VARIANTS SECTION */}
