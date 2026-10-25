@@ -24,9 +24,11 @@ const [paymentModal, setPaymentModal] = useState({ isOpen: false, amount: '', ty
   const [viewImage, setViewImage] = useState<string | null>(null);
   const [editingSeller, setEditingSeller] = useState<any>(null);
   const [editForm, setEditForm] = useState({ fullName: '', phone: '', storeName: '', bio: '', address: '' });
-  const [saveMsg, setSaveMsg] = useState('');
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [newCoupon, setNewCoupon] = useState({ code: '', discount: '', minAmount: '' });
+  // Around lines 27–30
+const [saveMsg, setSaveMsg] = useState('');
+const [newCategoryName, setNewCategoryName] = useState('');
+const [newCategoryParentId, setNewCategoryParentId] = useState('');
+const [newCoupon, setNewCoupon] = useState({ code: '', discount: '', minAmount: '' });
   const [couponMsg, setCouponMsg] = useState('');
   
   const [newAd, setNewAd] = useState({ title: '', productId: '', imageBase64: '', link: '/explore' });
@@ -168,15 +170,23 @@ const handleConfirmReject = async () => {
     }
   };
 
-  const handleAddCategory = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCategoryName.trim()) return;
-    try {
-      await addDoc(collection(db, 'categories'), { name: newCategoryName.trim(), createdAt: new Date().toISOString() });
-      setNewCategoryName('');
-      fetchData();
-    } catch (error) { alert("Failed to add category."); }
-  };
+  // Replace handleAddCategory around lines 171–179
+const handleAddCategory = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!newCategoryName.trim()) return;
+  try {
+    await addDoc(collection(db, 'categories'), {
+      name: newCategoryName.trim(),
+      parentId: newCategoryParentId || null,
+      createdAt: new Date().toISOString()
+    });
+    setNewCategoryName('');
+    setNewCategoryParentId('');
+    fetchData();
+  } catch (error) {
+    alert("Failed to add category.");
+  }
+};
 
   const handleDeleteCategory = async (id: string) => {
     if(window.confirm("Are you sure?")) {
@@ -857,23 +867,53 @@ const unpaidSellersCount = approvedSellers.length - paidSellersCount;
             </div>
           )}
 
-          {activeTab === 'categories' && (
-            <div>
-              <h2 className="text-xl font-bold text-dark mb-6">Manage Categories</h2>
-              <form onSubmit={handleAddCategory} className="flex gap-3 mb-8 max-w-lg">
-                <input type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="e.g. Home Decor, Sweets, etc." className="flex-grow px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none" />
-                <button type="submit" className="bg-brand text-white font-bold py-3 px-6 rounded-xl hover:bg-brand/90 shadow-md flex items-center gap-2"><Plus size={18} /> Add</button>
-              </form>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {categories.map(cat => (
-                  <div key={cat.id} className="flex justify-between items-center bg-gray-50 border border-gray-100 p-4 rounded-xl">
-                    <span className="font-bold text-dark">{cat.name}</span>
-                    <button onClick={() => handleDeleteCategory(cat.id)} className="text-alert p-2 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+        {// Replace category tab form around lines 860–875
+{activeTab === 'categories' && (
+  <div>
+    <h2 className="text-xl font-bold text-dark mb-6">Manage Categories</h2>
+
+    <form onSubmit={handleAddCategory} className="flex flex-col gap-3 mb-8 max-w-lg">
+      <input
+        type="text"
+        value={newCategoryName}
+        onChange={e => setNewCategoryName(e.target.value)}
+        placeholder="e.g. Home Decor, Sweets, etc."
+        className="flex-grow px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50"
+      />
+
+      <select
+        value={newCategoryParentId}
+        onChange={e => setNewCategoryParentId(e.target.value)}
+        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50"
+      >
+        <option value="">Main Category (No parent)</option>
+        {categories
+          .filter(cat => !cat.parentId)
+          .map(cat => (
+            <option key={cat.id} value={cat.id}>{cat.name}</option>
+          ))}
+      </select>
+
+      <button
+        type="submit"
+        className="bg-brand text-white font-bold py-3 px-6 rounded-xl hover:bg-brand/90 shadow-md flex items-center gap-2"
+      >
+        <Plus size={18} /> Add
+      </button>
+    </form>
+
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      {categories.map(cat => (
+        <div key={cat.id} className="flex justify-between items-center bg-gray-50 border border-gray-100 p-4 rounded-xl">
+          <span className="font-bold text-dark">{cat.name}</span>
+          <button onClick={() => handleDeleteCategory(cat.id)} className="text-alert p-2 hover:bg-red-50 rounded-lg transition-colors">
+            <Trash2 size={18} />
+          </button>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
           {activeTab === 'reports' && (
             <div>
