@@ -180,19 +180,6 @@ const handleAddProduct = async (e: React.FormEvent) => {
   }
 };
 
-    const docRef = await addDoc(collection(db, 'products'), newProduct);
-    setProducts([{ id: docRef.id, ...newProduct }, ...products]);
-    setProductMsg('Product added successfully!');
-    setTitle(''); setPrice(''); setStock(''); setDiscountPercent(''); setProductDescription(''); setProductDeliveryFee(''); setProductImages(null); setVariants([]);
-    (document.getElementById('product-images') as HTMLInputElement).value = '';
-    setTimeout(() => setProductMsg(''), 3000);
-  } catch (error) {
-    setProductMsg('Error adding product.');
-  } finally {
-    setUploading(false);
-  }
-};
-
 const openEditModal = (productId: string, type: 'stock' | 'discount', currentValue: number | undefined) => {
   setEditModal({ isOpen: true, productId, type, value: (currentValue || 0).toString() });
 };
