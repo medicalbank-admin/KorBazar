@@ -5,30 +5,10 @@ import { doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where, getDo
 import { db } from '../firebase';
 import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook, Instagram, Globe, ShieldAlert, Star, CreditCard, Box, CheckSquare, X, MessageSquare, Plus, Trash2, FileText } from 'lucide-react';
 import emailjs from '@emailjs/browser';
+import { uploadToCloudinary } from '../utils/cloudinary';
 import { generateAgreementPDF } from '../utils/generateAgreement';
 
-const compressImage = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 500; 
-        const scale = MAX_WIDTH / img.width;
-        canvas.width = MAX_WIDTH;
-        canvas.height = img.height * scale;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.5));
-      };
-      img.onerror = (error) => reject(error);
-    };
-    reader.onerror = (error) => reject(error);
-  });
-};
+
 
 export default function SellerDashboard() {
   const { currentUser } = useAuth();
@@ -166,8 +146,8 @@ const handleAddProduct = async (e: React.FormEvent) => {
   try {
     const imageUrls: string[] = [];
     for (let i = 0; i < productImages.length; i++) {
-      const base64 = await compressImage(productImages[i]);
-      imageUrls.push(base64);
+      const url = await uploadToCloudinary(productImages[i]);
+      imageUrls.push(url);
     }
 
     const newProduct = {
@@ -186,6 +166,19 @@ const handleAddProduct = async (e: React.FormEvent) => {
       variants: variants,
       createdAt: new Date().toISOString()
     };
+
+    const docRef = await addDoc(collection(db, 'products'), newProduct);
+    setProducts([{ id: docRef.id, ...newProduct }, ...products]);
+    setProductMsg('Product added successfully!');
+    setTitle(''); setPrice(''); setStock(''); setDiscountPercent(''); setProductDescription(''); setProductDeliveryFee(''); setProductImages(null); setVariants([]);
+    (document.getElementById('product-images') as HTMLInputElement).value = '';
+    setTimeout(() => setProductMsg(''), 3000);
+  } catch (error) {
+    setProductMsg('Error adding product.');
+  } finally {
+    setUploading(false);
+  }
+};
 
     const docRef = await addDoc(collection(db, 'products'), newProduct);
     setProducts([{ id: docRef.id, ...newProduct }, ...products]);
