@@ -12,7 +12,7 @@ type CategoryNode = {
   children?: CategoryNode[];
 };
 
-const buildCategoryTree = (categoryList: CategoryNode[]) => {
+const buildCategoryTree = (categoryList: CategoryNode[]): CategoryNode[] => {
   const byId = new Map<string, CategoryNode & { children: CategoryNode[] }>();
   categoryList.forEach((cat) => {
     byId.set(cat.id, { ...cat, children: [] });
@@ -34,12 +34,14 @@ const buildCategoryTree = (categoryList: CategoryNode[]) => {
     }
   });
 
-  const sortChildren = (items: Array<CategoryNode & { children: CategoryNode[] }>) =>
+  const sortChildren = (
+    items: Array<CategoryNode & { children: CategoryNode[] }>
+  ): Array<CategoryNode & { children: CategoryNode[] }> =>
     [...items]
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((item) => ({
         ...item,
-        children: sortChildren(item.children || []),
+        children: sortChildren(item.children ?? []),
       }));
 
   return sortChildren(roots);
@@ -56,7 +58,7 @@ export default function Explore() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCat);
   const [loading, setLoading] = useState(true);
 
-  const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
+  const categoryTree = useMemo(() => buildCategoryTree(categories as CategoryNode[]), [categories]);
 
   useEffect(() => {
     const fetchCategoriesAndSellers = async () => {
@@ -66,7 +68,7 @@ export default function Explore() {
           getDocs(collection(db, 'sellers')),
         ]);
 
-        const categoryDocs = catSnap.docs.map((d) => ({
+        const categoryDocs: any[] = catSnap.docs.map((d) => ({
           id: d.id,
           ...d.data(),
           parentId: d.data().parentId ?? null,
@@ -183,7 +185,7 @@ export default function Explore() {
                 All Categories
               </button>
 
-              {categoryTree.map((main) => (
+              {categoryTree.map((main: any) => (
                 <div key={main.id} className="space-y-1">
                   <button
                     type="button"
@@ -243,4 +245,4 @@ export default function Explore() {
       </div>
     </div>
   );
-    }
+          }
