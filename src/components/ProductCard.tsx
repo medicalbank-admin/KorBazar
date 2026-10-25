@@ -50,7 +50,7 @@ export default function ProductCard({ product, isSellerPremium }: { product: any
         </button>
       </div>
       
-      <div className="p-4 flex flex-col flex-grow">
+      <div className="p-3 flex flex-col flex-grow">
         <h3 className="font-semibold text-dark line-clamp-1">{product.title}</h3>
         <div className="flex items-center gap-1 text-sm text-gray-500 mt-1 mb-2">
           <span className="truncate">{product.storeName}</span>
