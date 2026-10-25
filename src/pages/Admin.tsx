@@ -867,8 +867,7 @@ const unpaidSellersCount = approvedSellers.length - paidSellersCount;
             </div>
           )}
 
-        {// Replace category tab form around lines 860–875
-{activeTab === 'categories' && (
+        {activeTab === 'categories' && (
   <div>
     <h2 className="text-xl font-bold text-dark mb-6">Manage Categories</h2>
 
@@ -896,16 +895,19 @@ const unpaidSellersCount = approvedSellers.length - paidSellersCount;
 
       <button
         type="submit"
-        className="bg-brand text-white font-bold py-3 px-6 rounded-xl hover:bg-brand/90 shadow-md flex items-center gap-2"
+        className="bg-brand text-white font-bold py-3 px-6 rounded-xl hover:bg-brand/90 shadow-md flex items-center gap-2 w-max"
       >
-        <Plus size={18} /> Add
+        <Plus size={18} /> Add Category
       </button>
     </form>
 
     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
       {categories.map(cat => (
         <div key={cat.id} className="flex justify-between items-center bg-gray-50 border border-gray-100 p-4 rounded-xl">
-          <span className="font-bold text-dark">{cat.name}</span>
+          <div>
+            <span className="font-bold text-dark">{cat.name}</span>
+            {cat.parentId && <span className="block text-xs text-gray-500">Sub-category</span>}
+          </div>
           <button onClick={() => handleDeleteCategory(cat.id)} className="text-alert p-2 hover:bg-red-50 rounded-lg transition-colors">
             <Trash2 size={18} />
           </button>
@@ -915,47 +917,49 @@ const unpaidSellersCount = approvedSellers.length - paidSellersCount;
   </div>
 )}
 
-          {activeTab === 'reports' && (
-            <div>
-              <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><Flag className="text-alert"/> Buyer Reports</h2>
-              
-              {reports.filter(r => r.status !== 'resolved').length === 0 ? (
-                <div className="bg-green-50 text-brand p-6 rounded-xl border border-green-200 text-center font-bold mb-8">
-                  No active reports. The platform is safe!
-                </div>
-              ) : (
-                <div className="mb-8">
-                  <h3 className="font-bold text-gray-500 uppercase text-sm mb-3">Action Needed ({reports.filter(r => r.status !== 'resolved').length})</h3>
-                  <div className="space-y-4">
-                    {reports.filter(r => r.status !== 'resolved').map(report => (
-                      <div key={report.id} className="p-4 border border-red-100 bg-red-50 rounded-xl flex flex-col md:flex-row justify-between gap-4">
-                        <div>
-                          <h3 className="font-bold text-lg text-alert">{report.reason}</h3>
-                          <p className="text-sm text-gray-700">Target: <strong>{report.targetName}</strong> ({report.targetType})</p>
-                          <p className="text-sm text-gray-600 mt-2 bg-white p-2 rounded-lg border border-red-100">"{report.details}"</p>
-                          <p className="text-xs text-gray-500 mt-1">Reported on: {new Date(report.createdAt).toLocaleDateString()}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button onClick={async () => {
-                            await updateDoc(doc(db, 'reports', report.id), { status: 'resolved' });
-                            fetchData();
-                          }} className="px-4 py-2 bg-brand text-white rounded-xl font-bold text-sm hover:bg-brand/90 shadow-sm">
-                            Mark Resolved
-                          </button>
-                          <button onClick={async () => {
-                            if(window.confirm("Delete this report permanently?")) {
-                              await deleteDoc(doc(db, 'reports', report.id));
-                              fetchData();
-                            }
-                          }} className="p-2 bg-white text-alert rounded-lg border border-red-200 hover:bg-red-50">
-                            <Trash2 size={18}/>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+{activeTab === 'reports' && (
+  <div>
+    <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><Flag className="text-alert"/> Buyer Reports</h2>
+    
+    {reports.filter(r => r.status !== 'resolved').length === 0 ? (
+      <div className="bg-green-50 text-brand p-6 rounded-xl border border-green-200 text-center font-bold mb-8">
+        No active reports. The platform is safe!
+      </div>
+    ) : (
+      <div className="mb-8">
+        <h3 className="font-bold text-gray-500 uppercase text-sm mb-3">Action Needed ({reports.filter(r => r.status !== 'resolved').length})</h3>
+        <div className="space-y-4">
+          {reports.filter(r => r.status !== 'resolved').map(report => (
+            <div key={report.id} className="p-4 border border-red-100 bg-red-50 rounded-xl flex flex-col md:flex-row justify-between gap-4">
+              <div>
+                <h3 className="font-bold text-lg text-alert">{report.reason}</h3>
+                <p className="text-sm text-gray-700">Target: <strong>{report.targetName}</strong> ({report.targetType})</p>
+                <p className="text-sm text-gray-600 mt-2 bg-white p-2 rounded-lg border border-red-100">"{report.details}"</p>
+                <p className="text-xs text-gray-500 mt-1">Reported on: {new Date(report.createdAt).toLocaleDateString()}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={async () => {
+                  await updateDoc(doc(db, 'reports', report.id), { status: 'resolved' });
+                  fetchData();
+                }} className="px-4 py-2 bg-brand text-white rounded-xl font-bold text-sm hover:bg-brand/90 shadow-sm">
+                  Mark Resolved
+                </button>
+                <button onClick={async () => {
+                  if(window.confirm("Delete this report permanently?")) {
+                    await deleteDoc(doc(db, 'reports', report.id));
+                    fetchData();
+                  }
+                }} className="p-2 bg-white text-alert rounded-lg border border-red-200 hover:bg-red-50">
+                  <Trash2 size={18}/>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+          
 
               {reports.filter(r => r.status === 'resolved').length > 0 && (
                 <div className="border-t border-gray-100 pt-6">
