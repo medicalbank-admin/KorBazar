@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, setDoc, getDoc, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useNavigate } from 'react-router-dom';
-import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket, TrendingUp, Banknote, Settings, Flag, Megaphone, ArrowLeft, History, Wallet, Calendar } from 'lucide-react';
+import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket, TrendingUp, Banknote, Settings, Flag, Megaphone, ArrowLeft, History, Wallet } from 'lucide-react';
 
 export default function Admin() {
   const [sellers, setSellers] = useState<any[]>([]);
@@ -12,7 +12,7 @@ export default function Admin() {
   const [coupons, setCoupons] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
   const [ads, setAds] = useState<any[]>([]);
-  const navigate = useNavigate();
+  
 const [selectedSeller, setSelectedSeller] = useState<any>(null);
 const [sellerOrders, setSellerOrders] = useState<any[]>([]);
 const [sellerPaymentHistory, setSellerPaymentHistory] = useState<any[]>([]);
@@ -41,8 +41,8 @@ const [rejectModal, setRejectModal] = useState({ isOpen: false, sellerId: '', re
     setLoading(true);
     try {
       const sellersSnap = await getDocs(collection(db, 'sellers'));
-      const sellersData = sellersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      // Auto-reset monthly fees on the 1st of the month
+      const sellersData: any[] = sellersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      //  monthly fees on the 1st of the month
 const today = new Date();
 if (today.getDate() === 1) {
   for (const seller of sellersData) {
@@ -132,11 +132,6 @@ const handleConfirmReject = async () => {
     }
   };
 
-  const toggleFeeStatus = async (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'paid' ? 'pending' : 'paid';
-    await updateDoc(doc(db, 'sellers', id), { feeStatus: newStatus });
-    fetchData();
-  };
 
   const toggleSubscription = async (id: string, currentPlan: string) => {
     const newPlan = currentPlan === 'premium' ? 'standard' : 'premium';
@@ -264,7 +259,7 @@ const handleConfirmReject = async () => {
     try {
       const q = query(collection(db, 'payment_history'), where('sellerId', '==', seller.id));
       const snap = await getDocs(q);
-      const history = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const history: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       history.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setSellerPaymentHistory(history);
     } catch (error) {
