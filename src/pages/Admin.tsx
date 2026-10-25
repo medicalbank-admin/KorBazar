@@ -89,15 +89,16 @@ setCoupons(couponSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 setReports(reportSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 setAds(adsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-if (settingsSnap.exists()) {
-  setFees(settingsSnap.data() as any);
-
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      setLoading(false);
+    if (settingsSnap.exists()) {
+      setFees(settingsSnap.data() as any);
     }
-  };
+    
+  } catch (error) {
+    console.error("Error fetching data:", error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => { fetchData(); }, []);
 
