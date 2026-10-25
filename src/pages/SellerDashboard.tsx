@@ -729,55 +729,55 @@ const filteredOrders = orders.filter(order => {
                    <textarea required value={productDescription} onChange={e => setProductDescription(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="Describe the item..." />
                  </div>
                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">Price (Rs.)</label>
-                     <input type="number" required value={price} onChange={e => setPrice(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">Stock Qty</label>
-                     <input type="number" required value={stock} onChange={e => setStock(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. 5" />
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">Discount (%)</label>
-                     <input type="number" min="0" max="100" value={discountPercent} onChange={e => setDiscountPercent(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. 10" />
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Fee (Rs.)</label>
-                     <input type="number" required value={productDeliveryFee} onChange={e => setProductDeliveryFee(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-                   </div>
-                   <div>
   <div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-  <select
-    value={category}
-    onChange={(e) => setCategory(e.target.value)}
-    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
-    {categoryTree.length === 0 ? (
-      <option value="">No categories available</option>
-    ) : (
-      categoryTree.map((main: any) => {
-        if (main.children && main.children.length > 0) {
-          return (
-            <optgroup key={main.id} label={main.name}>
-              {main.children.map((sub: any) => (
-                <option key={sub.id} value={sub.name}>
-                  {sub.name}
-                </option>
-              ))}
-            </optgroup>
-          );
-        }
+    <label className="block text-sm font-medium text-gray-700 mb-1">Price (Rs.)</label>
+    <input type="number" required value={price} onChange={e => setPrice(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+  </div>
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">Stock Qty</label>
+    <input type="number" required value={stock} onChange={e => setStock(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. 5" />
+  </div>
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">Discount (%)</label>
+    <input type="number" min="0" max="100" value={discountPercent} onChange={e => setDiscountPercent(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. 10" />
+  </div>
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Fee (Rs.)</label>
+    <input type="number" required value={productDeliveryFee} onChange={e => setProductDeliveryFee(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+  </div>
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+    <select
+      value={category}
+      onChange={(e) => setCategory(e.target.value)}
+      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50"
+    >
+      {categoryTree.length === 0 ? (
+        <option value="">No categories available</option>
+      ) : (
+        categoryTree.map((main: any) => {
+          if (main.children && main.children.length > 0) {
+            return (
+              <optgroup key={main.id} label={main.name}>
+                {main.children.map((sub: any) => (
+                  <option key={sub.id} value={sub.name}>
+                    {sub.name}
+                  </option>
+                ))}
+              </optgroup>
+            );
+          }
 
-        return (
-          <option key={main.id} value={main.name}>
-            {main.name}
-          </option>
-        );
-      })
-    )}
-  </select>
+          return (
+            <option key={main.id} value={main.name}>
+              {main.name}
+            </option>
+          );
+        })
+      )}
+    </select>
+  </div>
 </div>
-                 </div>
 
                  {/* VARIANTS SECTION */}
                  <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl">
