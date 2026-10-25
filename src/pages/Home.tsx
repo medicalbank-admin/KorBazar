@@ -13,6 +13,7 @@ import SellerCTA from '../components/SellerCTA';
 import RecentlyViewed from '../components/RecentlyViewed';
 import NewsletterSignup from '../components/NewsletterSignup';
 import FAQ from '../components/FAQ';
+import { Menu, Search, ShoppingCart, User, ChevronRight } from 'lucide-react';
 
 export default function Home() {
   const [products, setProducts] = useState<any[]>([]);
@@ -52,7 +53,7 @@ export default function Home() {
       
       setProducts(activeProducts);
       setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
-      setHasMore(querySnapshot.docs.length === 20); // If we got less than 20, there are no more
+      setHasMore(querySnapshot.docs.length === 20); 
       
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -80,7 +81,6 @@ export default function Home() {
       
       const newProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
       
-      // Filter based on active sellers (we need to re-fetch active sellers or store them in state if we want to be perfectly accurate, but for simplicity, we'll assume the active list is the same)
       const sellersSnap = await getDocs(collection(db, 'sellers'));
       const activeSellerIds = sellersSnap.docs
         .filter(d => d.data().status === 'approved' && !d.data().isFrozen)
@@ -103,101 +103,174 @@ export default function Home() {
   const standardProducts = products.filter(p => !premiumSellerIds.includes(p.sellerId));
 
   return (
-    <div className="pb-24 md:pb-12">
-      <AdSlideshow />
-
-      <section className="px-4 py-16 md:py-24 max-w-7xl mx-auto text-center">
-        <h1 className="text-4xl md:text-6xl font-extrabold text-dark mb-6 tracking-tight">
-          Khpal Kor, <span className="text-brand">Khpal Bazar.</span>
-        </h1>
-        <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-          Discover unique, handmade goods and homemade treats from the talented creators of Charsadda.
-        </p>
-        <div className="flex flex-col md:flex-row justify-center gap-4">
-          <Link to="/explore" className="bg-brand text-white px-8 py-3 rounded-full font-semibold hover:bg-brand/90 transition-all shadow-md">
-            Explore Products
-          </Link>
-          <Link to="/sell-with-us" className="bg-white text-dark border border-gray-200 px-8 py-3 rounded-full font-semibold hover:bg-gray-50 transition-all">
-            Sell with Us
-          </Link>
-        </div>
-      </section>
-
-      <TrustBadges />
-
-      <section className="px-4 max-w-7xl mx-auto mb-12">
-        <div className="flex overflow-x-auto gap-3 pb-4 scrollbar-hide">
-          {categories.map((cat) => (
-            <Link to={`/explore?cat=${encodeURIComponent(cat.name)}`} key={cat.id} className="whitespace-nowrap px-5 py-2 rounded-full bg-white border border-gray-200 text-sm font-medium hover:border-brand hover:text-brand transition-colors">
-              {cat.name}
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <TrendingProducts />
-      <DiscountDeals />
-
-      {/* FEATURED PREMIUM PRODUCTS */}
-      {premiumProducts.length > 0 && (
-        <section className="px-4 max-w-7xl mx-auto mb-16">
-          <div className="flex justify-between items-end mb-6">
-            <h2 className="text-2xl font-bold text-dark">Featured Shops & Products</h2>
+    <div className="bg-[#f4f5f7] min-h-screen pb-12">
+      
+      {/* DESKTOP HEADER (Search & Icons) - Hidden on Mobile */}
+      <div className="bg-white border-b border-gray-200 py-3 px-4 hidden md:block shadow-sm relative z-20">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <Link to="/" className="text-2xl font-black text-brand tracking-tighter">KOR BAZAR</Link>
+          
+          <div className="flex-grow max-w-2xl mx-8 flex">
+            <input type="text" placeholder="Search for products, brands..." className="w-full px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:border-brand" />
+            <button className="bg-brand text-white px-6 font-bold rounded-r-lg hover:bg-brand/90">Search</button>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {premiumProducts.map(product => (
-              <ProductCard key={product.id} product={product} isSellerPremium={true} />
-            ))}
-          </div>
-        </section>
-      )}
 
-      {/* STANDARD PRODUCTS */}
-      <section className="px-4 max-w-7xl mx-auto mb-16">
-        <h2 className="text-2xl font-bold text-dark mb-6">Fresh from the Oven & Studio</h2>
+          <div className="flex items-center gap-6 text-gray-600 text-sm font-medium">
+            <Link to="/orders" className="flex flex-col items-center hover:text-brand"><ShoppingCart size={20} className="mb-1" /> Orders</Link>
+            <Link to="/profile" className="flex flex-col items-center hover:text-brand"><User size={20} className="mb-1" /> Profile</Link>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-0 md:px-4 pt-0 md:pt-6">
         
-        {loading ? (
-          <div className="text-center py-12 text-gray-500">Loading products...</div>
-        ) : standardProducts.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
-            <p className="text-gray-500 mb-4">No standard products listed yet.</p>
-            <Link to="/sell-with-us" className="bg-brand text-white px-6 py-2 rounded-xl font-semibold">Start Selling</Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {standardProducts.map(product => (
-              <ProductCard key={product.id} product={product} isSellerPremium={false} />
-            ))}
-          </div>
-        )}
-        
-        {/* LOAD MORE BUTTON */}
-        {hasMore && !loading && (
-          <div className="mt-12 text-center">
-            <button 
-              onClick={handleLoadMore} 
-              disabled={loadingMore}
-              className="inline-block w-full md:w-auto bg-gray-200 text-dark px-12 py-4 rounded-full font-bold text-lg hover:bg-gray-300 transition-all disabled:opacity-50"
-            >
-              {loadingMore ? 'Loading...' : 'Load More Products'}
-            </button>
-          </div>
-        )}
-
-        <div className="mt-6 text-center">
-          <Link to="/explore" className="inline-block w-full md:w-auto bg-dark text-white px-12 py-4 rounded-full font-bold text-lg hover:bg-black transition-all">
-            Explore All Shops & Products
-          </Link>
+        {/* AD SLIDESHOW (Mobile Only - keeps your current top banner) */}
+        <div className="md:hidden mb-4">
+          <AdSlideshow />
         </div>
-      </section>
 
-      <NewArrivals />
-      <FeaturedStores />
-      <SellerCTA />
-      <RecentlyViewed />
-      <NewsletterSignup />
-      <FAQ />
+        {/* MAIN LAYOUT: Sidebar + Hero Banner (Desktop) */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          
+          {/* 1. LEFT SIDEBAR (Categories) */}
+          <div className="hidden md:block w-64 bg-white rounded-xl shadow-sm border border-gray-100 p-4 h-max shrink-0">
+            <h3 className="font-bold text-dark mb-4 px-2">All Categories</h3>
+            <ul className="space-y-1">
+              <li>
+                <Link to="/explore" className="flex items-center gap-3 px-3 py-2 text-brand bg-brand/5 rounded-lg font-bold text-sm transition-colors">
+                  <Menu size={16} /> All Categories
+                </Link>
+              </li>
+              {categories.slice(0, 10).map(cat => (
+                <li key={cat.id}>
+                  <Link to={`/explore?cat=${encodeURIComponent(cat.name)}`} className="flex items-center gap-3 px-3 py-2 text-gray-600 hover:bg-gray-50 hover:text-brand rounded-lg font-medium text-sm transition-colors">
+                    <div className="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
+                    <span className="truncate">{cat.name}</span>
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <Link to="/explore" className="flex items-center justify-between px-3 py-2 text-brand hover:bg-brand/5 rounded-lg font-bold text-sm mt-2">
+                  More category <ChevronRight size={16} />
+                </Link>
+              </li>
+            </ul>
+          </div>
 
+          {/* 2. RIGHT HERO BANNER AREA */}
+          <div className="w-full flex flex-col md:flex-row gap-4 h-[250px] md:h-[350px] px-4 md:px-0">
+            {/* Big Banner */}
+            <div className="flex-grow bg-[#c2e8f8] rounded-2xl relative overflow-hidden flex items-center p-6 md:p-8">
+              <div className="z-10 w-3/4 md:w-1/2">
+                <h2 className="text-2xl md:text-4xl font-extrabold text-dark mb-2 leading-tight tracking-tight">Khpal Kor,<br/><span className="text-brand">Khpal Bazar.</span></h2>
+                <p className="text-sm text-gray-700 mb-4 hidden md:block">Discover unique, handmade goods from the talented creators of Charsadda.</p>
+                <Link to="/explore" className="bg-brand text-white px-6 py-2.5 rounded-lg font-bold shadow-md hover:bg-brand/90 inline-flex items-center gap-2 text-sm transition-all">
+                  Shop Now <ChevronRight size={16} />
+                </Link>
+              </div>
+              {/* Hero Image */}
+              <img src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=800&auto=format&fit=crop" alt="Hero" className="absolute right-0 bottom-0 h-full object-cover opacity-90 hidden md:block" style={{ maskImage: 'linear-gradient(to right, transparent, black 20%)', WebkitMaskImage: 'linear-gradient(to right, transparent, black 20%)' }} />
+            </div>
+            
+            {/* Small Vertical Banner */}
+            <div className="w-72 bg-dark rounded-2xl relative overflow-hidden hidden md:flex flex-col justify-center p-6 text-white border border-gray-800">
+               <h3 className="font-bold text-xl mb-2 leading-tight z-10">Become a Seller today</h3>
+               <p className="text-xs text-gray-300 mb-4 z-10">Join the community and start earning.</p>
+               <Link to="/sell-with-us" className="border border-white text-white px-4 py-2 rounded-lg font-bold text-xs w-max hover:bg-white hover:text-dark transition-colors z-10">Sell with Us</Link>
+               <img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=300&auto=format&fit=crop" alt="Promo" className="absolute inset-0 w-full h-full object-cover opacity-20" />
+            </div>
+          </div>
+        </div>
+
+        {/* 3. TRUST BADGES & CATEGORY PILLS (Mobile fallback) */}
+        <div className="md:hidden">
+          <TrustBadges />
+          <section className="px-4 mb-6">
+            <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide">
+              {categories.map((cat) => (
+                <Link to={`/explore?cat=${encodeURIComponent(cat.name)}`} key={cat.id} className="whitespace-nowrap px-4 py-2 rounded-full bg-white border border-gray-200 text-sm font-medium text-gray-700 hover:border-brand hover:text-brand transition-colors shadow-sm">
+                  {cat.name}
+                </Link>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {/* 4. NEW COMPONENTS (Trending, Deals) */}
+        <div className="px-4 md:px-0">
+          <TrendingProducts />
+          <DiscountDeals />
+        </div>
+
+        {/* 5. MAIN PRODUCT SECTIONS (Like the reference image) */}
+        <div className="px-4 md:px-0 space-y-6 md:space-y-8 mt-6">
+          
+          {/* FEATURED PREMIUM PRODUCTS */}
+          {premiumProducts.length > 0 && (
+            <section className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row p-4">
+              <div className="w-full md:w-56 shrink-0 md:border-r border-gray-100 md:pr-6 mb-4 md:mb-0 flex flex-col justify-center bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl p-6 relative overflow-hidden">
+                <h2 className="text-xl font-bold text-dark relative z-10">Featured Shops</h2>
+                <p className="text-gray-500 text-xs mt-1 mb-4 relative z-10">Top rated premium sellers</p>
+                <Link to="/explore" className="text-brand font-bold text-sm w-max relative z-10 hover:underline">Explore all &rarr;</Link>
+              </div>
+              <div className="flex-grow grid grid-cols-2 md:grid-cols-4 gap-4">
+                {premiumProducts.map(product => (
+                  <ProductCard key={product.id} product={product} isSellerPremium={true} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* STANDARD PRODUCTS */}
+          <section className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row p-4">
+            <div className="w-full md:w-56 shrink-0 md:border-r border-gray-100 md:pr-6 mb-4 md:mb-0 flex flex-col justify-center bg-gray-50 rounded-xl p-6 relative overflow-hidden">
+              <h2 className="text-xl font-bold text-dark relative z-10">Fresh from the Oven</h2>
+              <p className="text-gray-500 text-xs mt-1 mb-4 relative z-10">Latest products from local creators</p>
+              <Link to="/explore" className="text-brand font-bold text-sm w-max relative z-10 hover:underline">View all &rarr;</Link>
+            </div>
+            <div className="flex-grow">
+              {loading ? (
+                <div className="text-center py-12 text-gray-500">Loading products...</div>
+              ) : standardProducts.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 mb-4">No products listed yet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {standardProducts.map(product => (
+                    <ProductCard key={product.id} product={product} isSellerPremium={false} />
+                  ))}
+                </div>
+              )}
+              
+              {/* LOAD MORE BUTTON */}
+              {hasMore && !loading && (
+                <div className="mt-8 text-center border-t border-gray-100 pt-6">
+                  <button 
+                    onClick={handleLoadMore} 
+                    disabled={loadingMore}
+                    className="inline-block w-full md:w-auto bg-white border-2 border-brand text-brand px-10 py-3 rounded-full font-bold hover:bg-brand hover:text-white transition-all disabled:opacity-50"
+                  >
+                    {loadingMore ? 'Loading...' : 'Load More Products'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
+
+        </div>
+
+        {/* 6. BOTTOM SECTIONS */}
+        <div className="px-4 md:px-0">
+          <NewArrivals />
+          <FeaturedStores />
+          <SellerCTA />
+          <RecentlyViewed />
+          <NewsletterSignup />
+          <FAQ />
+        </div>
+
+      </div>
     </div>
   );
-        }
+                  }
