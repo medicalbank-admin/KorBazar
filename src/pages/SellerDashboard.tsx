@@ -42,7 +42,6 @@ export default function SellerDashboard() {
   const [productDeliveryFee, setProductDeliveryFee] = useState('');
   // Around lines 36–47
 const [category, setCategory] = useState('');
-const [availableCategories, setAvailableCategories] = useState<any[]>([]);
 const [categoryTree, setCategoryTree] = useState<any[]>([]);
   const [productImages, setProductImages] = useState<FileList | null>(null);
   const [productMsg, setProductMsg] = useState('');
@@ -54,11 +53,6 @@ const [categoryTree, setCategoryTree] = useState<any[]>([]);
   const [editModal, setEditModal] = useState({ isOpen: false, productId: '', type: 'stock', value: '' });
   const [rejectOrderModal, setRejectOrderModal] = useState({ isOpen: false, orderId: '', reason: 'Out of stock' });
 
-  const defaultCategories = [
-    "Cakes & Bakes", "Handmade Jewelry", "Crafts & Decor", "Embroidered Items", 
-    "Candles", "Gift Hampers", "Customized Mugs & Photo Frames", "Resin Art & Keychains", 
-    "Wedding and Festive Sweets", "Home Decor", "Essential Oils & Natural Hair Care"
-  ];
   // Add helper before fetchData around lines 55–59
 const buildCategoryTree = (categories: any[]) => {
   const byId = new Map<string, any>();
@@ -80,15 +74,15 @@ const buildCategoryTree = (categories: any[]) => {
     }
   });
 
-  const sortChildren = (items: any[]) =>
-    [...items]
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((item) => ({
-        ...item,
-        children: sortChildren(item.children || []),
-      }));
+  const sortChildren = (items: any[]): any[] =>
+  [...items]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((item) => ({
+      ...item,
+      children: sortChildren(item.children || []),
+    }));
 
-  return sortChildren(roots);
+return sortChildren(roots);
   
 };// Replace fetchData around lines 60–112
 const fetchData = async () => {
@@ -138,11 +132,9 @@ const fetchData = async () => {
     const tree = buildCategoryTree(categoryDocs);
     setCategoryTree(tree);
 
-    const flatCategories = categoryDocs.map(cat => cat.name);
-    setAvailableCategories(flatCategories);
-
-    if (flatCategories.length > 0 && !category) {
-      setCategory(flatCategories[0]);
+    if (categoryDocs.length > 0 && !category) {
+  setCategory(categoryDocs[0].name as string);
+    };
     }
 
   } catch (error) {
