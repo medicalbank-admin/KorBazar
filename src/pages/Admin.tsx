@@ -346,6 +346,173 @@ const unpaidSellersCount = approvedSellers.length - paidSellersCount;
   <div className="max-w-7xl mx-auto px-4 py-8 pb-24 relative">
     <h1 className="text-3xl font-bold text-dark mb-8">Admin Master Control</h1>
     
+    {/* SELLER DETAILS SCREEN */}
+{selectedSeller && (
+  <div className="fixed inset-0 bg-cream z-[80] overflow-y-auto">
+    <div className="max-w-5xl mx-auto px-4 py-8 pb-24">
+      
+      {/* Header */}
+      <button onClick={() => setSelectedSeller(null)} className="flex items-center gap-2 text-gray-500 hover:text-brand font-bold mb-6">
+        <ArrowLeft size={20} /> Back to Admin Panel
+      </button>
+
+      <div className="flex justify-between items-start mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-dark">{selectedSeller.storeName}</h1>
+          <p className="text-gray-500">Owner: {selectedSeller.fullName} | CNIC: {selectedSeller.cnicNumber}</p>
+        </div>
+        <div className={`px-4 py-2 rounded-xl text-sm font-bold uppercase ${selectedSeller.isFrozen ? 'bg-red-100 text-alert' : 'bg-green-100 text-brand'}`}>
+          {selectedSeller.isFrozen ? 'Frozen' : 'Active'}
+        </div>
+      </div>
+
+      {/* Top Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 text-center">
+          <p className="text-2xl font-extrabold text-dark">{sellerOrders.length}</p>
+          <p className="text-xs font-bold text-gray-500 uppercase">Total Orders</p>
+        </div>
+        <div className="bg-green-50 p-4 rounded-2xl border border-green-100 text-center">
+          <p className="text-2xl font-extrabold text-brand">{sellerOrders.filter(o => o.status === 'delivered').length}</p>
+          <p className="text-xs font-bold text-brand uppercase">Delivered</p>
+        </div>
+        <div className="bg-red-50 p-4 rounded-2xl border border-red-100 text-center">
+          <p className="text-2xl font-extrabold text-alert">{sellerOrders.filter(o => o.status === 'cancelled' || o.status === 'rejected').length}</p>
+          <p className="text-xs font-bold text-alert uppercase">Cancelled/Rejected</p>
+        </div>
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 text-center">
+          <p className="text-2xl font-extrabold text-blue-600">{sellerOrders.filter(o => o.status === 'new' || o.status === 'accepted' || o.status === 'dispatched').length}</p>
+          <p className="text-xs font-bold text-gray-500 uppercase">Pending/Active</p>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-8">
+        
+        {/* FINANCIALS */}
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><Wallet size={20}/> Financials</h2>
+          
+          <div className="space-y-4 mb-6">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+              <span className="text-gray-600">Monthly Subscription ({selectedSeller.plan === 'premium' ? 'Premium' : 'Standard'})</span>
+              <span className={`font-bold ${selectedSeller.feeStatus === 'paid' ? 'text-brand' : 'text-alert'}`}>{selectedSeller.feeStatus === 'paid' ? 'PAID' : 'PENDING'}</span>
+            </div>
+            <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+              <span className="text-gray-600">Total Order Fees Owed (Rs. 10/order)</span>
+              <span className="font-bold text-dark">Rs. {sellerOrders.filter(o => o.status === 'delivered').length * 10}</span>
+            </div>
+            <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+              <span className="text-gray-600">Amount Already Paid</span>
+              <span className="font-bold text-brand">Rs. {selectedSeller.orderFeePaid || 0}</span>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={() => setPaymentModal({ isOpen: true, amount: '', type: 'order_fee' })} className="flex-1 bg-dark text-white font-bold py-2.5 rounded-xl hover:bg-black transition-colors text-sm">
+              Pay Order Fees
+            </button>
+            {selectedSeller.feeStatus !== 'paid' && (
+              <button onClick={() => setPaymentModal({ isOpen: true, amount: '', type: 'monthly_fee' })} className="flex-1 bg-brand text-white font-bold py-2.5 rounded-xl hover:bg-brand/90 transition-colors text-sm">
+                Mark Sub Paid
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* PAYMENT HISTORY */}
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><History size={20}/> Payment History</h2>
+          <div className="space-y-3 max-h-[300px] overflow-y-auto">
+            {sellerPaymentHistory.length === 0 ? (
+              <p className="text-gray-500 text-sm">No payments recorded yet.</p>
+            ) : sellerPaymentHistory.map(pay => (
+              <div key={pay.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <div>
+                  <p className="font-bold text-dark text-sm">{pay.type}</p>
+                  <p className="text-xs text-gray-500">{new Date(pay.date).toLocaleDateString()}</p>
+                </div>
+                <p className="font-bold text-brand">Rs. {pay.amount}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
+
+      {/* RECENT ORDERS */}
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mt-8">
+        <h2 className="text-xl font-bold text-dark mb-4">Recent Orders</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-gray-200 text-sm text-gray-500">
+                <th className="p-2">Order ID</th>
+                <th className="p-2">Date</th>
+                <th className="p-2">Buyer</th>
+                <th className="p-2">Status</th>
+                <th className="p-2 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sellerOrders.slice(0, 10).map(order => (
+                <tr key={order.id} className="border-b border-gray-100">
+                  <td className="p-2 text-sm font-bold text-dark">#{order.trackingToken.slice(0,6).toUpperCase()}</td>
+                  <td className="p-2 text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</td>
+                  <td className="p-2 text-sm text-gray-600">{order.buyerName}</td>
+                  <td className="p-2"><span className="text-xs font-bold uppercase bg-gray-100 px-2 py-1 rounded">{order.status}</span></td>
+                  <td className="p-2 text-sm font-bold text-right text-dark">Rs. {order.total}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+)}
+
+    {/* PAYMENT INPUT MODAL */}
+{paymentModal.isOpen && (
+  <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4">
+    <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm p-6 relative">
+      <button onClick={() => setPaymentModal({ ...paymentModal, isOpen: false })} className="absolute top-4 right-4 text-gray-400 hover:text-alert"><X size={24} /></button>
+      <h2 className="text-xl font-bold text-dark mb-2">
+        {paymentModal.type === 'order_fee' ? 'Record Order Fee Payment' : 'Mark Subscription Paid'}
+      </h2>
+      <p className="text-sm text-gray-500 mb-4">
+        {paymentModal.type === 'order_fee' 
+          ? 'Enter the amount the seller has paid towards their accumulated order fees.' 
+          : 'This will mark the current month subscription as PAID and log it in history.'}
+      </p>
+
+      <div className="space-y-4">
+        {paymentModal.type === 'order_fee' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Amount Received (Rs.)</label>
+            <input 
+              type="number" 
+              value={paymentModal.amount} 
+              onChange={e => setPaymentModal({...paymentModal, amount: e.target.value})} 
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" 
+              placeholder="e.g. 500"
+            />
+          </div>
+        )}
+
+        {paymentModal.type === 'monthly_fee' && (
+          <div className="bg-brand/5 border border-brand/20 rounded-xl p-4 text-sm text-dark">
+            <p>Subscription Fee: <strong>Rs. {selectedSeller?.plan === 'premium' ? fees.premium : fees.standard}</strong></p>
+          </div>
+        )}
+        
+        <button onClick={handleProcessPayment} className="w-full bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand/90 shadow-md">
+          Confirm Payment
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     {viewImage && (
       <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
         <div className="relative max-w-2xl w-full">
@@ -752,45 +919,45 @@ const unpaidSellersCount = approvedSellers.length - paidSellersCount;
           )}
 
           {activeTab === 'sellers' && (
-            <div>
-              <h2 className="text-xl font-bold text-dark mb-4">Manage Sellers</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-sm text-gray-500">
-                      <th className="p-3">Store Info</th>
-                      <th className="p-3">Status & Fee</th>
-                      <th className="p-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {approvedSellers.map(seller => (
-                      <tr key={seller.id} className="border-b border-gray-100">
-                        <td className="p-3">
-                          <p className="font-bold text-dark">{seller.storeName}</p>
-                          <p className="text-xs text-gray-500">{seller.fullName} | {seller.phone}</p>
-                        </td>
-                        <td className="p-3 flex flex-col gap-2 items-start">
-                          {seller.isFrozen ? <span className="text-alert font-bold text-xs bg-red-50 px-2 py-1 rounded">FROZEN</span> : <span className="text-brand font-bold text-xs bg-green-50 px-2 py-1 rounded">ACTIVE</span>}
-                          <button onClick={() => toggleFeeStatus(seller.id, seller.feeStatus)} className={`px-3 py-1 rounded-lg text-xs font-bold border ${seller.feeStatus === 'paid' ? 'border-brand text-brand bg-green-50' : 'border-yellow-500 text-yellow-600 bg-yellow-50'}`}>
-                            Fee: {seller.feeStatus === 'paid' ? 'PAID' : 'PENDING'}
-                          </button>
-                        </td>
-                        <td className="p-3 text-right space-x-2 whitespace-nowrap">
-                          <button onClick={() => handleOpenEdit(seller)} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"><Edit3 size={16} /></button>
-                          <button onClick={() => window.open(`#/store/${seller.id}`, '_blank')} className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"><ExternalLink size={16} /></button>
-                          <button onClick={() => toggleFreeze(seller.id, seller.isFrozen)} className={`p-2 rounded-lg text-white ${seller.isFrozen ? 'bg-brand' : 'bg-yellow-500'}`}>
-                            {seller.isFrozen ? <CheckCircle size={16} /> : <ShieldAlert size={16} />}
-                          </button>
-                          <button onClick={() => handleDeleteStore(seller.id)} className="p-2 bg-red-50 text-alert rounded-lg hover:bg-red-100"><Trash2 size={16} /></button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+  <div>
+    <h2 className="text-xl font-bold text-dark mb-4">Manage Sellers</h2>
+    <div className="overflow-x-auto">
+      <table className="w-full text-left border-collapse">
+        <thead>
+          <tr className="border-b border-gray-200 text-sm text-gray-500">
+            <th className="p-3">Store Info</th>
+            <th className="p-3">Status & Fee</th>
+            <th className="p-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {approvedSellers.map(seller => (
+            <tr key={seller.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => handleOpenSeller(seller)}>
+              <td className="p-3">
+                <p className="font-bold text-dark">{seller.storeName}</p>
+                <p className="text-xs text-gray-500">{seller.fullName} | {seller.phone}</p>
+              </td>
+              <td className="p-3 flex flex-col gap-2 items-start">
+                {seller.isFrozen ? <span className="text-alert font-bold text-xs bg-red-50 px-2 py-1 rounded">FROZEN</span> : <span className="text-brand font-bold text-xs bg-green-50 px-2 py-1 rounded">ACTIVE</span>}
+                <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${seller.feeStatus === 'paid' ? 'border-brand text-brand bg-green-50' : 'border-yellow-500 text-yellow-600 bg-yellow-50'}`}>
+                  Fee: {seller.feeStatus === 'paid' ? 'PAID' : 'PENDING'}
+                </span>
+              </td>
+              <td className="p-3 text-right space-x-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                <button onClick={() => handleOpenEdit(seller)} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100" title="Edit Store"><Edit3 size={16} /></button>
+                <button onClick={() => window.open(`#/store/${seller.id}`, '_blank')} className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200" title="View Store"><ExternalLink size={16} /></button>
+                <button onClick={() => toggleFreeze(seller.id, seller.isFrozen)} className={`p-2 rounded-lg text-white ${seller.isFrozen ? 'bg-brand' : 'bg-yellow-500'}`} title="Freeze/Unfreeze">
+                  {seller.isFrozen ? <CheckCircle size={16} /> : <ShieldAlert size={16} />}
+                </button>
+                <button onClick={() => handleDeleteStore(seller.id)} className="p-2 bg-red-50 text-alert rounded-lg hover:bg-red-100" title="Delete Store"><Trash2 size={16} /></button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
 
           {activeTab === 'orders' && (
             <div>
