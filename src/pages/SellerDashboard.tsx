@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook, Instagram, Globe, ShieldAlert, Star, CreditCard, Box, CheckSquare, X, MessageSquare, Plus, Trash2 } from 'lucide-react';
+import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook, Instagram, Globe, ShieldAlert, Star, CreditCard, Box, CheckSquare, X, MessageSquare, Plus, Trash2, FileText } from 'lucide-react';
 import emailjs from '@emailjs/browser';
+import { generateAgreementPDF } from '../utils/generateAgreement';
 
 const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -34,6 +35,9 @@ export default function SellerDashboard() {
   const navigate = useNavigate();
   const [store, setStore] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
+  // Agreement Modal State
+const [showAgreement, setShowAgreement] = useState(false);
+const [hasAgreed, setHasAgreed] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'store' | 'subscription' | 'profile'>('orders');
@@ -101,6 +105,11 @@ export default function SellerDashboard() {
       const ordersData = orderSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       ordersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setOrders(ordersData);
+      // Check if seller has agreed to terms
+const sellerSnap = await getDoc(doc(db, 'sellers', currentUser.uid));
+if (sellerSnap.exists() && !sellerSnap.data().agreementSigned) {
+  setShowAgreement(true);
+}
 
       const catSnap = await getDocs(collection(db, 'categories'));
       const cats = catSnap.docs.map(d => d.data().name);
@@ -130,6 +139,21 @@ export default function SellerDashboard() {
   setStoreMsg('Store updated successfully!');
   fetchData();
   setTimeout(() => setStoreMsg(''), 3000);
+};
+
+  const handleSignAgreement = async () => {
+  if (!hasAgreed) return alert("Please check the box to agree to the terms.");
+  if (!currentUser) return;
+  
+  try {
+    await updateDoc(doc(db, 'sellers', currentUser.uid), { 
+      agreementSigned: true,
+      agreementSignedAt: new Date().toISOString()
+    });
+    setShowAgreement(false);
+  } catch (error) {
+    alert("Failed to save agreement.");
+  }
 };
 
 const handleAddProduct = async (e: React.FormEvent) => {
@@ -360,6 +384,57 @@ const filteredOrders = orders.filter(order => {
   return (
   <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
     
+    {/* AGREEMENT MODAL */}
+{showAgreement && (
+  <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+    <div className="bg-white rounded-3xl shadow-xl w-full max-w-lg p-8 relative">
+      <div className="text-center mb-6">
+        <div className="w-20 h-20 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-4">
+          <FileText size={40} />
+        </div>
+        <h2 className="text-2xl font-bold text-dark mb-2">Welcome to KorBazar!</h2>
+        <p className="text-gray-600">Before you start selling, you must review and sign the official Seller Agreement.</p>
+      </div>
+
+      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6 text-sm text-gray-600">
+        <p className="mb-2">This document contains:</p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>Your store details (CNIC & Store Name)</li>
+          <li>Platform fees & commissions</li>
+          <li>Guide on using the dashboard</li>
+          <li>Terms of Service & Privacy Policy</li>
+        </ul>
+      </div>
+
+      <button 
+        onClick={() => generateAgreementPDF(store)}
+        className="w-full bg-dark text-white font-bold py-3 rounded-xl hover:bg-black transition-colors mb-4 flex items-center justify-center gap-2"
+      >
+        <FileText size={18} /> Download Agreement PDF
+      </button>
+
+      <label className="flex items-start gap-3 p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 mb-6">
+        <input 
+          type="checkbox" 
+          checked={hasAgreed}
+          onChange={(e) => setHasAgreed(e.target.checked)}
+          className="mt-1 w-5 h-5 text-brand rounded focus:ring-brand" 
+        />
+        <span className="text-sm text-gray-700 font-medium">
+          I have downloaded and read the agreement. I confirm that I agree to the Terms, Privacy Policy, Fees, and Commissions of KorBazar.
+        </span>
+      </label>
+
+      <button 
+        onClick={handleSignAgreement}
+        disabled={!hasAgreed}
+        className={`w-full font-bold py-3.5 rounded-xl transition-colors ${hasAgreed ? 'bg-brand text-white hover:bg-brand/90' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+      >
+        Agree & Enter Dashboard
+      </button>
+    </div>
+  </div>
+)}
     {/* EDIT MODAL (Stock / Discount) */}
     {editModal.isOpen && (
       <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4">
