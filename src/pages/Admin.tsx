@@ -269,43 +269,80 @@ const handleConfirmReject = async () => {
   fetchPayments();
 };
   const handleProcessPayment = async () => {
-  if (!selectedSeller || !paymentModal.amount) return;
+  if (!selectedSeller || !paymentModal.amount) return alert("Please enter an amount.");
   const amountPaid = Number(paymentModal.amount);
+  if (amountPaid <= 0) return alert("Amount must be greater than 0.");
 
-  if (paymentModal.type === 'order_fee') {
-    const currentPaid = selectedSeller.orderFeePaid || 0;
-    const newPaid = currentPaid + amountPaid;
-    await updateDoc(doc(db, 'sellers', selectedSeller.id), { orderFeePaid: newPaid });
+  try {
+    if (paymentModal.type === 'order_fee') {
+      const currentPaid = selectedSeller.orderFeePaid || 0;
+      const newPaid = currentPaid + amountPaid;
+      
+      // 1. Update Seller Document
+      await updateDoc(doc(db, 'sellers', selectedSeller.id), { 
+        orderFeePaid: newPaid 
+      });
+      
+      // 2. Log to Payment History with details
+      await addDoc(collection(db, 'payment_history'), {
+        sellerId: selectedSeller.id,
+        amount: amountPaid,
+        type: 'Order Fee Payment',
+        details: `Paid Rs. ${amountPaid} towards order fees.`,
+        date: new Date().toISOString()
+      });
+      
+      // 3. Update local state to show instantly
+      setSelectedSeller({ ...selectedSeller, orderFeePaid: newPaid });
+      
+      // 4. Refresh history
+      const q = query(collection(db, 'payment_history'), where('sellerId', '==', selectedSeller.id));
+      const snap = await getDocs(q);
+      const history: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      history.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setSellerPaymentHistory(history);
+
+    } else if (paymentModal.type === 'monthly_fee') {
+      const subAmount = selectedSeller.plan === 'premium' ? fees.premium : fees.standard;
+      
+      // 1. Update Seller Document
+      await updateDoc(doc(db, 'sellers', selectedSeller.id), { 
+        feeStatus: 'paid', 
+        lastFeePaidDate: new Date().toISOString() 
+      });
+      
+      // 2. Log to Payment History with details
+      await addDoc(collection(db, 'payment_history'), {
+        sellerId: selectedSeller.id,
+        amount: subAmount,
+        type: 'Monthly Subscription',
+        details: `Paid Rs. ${subAmount} for ${selectedSeller.plan || 'standard'} plan subscription.`,
+        date: new Date().toISOString()
+      });
+      
+      // 3. Update local state
+      setSelectedSeller({ ...selectedSeller, feeStatus: 'paid', lastFeePaidDate: new Date().toISOString() });
+      
+      // 4. Refresh history
+      const q = query(collection(db, 'payment_history'), where('sellerId', '==', selectedSeller.id));
+      const snap = await getDocs(q);
+      const history: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      history.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setSellerPaymentHistory(history);
+      
+      // 5. Refresh main data so the list reflects the new fee status
+      fetchData(); 
+    }
     
-    // Log to history
-    await addDoc(collection(db, 'payment_history'), {
-      sellerId: selectedSeller.id,
-      amount: amountPaid,
-      type: 'Order Fee Payment',
-      date: new Date().toISOString()
-    });
-    
-    setSelectedSeller({ ...selectedSeller, orderFeePaid: newPaid });
-  } else if (paymentModal.type === 'monthly_fee') {
-    await updateDoc(doc(db, 'sellers', selectedSeller.id), { 
-      feeStatus: 'paid', 
-      lastFeePaidDate: new Date().toISOString() 
-    });
-    
-    await addDoc(collection(db, 'payment_history'), {
-      sellerId: selectedSeller.id,
-      amount: selectedSeller.plan === 'premium' ? fees.premium : fees.standard,
-      type: 'Monthly Subscription',
-      date: new Date().toISOString()
-    });
-    
-    setSelectedSeller({ ...selectedSeller, feeStatus: 'paid' });
-    fetchData(); // refresh main list
+    // Close modal
+    setPaymentModal({ isOpen: false, amount: '', type: 'order_fee' });
+    alert("Payment recorded successfully!");
+
+  } catch (error) {
+    console.error("Payment Error:", error);
+    alert("Failed to record payment. Please try again.");
   }
-  
-  setPaymentModal({ isOpen: false, amount: '', type: 'order_fee' });
 };
-  
   const handleSaveEdit = async () => {
     if (!editingSeller) return;
     setSaveMsg('Saving...');
@@ -419,16 +456,17 @@ const unpaidSellersCount = approvedSellers.length - paidSellersCount;
           <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><History size={20}/> Payment History</h2>
           <div className="space-y-3 max-h-[300px] overflow-y-auto">
             {sellerPaymentHistory.length === 0 ? (
-              <p className="text-gray-500 text-sm">No payments recorded yet.</p>
-            ) : sellerPaymentHistory.map(pay => (
-              <div key={pay.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
-                <div>
-                  <p className="font-bold text-dark text-sm">{pay.type}</p>
-                  <p className="text-xs text-gray-500">{new Date(pay.date).toLocaleDateString()}</p>
-                </div>
-                <p className="font-bold text-brand">Rs. {pay.amount}</p>
-              </div>
-            ))}
+  <p className="text-gray-500 text-sm">No payments recorded yet.</p>
+) : sellerPaymentHistory.map(pay => (
+  <div key={pay.id} className="flex flex-col p-3 bg-gray-50 rounded-xl border border-gray-100 mb-2">
+    <div className="flex justify-between items-center mb-1">
+      <p className="font-bold text-dark text-sm">{pay.type}</p>
+      <p className="font-bold text-brand">Rs. {pay.amount}</p>
+    </div>
+    <p className="text-xs text-gray-600 mb-1">{pay.details || 'Payment recorded'}</p>
+    <p className="text-[10px] text-gray-400 text-right">{new Date(pay.date).toLocaleString()}</p>
+  </div>
+))}
           </div>
         </div>
 
