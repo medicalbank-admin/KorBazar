@@ -8,12 +8,17 @@ import emailjs from '@emailjs/browser';
 import { uploadToCloudinary } from '../utils/Cloudinary';
 import { generateAgreementPDF } from '../utils/generateAgreement';
 
-
+type CategoryNode = {
+  id: string;
+  name: string;
+  parentId?: string | null;
+  children?: CategoryNode[];
+};
 
 export default function SellerDashboard() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-  
+
   // Core Data States
   const [store, setStore] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
@@ -33,7 +38,7 @@ export default function SellerDashboard() {
   const [socialLinks, setSocialLinks] = useState({ facebook: '', instagram: '', tiktok: '' });
   const [storeMsg, setStoreMsg] = useState('');
 
-    // Product Form States
+  // Product Form States
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
@@ -48,13 +53,24 @@ export default function SellerDashboard() {
   const [uploading, setUploading] = useState(false);
   const [variants, setVariants] = useState<any[]>([]);
 
-  const buildCategoryTree = (categories: any[]) => {
-    const byId = new Map<string, any>();
+  // Modal State
+  const [dispatchModal, setDispatchModal] = useState({ isOpen: false, orderId: '', courier: 'TCS', tracking: '' });
+  const [editModal, setEditModal] = useState({ isOpen: false, productId: '', type: 'stock', value: '' });
+  const [rejectOrderModal, setRejectOrderModal] = useState({ isOpen: false, orderId: '', reason: 'Out of stock' });
+
+  const defaultCategories = [
+    "Cakes & Bakes", "Handmade Jewelry", "Crafts & Decor", "Embroidered Items",
+    "Candles", "Gift Hampers", "Customized Mugs & Photo Frames", "Resin Art & Keychains",
+    "Wedding and Festive Sweets", "Home Decor", "Essential Oils & Natural Hair Care"
+  ];
+
+  const buildCategoryTree = (categories: CategoryNode[]): CategoryNode[] => {
+    const byId = new Map<string, CategoryNode & { children: CategoryNode[] }>();
     categories.forEach((cat) => {
       byId.set(cat.id, { ...cat, children: [] });
     });
 
-    const roots: any[] = [];
+    const roots: Array<CategoryNode & { children: CategoryNode[] }> = [];
 
     categories.forEach((cat) => {
       const node = byId.get(cat.id);
@@ -68,12 +84,14 @@ export default function SellerDashboard() {
       }
     });
 
-    const sortChildren = (items: any[]): any[] =>
+    const sortChildren = (
+      items: Array<CategoryNode & { children: CategoryNode[] }>
+    ): Array<CategoryNode & { children: CategoryNode[] }> =>
       [...items]
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((item) => ({
           ...item,
-          children: sortChildren(item.children || []),
+          children: sortChildren(item.children ?? []),
         }));
 
     return sortChildren(roots);
@@ -81,6 +99,7 @@ export default function SellerDashboard() {
 
   const fetchData = async () => {
     if (!currentUser) return;
+
     try {
       const docSnap = await getDoc(doc(db, 'sellers', currentUser.uid));
       if (docSnap.exists()) {
@@ -117,20 +136,20 @@ export default function SellerDashboard() {
       setOrders(ordersData);
 
       const catSnap = await getDocs(collection(db, 'categories'));
-      const categoryDocs = catSnap.docs.map((d) => ({
+      const categoryDocs: any[] = catSnap.docs.map((d) => ({
         id: d.id,
         ...d.data(),
         parentId: d.data().parentId ?? null,
       }));
 
-      const tree = buildCategoryTree(categoryDocs);
+      const tree = buildCategoryTree(categoryDocs as CategoryNode[]);
       setCategoryTree(tree);
 
-      const flatCategories = categoryDocs.map((cat) => cat.name);
-      setAvailableCategories(flatCategories);
+      const finalCats = categoryDocs.length > 0 ? categoryDocs.map((cat: any) => cat.name) : defaultCategories;
+      setAvailableCategories(finalCats);
 
-      if (flatCategories.length > 0 && !category) {
-        setCategory(flatCategories[0]);
+      if (finalCats.length > 0 && !category) {
+        setCategory(finalCats[0]);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -139,7 +158,9 @@ export default function SellerDashboard() {
     }
   };
 
-useEffect(() => { fetchData(); }, [currentUser]);
+  useEffect(() => {
+    fetchData();
+  }, [currentUser]);
 
 const handleUpdateStore = async (e: React.FormEvent) => {
   e.preventDefault();
