@@ -23,7 +23,7 @@ type CategoryNode = {
   children?: CategoryNode[];
 };
 
-const buildCategoryTree = (categoryList: CategoryNode[]) => {
+const buildCategoryTree = (categoryList: CategoryNode[]): CategoryNode[] => {
   const byId = new Map<string, CategoryNode & { children: CategoryNode[] }>();
   categoryList.forEach((cat) => {
     byId.set(cat.id, { ...cat, children: [] });
@@ -45,12 +45,14 @@ const buildCategoryTree = (categoryList: CategoryNode[]) => {
     }
   });
 
-  const sortChildren = (items: Array<CategoryNode & { children: CategoryNode[] }>) =>
+  const sortChildren = (
+    items: Array<CategoryNode & { children: CategoryNode[] }>
+  ): Array<CategoryNode & { children: CategoryNode[] }> =>
     [...items]
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((item) => ({
         ...item,
-        children: sortChildren(item.children || []),
+        children: sortChildren(item.children ?? []),
       }));
 
   return sortChildren(roots);
@@ -65,12 +67,12 @@ export default function Home() {
   const [lastDoc, setLastDoc] = useState<any>(null);
   const [hasMore, setHasMore] = useState(true);
 
-  const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
+  const categoryTree = useMemo(() => buildCategoryTree(categories as CategoryNode[]), [categories]);
 
   const fetchData = async () => {
     try {
       const catSnap = await getDocs(collection(db, 'categories'));
-      const categoryDocs = catSnap.docs.map((d) => ({
+      const categoryDocs: any[] = catSnap.docs.map((d) => ({
         id: d.id,
         ...d.data(),
         parentId: d.data().parentId ?? null,
@@ -166,7 +168,7 @@ export default function Home() {
                 </Link>
               </li>
 
-              {categoryTree.map((main) => (
+              {categoryTree.map((main: any) => (
                 <li key={main.id}>
                   <div className="flex items-center gap-3 px-3 py-2 text-gray-700">
                     <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
@@ -257,7 +259,7 @@ export default function Home() {
           <TrustBadges />
           <section className="px-4 mb-6">
             <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide">
-              {categoryTree.map((main) => (
+              {categoryTree.map((main: any) => (
                 <Link
                   to={`/explore?cat=${encodeURIComponent(main.name)}`}
                   key={main.id}
@@ -344,4 +346,4 @@ export default function Home() {
       </div>
     </div>
   );
-                                           }
+    }
