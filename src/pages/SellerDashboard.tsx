@@ -542,10 +542,23 @@ const filteredOrders = orders.filter(order => {
                         )}
                         {order.notes && <div className="text-brand font-semibold mt-1">Note: {order.notes}</div>}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <p className="font-bold text-dark text-lg">Total: Rs. {order.total}</p>
-                        <span className="text-xs font-bold uppercase bg-gray-200 px-2 py-1 rounded">{order.paymentMethod}</span>
-                      </div>
+                      <div className="border-t border-gray-200 pt-2 mt-2">
+  <div className="flex items-center justify-between text-sm mb-1">
+    <span className="text-gray-600">Buyer Pays:</span>
+    <span className="font-bold text-dark">Rs. {order.total}</span>
+  </div>
+  <div className="flex items-center justify-between text-sm mb-1">
+    <span className="text-gray-600">Platform Fee:</span>
+    <span className="font-bold text-alert">- Rs. 10</span>
+  </div>
+  <div className="flex items-center justify-between">
+    <span className="font-bold text-brand">Your Net Payout:</span>
+    <span className="font-extrabold text-brand text-lg">Rs. {order.total - 10}</span>
+  </div>
+  <div className="flex justify-end mt-1">
+    <span className="text-xs font-bold uppercase bg-gray-200 px-2 py-1 rounded">{order.paymentMethod}</span>
+  </div>
+</div>
                       {order.trackingNumber && (
                         <div className="mt-3 bg-blue-50 text-blue-800 text-xs p-2 rounded-lg border border-blue-200 font-semibold flex items-center gap-2">
                           <Box size={14} /> {order.courierName || 'Courier'}: {order.trackingNumber}
