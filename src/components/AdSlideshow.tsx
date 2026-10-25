@@ -47,7 +47,7 @@ export default function AdSlideshow() {
   const currentAd = ads[currentAdIndex];
 
   return (
-    <div className="relative w-full bg-white border-b border-gray-100 pb-6">
+    <div className="relative w-full bg-white border-b border-gray-100 pb-3">
       
       {/* Image Container - Clean, No Overlay */}
       <div className="w-full flex justify-center bg-gray-50">
@@ -59,29 +59,29 @@ export default function AdSlideshow() {
         />
       </div>
 
-      {/* Text & Button Below the Image */}
-      <div className="text-center px-4 mt-6 max-w-2xl mx-auto">
+      {/* Text & Button Below the Image - Reduced Sizes */}
+      <div className="text-center px-4 mt-3 max-w-xl mx-auto">
         <h2 
           key={`${currentAd.id}-title`} 
-          className="text-2xl md:text-3xl font-extrabold text-dark mb-3 animate-fade-in"
+          className="text-lg md:text-xl font-bold text-dark mb-2 animate-fade-in"
         >
           {currentAd.title}
         </h2>
         <Link 
           to={currentAd.productId ? `/product/${currentAd.productId}` : currentAd.link} 
-          className="inline-block bg-brand text-white font-bold py-3 px-10 rounded-full hover:bg-brand/90 transition-all shadow-md text-lg transform hover:scale-105"
+          className="inline-block bg-brand text-white font-bold py-2 px-8 rounded-full hover:bg-brand/90 transition-all shadow-sm text-sm transform hover:scale-105"
         >
           Buy Now
         </Link>
       </div>
 
-      {/* Ad Indicators (Dots) */}
+      {/* Ad Indicators (Dots) - Reduced Margin */}
       {ads.length > 1 && (
-        <div className="flex justify-center gap-2 mt-6">
+        <div className="flex justify-center gap-1.5 mt-3">
           {ads.map((_, idx) => (
             <div 
               key={idx} 
-              className={`w-2.5 h-2.5 rounded-full transition-colors ${idx === currentAdIndex ? 'bg-brand' : 'bg-gray-300'}`}
+              className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === currentAdIndex ? 'bg-brand' : 'bg-gray-300'}`}
             />
           ))}
         </div>
