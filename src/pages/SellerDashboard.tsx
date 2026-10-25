@@ -33,115 +33,111 @@ export default function SellerDashboard() {
   const [socialLinks, setSocialLinks] = useState({ facebook: '', instagram: '', tiktok: '' });
   const [storeMsg, setStoreMsg] = useState('');
 
-  // Product Form States
+    // Product Form States
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
-  const [stock, setStock] = useState(''); 
+  const [stock, setStock] = useState('');
   const [discountPercent, setDiscountPercent] = useState('');
   const [productDescription, setProductDescription] = useState('');
   const [productDeliveryFee, setProductDeliveryFee] = useState('');
-  // Around lines 36–47
-const [category, setCategory] = useState('');
-const [categoryTree, setCategoryTree] = useState<any[]>([]);
+  const [category, setCategory] = useState('');
+  const [availableCategories, setAvailableCategories] = useState<any[]>([]);
+  const [categoryTree, setCategoryTree] = useState<any[]>([]);
   const [productImages, setProductImages] = useState<FileList | null>(null);
   const [productMsg, setProductMsg] = useState('');
   const [uploading, setUploading] = useState(false);
   const [variants, setVariants] = useState<any[]>([]);
 
-  // Modals State
-  const [dispatchModal, setDispatchModal] = useState({ isOpen: false, orderId: '', courier: 'TCS', tracking: '' });
-  const [editModal, setEditModal] = useState({ isOpen: false, productId: '', type: 'stock', value: '' });
-  const [rejectOrderModal, setRejectOrderModal] = useState({ isOpen: false, orderId: '', reason: 'Out of stock' });
+  const buildCategoryTree = (categories: any[]) => {
+    const byId = new Map<string, any>();
+    categories.forEach((cat) => {
+      byId.set(cat.id, { ...cat, children: [] });
+    });
 
-  // Add helper before fetchData around lines 55–59
-const buildCategoryTree = (categories: any[]) => {
-  const byId = new Map<string, any>();
-  categories.forEach((cat) => {
-    byId.set(cat.id, { ...cat, children: [] });
-  });
+    const roots: any[] = [];
 
-  const roots: any[] = [];
+    categories.forEach((cat) => {
+      const node = byId.get(cat.id);
+      if (!node) return;
 
-  categories.forEach((cat) => {
-    const node = byId.get(cat.id);
-    if (!node) return;
-
-    if (cat.parentId) {
-      const parent = byId.get(cat.parentId);
-      if (parent) parent.children.push(node);
-    } else {
-      roots.push(node);
-    }
-  });
-
-  const sortChildren = (items: any[]): any[] =>
-  [...items]
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((item) => ({
-      ...item,
-      children: sortChildren(item.children || []),
-    }));
-
-return sortChildren(roots);
-  
-};// Replace fetchData around lines 60–112
-const fetchData = async () => {
-  if (!currentUser) return;
-  try {
-    const docSnap = await getDoc(doc(db, 'sellers', currentUser.uid));
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      setStore(data);
-      setStoreBio(data.bio || '');
-      setStoreAddress(data.storeAddress || '');
-      setPaymentAccounts(data.paymentAccounts || '');
-      setSocialLinks(data.socialLinks || { facebook: '', instagram: '', tiktok: '' });
-
-      if (!data.agreementSigned) {
-        setShowAgreement(true);
+      if (cat.parentId) {
+        const parent = byId.get(cat.parentId);
+        if (parent) parent.children.push(node);
+      } else {
+        roots.push(node);
       }
+    });
+
+    const sortChildren = (items: any[]): any[] =>
+      [...items]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((item) => ({
+          ...item,
+          children: sortChildren(item.children || []),
+        }));
+
+    return sortChildren(roots);
+  };
+
+  const fetchData = async () => {
+    if (!currentUser) return;
+    try {
+      const docSnap = await getDoc(doc(db, 'sellers', currentUser.uid));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setStore(data);
+        setStoreBio(data.bio || '');
+        setStoreAddress(data.storeAddress || '');
+        setPaymentAccounts(data.paymentAccounts || '');
+        setSocialLinks(data.socialLinks || { facebook: '', instagram: '', tiktok: '' });
+
+        if (!data.agreementSigned) {
+          setShowAgreement(true);
+        }
+      }
+
+      const prodQ = query(
+        collection(db, 'products'),
+        where('sellerId', '==', currentUser.uid),
+        orderBy('createdAt', 'desc'),
+        limit(100)
+      );
+      const prodSnap = await getDocs(prodQ);
+      const productsData = prodSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setProducts(productsData);
+
+      const orderQ = query(
+        collection(db, 'orders'),
+        where('sellerId', '==', currentUser.uid),
+        orderBy('createdAt', 'desc'),
+        limit(100)
+      );
+      const orderSnap = await getDocs(orderQ);
+      const ordersData = orderSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setOrders(ordersData);
+
+      const catSnap = await getDocs(collection(db, 'categories'));
+      const categoryDocs = catSnap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        parentId: d.data().parentId ?? null,
+      }));
+
+      const tree = buildCategoryTree(categoryDocs);
+      setCategoryTree(tree);
+
+      const flatCategories = categoryDocs.map((cat) => cat.name);
+      setAvailableCategories(flatCategories);
+
+      if (flatCategories.length > 0 && !category) {
+        setCategory(flatCategories[0]);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
     }
-
-    const prodQ = query(
-      collection(db, 'products'),
-      where('sellerId', '==', currentUser.uid),
-      orderBy('createdAt', 'desc'),
-      limit(100)
-    );
-    const prodSnap = await getDocs(prodQ);
-    const productsData = prodSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    setProducts(productsData);
-
-    const orderQ = query(
-      collection(db, 'orders'),
-      where('sellerId', '==', currentUser.uid),
-      orderBy('createdAt', 'desc'),
-      limit(100)
-    );
-    const orderSnap = await getDocs(orderQ);
-    const ordersData = orderSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    setOrders(ordersData);
-
-    const catSnap = await getDocs(collection(db, 'categories'));
-    const categoryDocs = catSnap.docs.map(d => ({
-      id: d.id,
-      ...d.data(),
-      parentId: d.data().parentId ?? null
-    }));
-
-        const tree = buildCategoryTree(categoryDocs);
-    setCategoryTree(tree);
-
-    if (categoryDocs.length > 0 && !category) {
-      setCategory(categoryDocs[0].name as string);
-    }
-
-  } catch (error) {
-    console.error("Error fetching data:", error);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
 useEffect(() => { fetchData(); }, [currentUser]);
 
