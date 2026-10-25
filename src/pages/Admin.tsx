@@ -253,11 +253,18 @@ const handleConfirmReject = async () => {
   const standardSellers = approvedSellers.filter(s => s.plan !== 'premium');
   
   const paidStandardCount = standardSellers.filter(s => s.feeStatus === 'paid').length;
-  const paidPremiumCount = premiumSellers.filter(s => s.feeStatus === 'paid').length;
-  const actualEarnedRevenue = (paidStandardCount * fees.standard) + (paidPremiumCount * fees.premium);
-  const expectedMonthlyRevenue = (standardSellers.length * fees.standard) + (premiumSellers.length * fees.premium);
-  const paidSellersCount = approvedSellers.filter(s => s.feeStatus === 'paid').length;
-  const unpaidSellersCount = approvedSellers.length - paidSellersCount;
+const paidPremiumCount = premiumSellers.filter(s => s.feeStatus === 'paid').length;
+
+// 1. Calculate total platform fees FIRST
+const totalPlatformFees = orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + (o.platformFee || 10), 0);
+
+// 2. NOW calculate the total revenue
+const actualEarnedRevenue = (paidStandardCount * fees.standard) + (paidPremiumCount * fees.premium) + totalPlatformFees;
+
+const expectedMonthlyRevenue = (standardSellers.length * fees.standard) + (premiumSellers.length * fees.premium);
+const paidSellersCount = approvedSellers.filter(s => s.feeStatus === 'paid').length;
+const unpaidSellersCount = approvedSellers.length - paidSellersCount;
+  
   return (
   <div className="max-w-7xl mx-auto px-4 py-8 pb-24 relative">
     <h1 className="text-3xl font-bold text-dark mb-8">Admin Master Control</h1>
@@ -418,11 +425,21 @@ const handleConfirmReject = async () => {
                   </div>
                   <Banknote size={32} className="text-green-200 opacity-50" />
                 </div>
-                <p className="text-sm text-green-100 mb-4">Money actually collected from sellers who have paid their fee.</p>
-                <div className="bg-white/20 p-3 rounded-xl text-xs flex justify-between">
-                  <span>Standard Paid: {paidStandardCount} x Rs. {fees.standard}</span>
-                  <span>Premium Paid: {paidPremiumCount} x Rs. {fees.premium}</span>
-                </div>
+                <p className="text-sm text-green-100 mb-4">Money collected from subscriptions AND per-order fees.</p>
+<div className="bg-white/20 p-3 rounded-xl text-xs space-y-1">
+  <div className="flex justify-between border-b border-green-600/50 pb-1 mb-1">
+    <span>Standard Subs:</span>
+    <span>{paidStandardCount} x Rs. {fees.standard}</span>
+  </div>
+  <div className="flex justify-between border-b border-green-600/50 pb-1 mb-1">
+    <span>Premium Subs:</span>
+    <span>{paidPremiumCount} x Rs. {fees.premium}</span>
+  </div>
+  <div className="flex justify-between font-bold">
+    <span>Order Fees (Delivered):</span>
+    <span>Rs. {totalPlatformFees}</span>
+  </div>
+</div>
               </div>
 
               <div className="bg-gray-50 p-6 rounded-3xl border border-gray-200 shadow-sm">
