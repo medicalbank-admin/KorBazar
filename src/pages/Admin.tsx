@@ -38,61 +38,57 @@ const [paymentModal, setPaymentModal] = useState({ isOpen: false, amount: '', ty
 const [rejectModal, setRejectModal] = useState({ isOpen: false, sellerId: '', reason: '' });
 
   const fetchData = async () => {
-    setLoading(true);
-    // 1. Fetch ALL data in parallel to make it super fast
-const [
-  sellersSnap,
-  productsSnap,
-  ordersSnap,
-  catSnap,
-  couponSnap,
-  reportSnap,
-  adsSnap,
-  settingsSnap
-] = await Promise.all([
-  getDocs(collection(db, 'sellers')),
-  // LIMIT: Only load the 200 newest products
-  getDocs(query(collection(db, 'products'), orderBy('createdAt', 'desc'), limit(200))),
-  // LIMIT: Only load the 200 newest orders
-  getDocs(query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(200))),
-  getDocs(collection(db, 'categories')),
-  getDocs(collection(db, 'coupons')),
-  getDocs(collection(db, 'reports')),
-  getDocs(collection(db, 'ads')),
-  getDoc(doc(db, 'settings', 'platform'))
-]);
+  setLoading(true);
+  try {
+    const [
+      sellersSnap,
+      productsSnap,
+      ordersSnap,
+      catSnap,
+      couponSnap,
+      reportSnap,
+      adsSnap,
+      settingsSnap
+    ] = await Promise.all([
+      getDocs(collection(db, 'sellers')),
+      getDocs(query(collection(db, 'products'), orderBy('createdAt', 'desc'), limit(200))),
+      getDocs(query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(200))),
+      getDocs(collection(db, 'categories')),
+      getDocs(collection(db, 'coupons')),
+      getDocs(collection(db, 'reports')),
+      getDocs(collection(db, 'ads')),
+      getDoc(doc(db, 'settings', 'platform'))
+    ]);
 
-const sellersData: any[] = sellersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-// --- Monthly fees logic (kept exactly as you had it) ---
-const today = new Date();
-if (today.getDate() === 1) {
-  for (const seller of sellersData) {
-    if (seller.feeStatus === 'paid') {
-      const lastPaid = seller.lastFeePaidDate ? new Date(seller.lastFeePaidDate) : null;
-      if (!lastPaid || lastPaid.getMonth() !== today.getMonth()) {
-        await updateDoc(doc(db, 'sellers', seller.id), { feeStatus: 'pending' });
-        seller.feeStatus = 'pending'; 
+    const sellersData: any[] = sellersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    
+    const today = new Date();
+    if (today.getDate() === 1) {
+      for (const seller of sellersData) {
+        if (seller.feeStatus === 'paid') {
+          const lastPaid = seller.lastFeePaidDate ? new Date(seller.lastFeePaidDate) : null;
+          if (!lastPaid || lastPaid.getMonth() !== today.getMonth()) {
+            await updateDoc(doc(db, 'sellers', seller.id), { feeStatus: 'pending' });
+            seller.feeStatus = 'pending';
+          }
+        }
       }
     }
-  }
-}
 
-sellersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-setSellers(sellersData);
+    sellersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    setSellers(sellersData);
 
-// Set the rest of the data (no need to sort products/orders in JS anymore, Firestore did it)
-setProducts(productsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-setOrders(ordersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-setCategories(catSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-setCoupons(couponSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-setReports(reportSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-setAds(adsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-
+    setProducts(productsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    setOrders(ordersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    setCategories(catSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    setCoupons(couponSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    setReports(reportSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    setAds(adsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    
     if (settingsSnap.exists()) {
       setFees(settingsSnap.data() as any);
     }
-  }
+
   } catch (error) {
     console.error("Error fetching data:", error);
   } finally {
