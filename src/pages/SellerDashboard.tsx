@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where, getDocs, serverTimestamp, limit, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook, Instagram, Globe, ShieldAlert, Star, CreditCard, Box, CheckSquare, X, MessageSquare, Plus, Trash2, FileText } from 'lucide-react';
+import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook,Instagram, Globe, ShieldAlert, Star, CreditCard, Box, CheckSquare, X, MessageSquare, Plus, Trash2, FileText } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { uploadToCloudinary } from '../utils/Cloudinary';
 import { generateAgreementPDF } from '../utils/generateAgreement';
@@ -46,7 +46,6 @@ export default function SellerDashboard() {
   const [productDescription, setProductDescription] = useState('');
   const [productDeliveryFee, setProductDeliveryFee] = useState('');
   const [category, setCategory] = useState('');
-  const [availableCategories, setAvailableCategories] = useState<any[]>([]);
   const [categoryTree, setCategoryTree] = useState<any[]>([]);
   const [productImages, setProductImages] = useState<FileList | null>(null);
   const [productMsg, setProductMsg] = useState('');
@@ -64,13 +63,13 @@ export default function SellerDashboard() {
     "Wedding and Festive Sweets", "Home Decor", "Essential Oils & Natural Hair Care"
   ];
 
-  const buildCategoryTree = (categories: CategoryNode[]): CategoryNode[] => {
-    const byId = new Map<string, CategoryNode & { children: CategoryNode[] }>();
+  const buildCategoryTree = (categories: CategoryNode[]): any[] => {
+    const byId = new Map<string, any>();
     categories.forEach((cat) => {
       byId.set(cat.id, { ...cat, children: [] });
     });
 
-    const roots: Array<CategoryNode & { children: CategoryNode[] }> = [];
+    const roots: any[] = [];
 
     categories.forEach((cat) => {
       const node = byId.get(cat.id);
@@ -84,14 +83,12 @@ export default function SellerDashboard() {
       }
     });
 
-    const sortChildren = (
-      items: Array<CategoryNode & { children: CategoryNode[] }>
-    ): Array<CategoryNode & { children: CategoryNode[] }> =>
+    const sortChildren = (items: any[]): any[] =>
       [...items]
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((item) => ({
           ...item,
-          children: sortChildren(item.children ?? []),
+          children: sortChildren(item.children || []),
         }));
 
     return sortChildren(roots);
@@ -136,21 +133,23 @@ export default function SellerDashboard() {
       setOrders(ordersData);
 
       const catSnap = await getDocs(collection(db, 'categories'));
-      const categoryDocs: any[] = catSnap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-        parentId: d.data().parentId ?? null,
-      }));
+const categoryDocs = catSnap.docs.map((d) => ({
+  id: d.id,
+  ...d.data(),
+  parentId: d.data().parentId ?? null,
+}));
 
-      const tree = buildCategoryTree(categoryDocs as CategoryNode[]);
-      setCategoryTree(tree);
+const tree = buildCategoryTree(categoryDocs as CategoryNode[]);
+setCategoryTree(tree);
 
-      const finalCats = categoryDocs.length > 0 ? categoryDocs.map((cat: any) => cat.name) : defaultCategories;
-      setAvailableCategories(finalCats);
+const finalCats = categoryDocs.length > 0
+  ? categoryDocs.map((cat: any) => cat.name)
+  : defaultCategories;
 
-      if (finalCats.length > 0 && !category) {
-        setCategory(finalCats[0]);
-      }
+if (finalCats.length > 0 && !category) {
+  setCategory(finalCats[0]);
+}
+      
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -747,28 +746,32 @@ const filteredOrders = orders.filter(order => {
                      <input type="number" required value={productDeliveryFee} onChange={e => setProductDeliveryFee(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
                    </div>
                    <div>
+  <div>
   <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
   <select
     value={category}
-    onChange={e => setCategory(e.target.value)}
-    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50"
-  >
+    onChange={(e) => setCategory(e.target.value)}
+    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50">
     {categoryTree.length === 0 ? (
       <option value="">No categories available</option>
     ) : (
-      categoryTree.map(main => {
+      categoryTree.map((main: any) => {
         if (main.children && main.children.length > 0) {
           return (
             <optgroup key={main.id} label={main.name}>
               {main.children.map((sub: any) => (
-                <option key={sub.id} value={sub.name}>{sub.name}</option>
+                <option key={sub.id} value={sub.name}>
+                  {sub.name}
+                </option>
               ))}
             </optgroup>
           );
         }
 
         return (
-          <option key={main.id} value={main.name}>{main.name}</option>
+          <option key={main.id} value={main.name}>
+            {main.name}
+          </option>
         );
       })
     )}
