@@ -5,7 +5,7 @@ import { doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where, getDo
 import { db } from '../firebase';
 import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook, Instagram, Globe, ShieldAlert, Star, CreditCard, Box, CheckSquare, X, MessageSquare, Plus, Trash2, FileText } from 'lucide-react';
 import emailjs from '@emailjs/browser';
-import { uploadToCloudinary } from '../utils/cloudinary';
+import { uploadToCloudinary } from '../utils/Cloudinary';
 import { generateAgreementPDF } from '../utils/generateAgreement';
 
 
