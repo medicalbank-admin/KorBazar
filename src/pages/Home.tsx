@@ -4,6 +4,15 @@ import { collection, getDocs, query, orderBy, limit, startAfter } from 'firebase
 import { db } from '../firebase';
 import ProductCard from '../components/ProductCard';
 import AdSlideshow from '../components/AdSlideshow';
+import TrustBadges from '../components/TrustBadges';
+import TrendingProducts from '../components/TrendingProducts';
+import DiscountDeals from '../components/DiscountDeals';
+import NewArrivals from '../components/NewArrivals';
+import FeaturedStores from '../components/FeaturedStores';
+import SellerCTA from '../components/SellerCTA';
+import RecentlyViewed from '../components/RecentlyViewed';
+import NewsletterSignup from '../components/NewsletterSignup';
+import FAQ from '../components/FAQ';
 
 export default function Home() {
   const [products, setProducts] = useState<any[]>([]);
@@ -114,6 +123,8 @@ export default function Home() {
         </div>
       </section>
 
+      <TrustBadges />
+
       <section className="px-4 max-w-7xl mx-auto mb-12">
         <div className="flex overflow-x-auto gap-3 pb-4 scrollbar-hide">
           {categories.map((cat) => (
@@ -123,6 +134,9 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      <TrendingProducts />
+      <DiscountDeals />
 
       {/* FEATURED PREMIUM PRODUCTS */}
       {premiumProducts.length > 0 && (
@@ -176,6 +190,14 @@ export default function Home() {
           </Link>
         </div>
       </section>
+
+      <NewArrivals />
+      <FeaturedStores />
+      <SellerCTA />
+      <RecentlyViewed />
+      <NewsletterSignup />
+      <FAQ />
+
     </div>
   );
-}
+        }
