@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where, getDocs, serverTimestamp, limit, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook, Instagram, Globe, ShieldAlert, Star, CreditCard, Box, CheckSquare, X, MessageSquare, Plus, Trash2, FileText } from 'lucide-react';
 import emailjs from '@emailjs/browser';
@@ -75,21 +75,27 @@ export default function SellerDashboard() {
       }
     }
 
-    const prodQ = query(collection(db, 'products'), where('sellerId', '==', currentUser.uid));
-    const prodSnap = await getDocs(prodQ);
-    const productsData = prodSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    productsData.sort((a: any, b: any) => {
-      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return dateB - dateA;
-    });
-    setProducts(productsData);
+    // Fetch Products (Latest 100)
+const prodQ = query(
+  collection(db, 'products'), 
+  where('sellerId', '==', currentUser.uid),
+  orderBy('createdAt', 'desc'),
+  limit(100)
+);
+const prodSnap = await getDocs(prodQ);
+const productsData = prodSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+setProducts(productsData);
 
-    const orderQ = query(collection(db, 'orders'), where('sellerId', '==', currentUser.uid));
-    const orderSnap = await getDocs(orderQ);
-    const ordersData = orderSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    ordersData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    setOrders(ordersData);
+// Fetch Orders (Latest 100)
+const orderQ = query(
+  collection(db, 'orders'), 
+  where('sellerId', '==', currentUser.uid),
+  orderBy('createdAt', 'desc'),
+  limit(100)
+);
+const orderSnap = await getDocs(orderQ);
+const ordersData = orderSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+setOrders(ordersData);
 
     const catSnap = await getDocs(collection(db, 'categories'));
     const cats = catSnap.docs.map(d => d.data().name);
