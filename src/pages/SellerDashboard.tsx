@@ -83,7 +83,12 @@ export default function SellerDashboard() {
 
       if (cat.parentId) {
         const parent = byId.get(cat.parentId);
-        if (parent) parent.children.push(node);
+        if (parent) {
+          parent.children.push(node);
+        } else {
+          // If parent is missing, push to roots so it's not lost
+          roots.push(node);
+        }
       } else {
         roots.push(node);
       }
@@ -91,7 +96,7 @@ export default function SellerDashboard() {
 
     const sortChildren = (items: any[]): any[] =>
       [...items]
-        .sort((a, b) => a.name.localeCompare(b.name))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
         .map((item) => ({
           ...item,
           children: sortChildren(item.children || []),
@@ -104,6 +109,7 @@ export default function SellerDashboard() {
     if (!currentUser) return;
 
     try {
+      // 1. Fetch Store Data
       const docSnap = await getDoc(doc(db, 'sellers', currentUser.uid));
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -119,6 +125,7 @@ export default function SellerDashboard() {
         }
       }
 
+      // 2. Fetch Products
       const prodQ = query(
         collection(db, 'products'),
         where('sellerId', '==', currentUser.uid),
@@ -126,9 +133,9 @@ export default function SellerDashboard() {
         limit(100)
       );
       const prodSnap = await getDocs(prodQ);
-      const productsData = prodSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setProducts(productsData);
+      setProducts(prodSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
 
+      // 3. Fetch Orders
       const orderQ = query(
         collection(db, 'orders'),
         where('sellerId', '==', currentUser.uid),
@@ -136,29 +143,34 @@ export default function SellerDashboard() {
         limit(100)
       );
       const orderSnap = await getDocs(orderQ);
-      const ordersData = orderSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setOrders(ordersData);
+      setOrders(orderSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
 
+    } catch (error) {
+      console.error('Error fetching store, products, or orders:', error);
+    } 
+
+    // 4. Fetch Categories SEPARATELY (So it always runs even if products/orders fail)
+    try {
       const catSnap = await getDocs(collection(db, 'categories'));
-      const categoryDocs = catSnap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-        parentId: d.data().parentId ?? null,
-      }));
-
+      const categoryDocs = catSnap.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          name: data.name || 'Unnamed',
+          parentId: data.parentId ?? null,
+        };
+      });
+      
       const tree = buildCategoryTree(categoryDocs as CategoryNode[]);
       setCategoryTree(tree);
 
-      const finalCats = categoryDocs.length > 0
-        ? categoryDocs.map((cat: any) => cat.name)
-        : defaultCategories;
-
-      if (finalCats.length > 0 && !category) {
-        setCategory(finalCats[0]);
+      // Auto-select first category if none selected
+      if (categoryDocs.length > 0 && !category) {
+        setCategory(categoryDocs[0].name);
       }
-      
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching categories:', error);
+      setCategoryTree([]);
     } finally {
       setLoading(false);
     }
@@ -779,7 +791,10 @@ export default function SellerDashboard() {
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50"
                       >
                         {categoryTree.length === 0 ? (
-                          <option value="">No categories available</option>
+                          // Fallback to default categories if DB is empty or fails
+                          defaultCategories.map((catName) => (
+                            <option key={catName} value={catName}>{catName}</option>
+                          ))
                         ) : (
                           categoryTree.map((main: any) => {
                             if (main.children && main.children.length > 0) {
@@ -903,6 +918,7 @@ export default function SellerDashboard() {
                   </button>
                 </form>
               </div>
+
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h2 className="text-xl font-bold text-dark mb-4">Your Listed Products ({products.length})</h2>
                 <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
