@@ -1,5 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, ChevronLeft, Shirt, Utensils, Home as HomeIcon, Sparkles, ShoppingBag, Gem, Heart, Baby, Footprints, Menu } from 'lucide-react';
+import { 
+  Search, ChevronLeft, Shirt, Utensils, Home as HomeIcon, Sparkles, 
+  ShoppingBag, Gem, Heart, Baby, Footprints, Menu, Smartphone, Laptop, 
+  Coffee, BookOpen, Palette, Dog, Dumbbell, Car, Briefcase, 
+  Watch, Glasses, Flower, Gift, Cake, Gamepad2, Music, Camera, 
+  Scissors, Wrench, PenTool, Droplet, Leaf 
+} from 'lucide-react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import ProductCard from '../components/ProductCard';
@@ -12,16 +18,67 @@ type CategoryNode = {
   children?: CategoryNode[];
 };
 
+// SMART DYNAMIC ICON MAPPER
 const getCategoryIcon = (name: string, size = 24) => {
   const n = name.toLowerCase();
-  if (n.includes('fashion') || n.includes('cloth') || n.includes('wear') || n.includes('suit')) return <Shirt size={size} />;
-  if (n.includes('food') || n.includes('sweet') || n.includes('cake') || n.includes('bak')) return <Utensils size={size} />;
-  if (n.includes('home') || n.includes('decor') || n.includes('furniture')) return <HomeIcon size={size} />;
-  if (n.includes('jewel') || n.includes('ring') || n.includes('necklace')) return <Gem size={size} />;
-  if (n.includes('beauty') || n.includes('care') || n.includes('skin')) return <Sparkles size={size} />;
-  if (n.includes('kid') || n.includes('baby')) return <Baby size={size} />;
-  if (n.includes('shoe') || n.includes('footwear')) return <Footprints size={size} />;
-  if (n.includes('art') || n.includes('craft') || n.includes('gift')) return <Heart size={size} />;
+
+  // 1. Fashion & Apparel
+  if (n.match(/cloth|wear|suit|shirt|pant|trouser|jean|dress|skirt|jacket|coat|fashion/)) return <Shirt size={size} />;
+  
+  // 2. Shoes & Footwear
+  if (n.match(/shoe|footwear|sandal|sneaker|boot|heel|chappal/)) return <Footprints size={size} />;
+  
+  // 3. Food, Sweets & Drinks
+  if (n.match(/food|sweet|cake|bak|snack|dessert|candy|chocolate|pizza|burger/)) return <Cake size={size} />;
+  if (n.match(/drink|beverage|tea|coffee|juice|water/)) return <Coffee size={size} />;
+  
+  // 4. Technology & Electronics
+  if (n.match(/phone|mobile|smart|tablet|gadget|tech/)) return <Smartphone size={size} />;
+  if (n.match(/computer|laptop|pc|mac|screen|monitor/)) return <Laptop size={size} />;
+  if (n.match(/camera|photo|video|lens/)) return <Camera size={size} />;
+  if (n.match(/audio|music|speaker|headphone|sound/)) return <Music size={size} />;
+  
+  // 5. Jewelry & Accessories
+  if (n.match(/jewel|ring|necklace|bracelet|earring|gold|silver|gem|diamond/)) return <Gem size={size} />;
+  if (n.match(/watch|clock|time/)) return <Watch size={size} />;
+  if (n.match(/glass|sunglass|eyewear/)) return <Glasses size={size} />;
+  
+  // 6. Home, Decor & Furniture
+  if (n.match(/home|decor|furniture|house|kitchen|bed|pillow|lamp|interior/)) return <HomeIcon size={size} />;
+  if (n.match(/flower|plant|garden|leaf|nature|botanical/)) return <Flower size={size} />;
+  
+  // 7. Beauty, Health & Care
+  if (n.match(/beauty|cosmetic|makeup|skin|hair|perfume|fragrance|care|spa/)) return <Sparkles size={size} />;
+  if (n.match(/health|medical|pill|doctor|pharmacy/)) return <Droplet size={size} />;
+  if (n.match(/soap|wash|clean/)) return <Leaf size={size} />;
+  
+  // 8. Kids, Toys & Games
+  if (n.match(/kid|baby|child|infant|toddler/)) return <Baby size={size} />;
+  if (n.match(/toy|play|game|puzzle|gamepad/)) return <Gamepad2 size={size} />;
+  
+  // 9. Arts, Crafts & Stationery
+  if (n.match(/art|craft|paint|draw|brush|handmade/)) return <Palette size={size} />;
+  if (n.match(/book|read|note|pen|paper|stationery|diary/)) return <BookOpen size={size} />;
+  if (n.match(/pen|write|pencil/)) return <PenTool size={size} />;
+  if (n.match(/scissor|cut|tailor/)) return <Scissors size={size} />;
+  
+  // 10. Gifts & Occasions
+  if (n.match(/gift|hamper|present|souvenir|wedding|birthday/)) return <Gift size={size} />;
+  
+  // 11. Pets & Animals
+  if (n.match(/pet|dog|cat|animal|bird/)) return <Dog size={size} />;
+  
+  // 12. Sports, Fitness & Outdoors
+  if (n.match(/sport|gym|fitness|exercise|workout|yoga/)) return <Dumbbell size={size} />;
+  
+  // 13. Automotive & Tools
+  if (n.match(/car|auto|vehicle|bike|motor/)) return <Car size={size} />;
+  if (n.match(/tool|hardware|fix|repair|hammer/)) return <Wrench size={size} />;
+  
+  // 14. Business & Services
+  if (n.match(/office|business|work|service|corporate/)) return <Briefcase size={size} />;
+
+  // Fallback if no keywords match
   return <ShoppingBag size={size} />;
 };
 
@@ -68,8 +125,8 @@ export default function Explore() {
   const [searchTerm, setSearchTerm] = useState('');
   
   // State to track what is selected
-  const [selectedMainCat, setSelectedMainCat] = useState<any>(null); // Tracks the Main Category being viewed
-  const [selectedSubCat, setSelectedSubCat] = useState<string | null>(initialCat); // Tracks the Sub Category for products
+  const [selectedMainCat, setSelectedMainCat] = useState<any>(null); 
+  const [selectedSubCat, setSelectedSubCat] = useState<string | null>(initialCat); 
   
   const [loading, setLoading] = useState(true);
 
@@ -124,7 +181,7 @@ export default function Explore() {
     const fetchProducts = async () => {
       if (!selectedSubCat) {
         setProducts([]);
-        return; // Don't fetch products if we are just browsing main categories
+        return; 
       }
 
       setLoading(true);
@@ -156,8 +213,8 @@ export default function Explore() {
 
   const handleMainCategoryClick = (mainCat: any) => {
     setSelectedMainCat(mainCat);
-    setSelectedSubCat(null); // Clear sub-category to show the grid
-    setSearchParams({}); // Clear URL params
+    setSelectedSubCat(null); 
+    setSearchParams({}); 
   };
 
   const handleSubCategoryClick = (subCatName: string) => {
