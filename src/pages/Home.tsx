@@ -4,7 +4,6 @@ import { collection, getDocs, query, orderBy, limit, startAfter } from 'firebase
 import { db } from '../firebase';
 import HeroCarousel from '../components/HeroCarousel';
 import ProductCard from '../components/ProductCard';
-import AdSlideshow from '../components/AdSlideshow';
 import TrustBadges from '../components/TrustBadges';
 import TrendingProducts from '../components/TrendingProducts';
 import DiscountDeals from '../components/DiscountDeals';
@@ -84,7 +83,15 @@ export default function Home() {
   const categoryTree = useMemo(() => buildCategoryTree(categories as CategoryNode[]), [categories]);
 
   const fetchData = async () => {
+    // 1. INSTANT LOAD: Check cache first
+    const cachedProducts = sessionStorage.getItem('kb_home_products');
+    if (cachedProducts) {
+      setProducts(JSON.parse(cachedProducts));
+      setLoading(false); 
+    }
+
     try {
+      // Fetch Categories
       const catSnap = await getDocs(collection(db, 'categories'));
       const categoryDocs = catSnap.docs.map((d: any) => ({
         id: d.id,
@@ -94,6 +101,7 @@ export default function Home() {
       }));
       setCategories(categoryDocs);
 
+      // Fetch Sellers
       const sellersSnap = await getDocs(collection(db, 'sellers'));
       const activeSellerIds: string[] = [];
       const premiumIds: string[] = [];
@@ -108,6 +116,7 @@ export default function Home() {
 
       setPremiumSellerIds(premiumIds);
 
+      // Fetch Products
       const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'), limit(20));
       const querySnapshot = await getDocs(q);
 
@@ -115,6 +124,9 @@ export default function Home() {
       const activeProducts = allProducts.filter((p) => activeSellerIds.includes(p.sellerId));
 
       setProducts(activeProducts);
+      // 2. SAVE TO CACHE
+      sessionStorage.setItem('kb_home_products', JSON.stringify(activeProducts));
+
       setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
       setHasMore(querySnapshot.docs.length === 20);
     } catch (error) {
@@ -166,12 +178,8 @@ export default function Home() {
   return (
     <div className="bg-[#f4f5f7] min-h-screen pb-12">
       <div className="max-w-7xl mx-auto px-0 md:px-4 pt-0 md:pt-6">
-        <div className="md:hidden mb-4">
-          <AdSlideshow />
-        </div>
-
+        
         <div className="flex flex-col md:flex-row gap-4 mb-6">
-          
           {/* 1. DESKTOP SIDEBAR */}
           <div className="hidden md:block w-64 bg-white rounded-xl shadow-sm border border-gray-100 p-4 h-max shrink-0">
             <h3 className="font-bold text-dark mb-4 px-2">All Categories</h3>
@@ -210,32 +218,13 @@ export default function Home() {
               </li>
             </ul>
           </div>
-                    {/* 2. THE HERO SECTION (Ads + Seller Banner) */}
-          <div className="w-full flex flex-col md:flex-row gap-4 h-[250px] md:h-[350px] px-4 md:px-0">
-            
-            {/* 🚀 NEW AD CAROUSEL */}
-            <HeroCarousel />
 
-            {/* "Become a Seller" banner */}
-            <div className="w-72 bg-dark rounded-2xl relative overflow-hidden hidden md:flex flex-col justify-center p-6 text-white border border-gray-800">
-              <h3 className="font-bold text-xl mb-2 leading-tight z-10">Become a Seller today</h3>
-              <p className="text-xs text-gray-300 mb-4 z-10">Join the community and start earning.</p>
-              <Link
-                to="/sell-with-us"
-                className="border border-white text-white px-4 py-2 rounded-lg font-bold text-xs w-max hover:bg-white hover:text-dark transition-colors z-10"
-              >
-                Sell with Us
-              </Link>
-              <img
-                src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=300&auto=format&fit=crop"
-                alt="Promo"
-                className="absolute inset-0 w-full h-full object-cover opacity-20"
-              />
-            </div>
+          {/* 2. HERO CAROUSEL (Handles Ads) */}
+          <div className="w-full flex flex-col md:flex-row gap-4 h-[250px] md:h-[350px] px-4 md:px-0">
+            <HeroCarousel />
           </div>
         </div>
-
-        {/* 3. MOBILE CATEGORY PILLS */}
+                {/* 3. MOBILE CATEGORY PILLS */}
         <div className="md:hidden">
           <TrustBadges />
           <section className="px-4 mb-6">
@@ -328,4 +317,4 @@ export default function Home() {
       </div>
     </div>
   );
-}
+                    }
