@@ -31,34 +31,34 @@ export default function Profile() {
   const [resetMsg, setResetMsg] = useState('');
 
   useEffect(() => {
-  const fetchProfileData = async () => {
-    if (!currentUser || !userRole) return;
-
-    try {
-      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        setUserData(data);
-        setMobile(data.mobile || '');
-        setWhatsapp(data.whatsapp || '');
-        setDefaultAddress(data.defaultAddress || '');
-        setReceiveUpdates(data.receiveUpdates !== false);
-        
-        setWalletBalance(data.walletBalance || 0);
-
-        // Generate referral code if it doesn't exist
-        if (data.referralCode) {
-          setReferralCode(data.referralCode);
-        } else {
-          const newCode = `KOR-${currentUser.uid.substring(0, 5).toUpperCase()}`;
-          setReferralCode(newCode);
-          // Save it to database for future
-          await updateDoc(doc(db, 'users', currentUser.uid), { referralCode: newCode });
-        }
+    const fetchProfileData = async () => {
+      if (!currentUser || !userRole) {
+        setLoading(false);
+        return;
       }
-      // ... rest of your fetching logic for buyer stats or seller stats
-      
 
+      try {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setUserData(data);
+          setMobile(data.mobile || '');
+          setWhatsapp(data.whatsapp || '');
+          setDefaultAddress(data.defaultAddress || '');
+          setReceiveUpdates(data.receiveUpdates !== false);
+          
+          setWalletBalance(data.walletBalance || 0);
+
+          // Generate referral code if it doesn't exist
+          if (data.referralCode) {
+            setReferralCode(data.referralCode);
+          } else {
+            const newCode = `KOR-${currentUser.uid.substring(0, 5).toUpperCase()}`;
+            setReferralCode(newCode);
+            await updateDoc(doc(db, 'users', currentUser.uid), { referralCode: newCode });
+          }
+        }
+        
         if (userRole === 'seller') {
           const storeDoc = await getDoc(doc(db, 'sellers', currentUser.uid));
           if (storeDoc.exists()) setStoreData(storeDoc.data());
@@ -125,13 +125,38 @@ export default function Profile() {
   const initial = currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : 'U';
   const displayName = currentUser?.email?.split('@')[0] || 'User';
   
+  // UPDATED: Order Counting Logic
   const pendingOrders = buyerOrders.filter(o => o.status === 'new').length;
   const shippedOrders = buyerOrders.filter(o => o.status === 'accepted' || o.status === 'dispatched').length;
   const deliveredOrders = buyerOrders.filter(o => o.status === 'delivered').length;
-  const cancelledOrders = buyerOrders.filter(o => o.status === 'cancelled' || o.status === 'rejected').length;
+  
+  // Includes Cancelled, Rejected, AND Returned
+  const returnedOrCancelledOrders = buyerOrders.filter(o => o.status === 'cancelled' || o.status === 'rejected' || o.status === 'returned').length;
 
-if (loading) return <div className="p-12 text-center text-brand font-bold">Loading account...</div>;
-  if (!currentUser) return <div className="p-12 text-center text-alert font-bold">Please log in.</div>;
+  if (loading) return <div className="p-12 text-center text-brand font-bold">Loading account...</div>;
+
+  // NEW: LOGGED OUT STATE UI
+  if (!currentUser) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-24">
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 text-center">
+          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-400">
+            <Lock size={40} />
+          </div>
+          <h1 className="text-2xl font-bold text-dark mb-2">You are not logged in</h1>
+          <p className="text-gray-500 mb-8 text-sm">Please login to view your profile, orders, and account settings.</p>
+          
+          <Link to="/login" className="block w-full bg-brand text-white font-bold py-3.5 rounded-xl hover:bg-brand/90 transition-colors shadow-md">
+            Login Now
+          </Link>
+          
+          <p className="mt-6 text-sm text-gray-500">
+            Don't have an account? <Link to="/register" className="text-brand font-bold hover:underline">Sign Up</Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 pb-24">
@@ -175,45 +200,45 @@ if (loading) return <div className="p-12 text-center text-brand font-bold">Loadi
       {userRole === 'buyer' && (
         <>
           {/* WALLET & REFERRAL CARD */}
-<div className="bg-gradient-to-r from-brand/10 to-green-50 border border-brand/20 rounded-3xl p-6 mb-6">
-  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-    
-    {/* Wallet Balance */}
-    <div className="flex items-center gap-3">
-      <div className="w-12 h-12 bg-brand text-white rounded-full flex items-center justify-center shadow-sm">
-        <Wallet size={24} />
-      </div>
-      <div>
-        <p className="text-sm font-semibold text-gray-600">My Wallet Balance</p>
-        <p className="text-2xl font-extrabold text-brand">Rs. {walletBalance}</p>
-      </div>
-    </div>
+          <div className="bg-gradient-to-r from-brand/10 to-green-50 border border-brand/20 rounded-3xl p-6 mb-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-brand text-white rounded-full flex items-center justify-center shadow-sm">
+                  <Wallet size={24} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-600">My Wallet Balance</p>
+                  <p className="text-2xl font-extrabold text-brand">Rs. {walletBalance}</p>
+                </div>
+              </div>
 
-    {/* Referral Code */}
-    <div className="bg-white border border-brand/20 rounded-xl p-3 shadow-sm w-full md:w-auto">
-      <p className="text-xs font-bold text-gray-500 uppercase mb-1 flex items-center gap-1"><Gift size={14} /> Invite & Earn</p>
-      <div className="flex items-center gap-2">
-        <span className="font-mono font-bold text-dark tracking-wider text-lg">{referralCode}</span>
-        <button 
-          onClick={() => {
-            navigator.clipboard.writeText(referralCode);
-            alert('Referral code copied!');
-          }}
-          className="p-1.5 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
-          title="Copy Code"
-        >
-          <Copy size={16} />
-        </button>
-      </div>
-      <p className="text-[10px] text-gray-500 mt-1">Share this code. You get Rs. 100 when they order!</p>
-    </div>
+              <div className="bg-white border border-brand/20 rounded-xl p-3 shadow-sm w-full md:w-auto">
+                <p className="text-xs font-bold text-gray-500 uppercase mb-1 flex items-center gap-1"><Gift size={14} /> Invite & Earn</p>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-bold text-dark tracking-wider text-lg">{referralCode}</span>
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(referralCode);
+                      alert('Referral code copied!');
+                    }}
+                    className="p-1.5 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+                    title="Copy Code"
+                  >
+                    <Copy size={16} />
+                  </button>
+                </div>
+                <p className="text-[10px] text-gray-500 mt-1">Share this code. You get Rs. 100 when they order!</p>
+              </div>
 
-  </div>
-</div>
+            </div>
+          </div>
+
           <Link to="/inbox" className="w-full flex items-center justify-between p-4 mb-6 bg-brand/5 border border-brand/20 rounded-xl hover:bg-brand/10 transition-colors font-bold text-brand">
-  <span className="flex items-center gap-2"><MessageSquare size={18} /> My Inbox (Messages)</span>
-  <ChevronRight size={18} />
-</Link>
+            <span className="flex items-center gap-2"><MessageSquare size={18} /> My Inbox (Messages)</span>
+            <ChevronRight size={18} />
+          </Link>
+
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-dark">My Orders</h2>
@@ -223,7 +248,6 @@ if (loading) return <div className="p-12 text-center text-brand font-bold">Loadi
             </div>
             
             <div className="grid grid-cols-5 gap-2 text-center">
-              {/* UPDATED LINKS HERE */}
               <Link to="/orders?tab=pending" className="flex flex-col items-center hover:opacity-80 transition-opacity">
                 <div className="relative mb-2">
                   <Wallet size={28} className="text-brand" />
@@ -255,10 +279,11 @@ if (loading) return <div className="p-12 text-center text-brand font-bold">Loadi
                 <span className="text-[11px] md:text-xs font-medium text-gray-600">Delivered</span>
               </Link>
               
-              <Link to="/orders?tab=cancelled" className="flex flex-col items-center hover:opacity-80 transition-opacity">
+              {/* UPDATED: Returns & Cancel Tab */}
+              <Link to="/orders?tab=returns" className="flex flex-col items-center hover:opacity-80 transition-opacity">
                 <div className="relative mb-2">
                   <RotateCcw size={28} className="text-brand" />
-                  {cancelledOrders > 0 && <span className="absolute -top-2 -right-2 bg-alert text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">{cancelledOrders}</span>}
+                  {returnedOrCancelledOrders > 0 && <span className="absolute -top-2 -right-2 bg-alert text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">{returnedOrCancelledOrders}</span>}
                 </div>
                 <span className="text-[11px] md:text-xs font-medium text-gray-600">Returns &<br/>Cancel</span>
               </Link>
