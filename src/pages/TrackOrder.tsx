@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { collection, query, where, getDocs, doc, getDoc, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CheckCircle2, Clock, Package, Truck, MessageCircle, Star, Box, CheckSquare } from 'lucide-react';
+import { CheckCircle2, Clock, Package, Truck, MessageCircle, Star, Box, CheckSquare, RotateCcw } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 
 export default function TrackOrder() {
@@ -88,7 +88,12 @@ export default function TrackOrder() {
     { id: 'delivered', label: 'Delivered', icon: Package },
   ];
 
-  const currentStepIndex = steps.findIndex(s => s.id === order.status);
+  // Handle specific statuses
+  const isCancelled = order.status === 'rejected' || order.status === 'cancelled';
+  const isReturned = order.status === 'returned';
+  
+  // If returned, we want all 4 steps to show as completed, so we force index to 3
+  const currentStepIndex = isReturned ? 3 : steps.findIndex(s => s.id === order.status);
 
   const whatsappText = `Assalam-o-Alaikum ${order.buyerName}, this is ${seller?.storeName}. Your order #${order.trackingToken.slice(0,6)} is confirmed! Total: Rs. ${order.total}.`;
   const cleanNumber = seller?.whatsappNumber?.replace(/^0/, '');
@@ -102,32 +107,45 @@ export default function TrackOrder() {
           <p className="text-gray-500">Order ID: #{order.trackingToken.slice(0,8).toUpperCase()}</p>
         </div>
 
-        {order.status === 'rejected' || order.status === 'cancelled' ? (
+        {isCancelled ? (
           <div className="bg-red-50 text-alert p-6 rounded-2xl text-center mb-8">
             <h3 className="font-bold text-lg mb-2">Order Cancelled</h3>
             <p className="text-sm">Reason: {order.rejectionReason || 'Order was cancelled.'}</p>
           </div>
         ) : (
-          <div className="relative mb-12">
-            <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200 z-0"></div>
-            {steps.map((step, index) => {
-              const Icon = step.icon;
-              const isActive = index <= currentStepIndex;
-              return (
-                <div key={step.id} className="relative z-10 flex items-center gap-6 mb-8 last:mb-0">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isActive ? 'bg-brand text-white' : 'bg-gray-100 text-gray-400'}`}>
-                    <Icon size={24} />
+          <>
+            {/* IF RETURNED, SHOW SPECIAL BANNER */}
+            {isReturned && (
+              <div className="bg-orange-50 border border-orange-200 text-orange-800 p-4 rounded-xl text-center mb-8 flex flex-col items-center justify-center gap-2">
+                <RotateCcw size={28} className="text-orange-500" />
+                <h3 className="font-bold text-lg">Order Returned</h3>
+                <p className="text-sm">This order was marked as returned by the seller.</p>
+              </div>
+            )}
+
+            <div className="relative mb-12">
+              <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200 z-0"></div>
+              {steps.map((step, index) => {
+                const Icon = step.icon;
+                const isActive = index <= currentStepIndex;
+                return (
+                  <div key={step.id} className="relative z-10 flex items-center gap-6 mb-8 last:mb-0">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isActive ? (isReturned && index === 3 ? 'bg-orange-500 text-white' : 'bg-brand text-white') : 'bg-gray-100 text-gray-400'}`}>
+                      <Icon size={24} />
+                    </div>
+                    <div>
+                      <h3 className={`font-bold ${isActive ? 'text-dark' : 'text-gray-400'}`}>
+                        {step.label} {isReturned && index === 3 && '(Returned)'}
+                      </h3>
+                      {step.id === 'accepted' && order.paymentVerified && (
+                        <p className="text-xs text-brand font-semibold flex items-center gap-1 mt-1"><CheckSquare size={12}/> Payment Verified</p>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <h3 className={`font-bold ${isActive ? 'text-dark' : 'text-gray-400'}`}>{step.label}</h3>
-                    {step.id === 'accepted' && order.paymentVerified && (
-                      <p className="text-xs text-brand font-semibold flex items-center gap-1 mt-1"><CheckSquare size={12}/> Payment Verified</p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {/* SMART COURIER TRACKING */}
@@ -163,7 +181,6 @@ export default function TrackOrder() {
                 </div>
               </div>
               
-              {/* Live Track Button */}
               {trackingUrl && (
                 <a 
                   href={trackingUrl} 
@@ -194,6 +211,12 @@ export default function TrackOrder() {
                       {item.selectedColor && <span>Color: {item.selectedColor}</span>}
                     </div>
                   )}
+                  {/* Display Customization Note */}
+                  {item.customizationNote && (
+                    <div className="text-xs text-brand font-semibold mt-1 bg-brand/5 p-1.5 rounded w-fit border border-brand/10">
+                      Customization: "{item.customizationNote}"
+                    </div>
+                  )}
                 </div>
                 <span className="font-medium">Rs. {item.price * item.qty}</span>
               </div>
@@ -217,6 +240,7 @@ export default function TrackOrder() {
           <MessageCircle size={20} /> Contact Seller on WhatsApp
         </a>
 
+        {/* ONLY SHOW REVIEW FORM IF DELIVERED (Not Returned or Cancelled) */}
         {order.status === 'delivered' && (
           <div className="border-t border-gray-100 pt-8 mt-8">
             <h3 className="text-xl font-bold text-dark mb-4 text-center">Rate this order</h3>
@@ -263,4 +287,4 @@ export default function TrackOrder() {
       )}
     </div>
   );
-              }
+}
