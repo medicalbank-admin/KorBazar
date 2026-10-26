@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { collection, addDoc, doc, getDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Ticket, X, Mail, Gift } from 'lucide-react';
+import { Ticket, X, Mail, Gift, Sparkles } from 'lucide-react';
 
 export default function Checkout() {
   const { cart, cartTotal, cartDeliveryFee, clearCart } = useCart();
@@ -13,6 +13,9 @@ export default function Checkout() {
   const [loading, setLoading] = useState(false);
   const [fetchingAddress, setFetchingAddress] = useState(true);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  
+  // COD Validation State
+  const [isCodAllowed, setIsCodAllowed] = useState(true);
 
   const [formData, setFormData] = useState({
     name: '', phone: '', whatsapp: '', address: '', notes: '', email: ''
@@ -60,6 +63,39 @@ export default function Checkout() {
     };
     fetchUserData();
   }, [currentUser]);
+
+  // --- CHECK IF COD IS ALLOWED BY ALL SELLERS IN CART ---
+  useEffect(() => {
+    const checkCodStatus = async () => {
+      if (cart.length === 0) return;
+
+      // Get unique seller IDs from the cart
+      const uniqueSellerIds = [...new Set(cart.map((item: any) => item.sellerId))];
+      
+      let allSellersAcceptCod = true;
+
+      for (const sellerId of uniqueSellerIds) {
+        const sellerDoc = await getDoc(doc(db, 'sellers', sellerId));
+        if (sellerDoc.exists()) {
+          const sellerData = sellerDoc.data();
+          // If seller has explicitly turned off COD, block it
+          if (sellerData.acceptsCod === false) {
+            allSellersAcceptCod = false;
+            break; // No need to check further, one seller blocked COD
+          }
+        }
+      }
+
+      setIsCodAllowed(allSellersAcceptCod);
+
+      // If COD is not allowed, force the payment method to JazzCash
+      if (!allSellersAcceptCod && paymentMethod === 'COD') {
+        setPaymentMethod('JazzCash');
+      }
+    };
+
+    checkCodStatus();
+  }, [cart, paymentMethod]);
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -181,7 +217,9 @@ export default function Checkout() {
             qty: i.quantity, 
             deliveryFee: i.deliveryFee || 0,
             selectedSize: i.selectedSize || null,
-            selectedColor: i.selectedColor || null
+            selectedColor: i.selectedColor || null,
+            // ADDED: Saving customization note to the order
+            customizationNote: i.customizationNote || null 
           })),
           subtotal: sellerSubtotal,
           deliveryFee: sellerDelivery,
@@ -190,7 +228,7 @@ export default function Checkout() {
           referredBy: appliedReferral ? appliedReferral.id : null,
           referralDiscount: sellerReferralDiscount,
           total: sellerTotal,
-          platformFee: 10, // <-- Platform Fee 
+          platformFee: 10, 
           paymentMethod: paymentMethod,
           status: 'new',
           trackingToken: trackingToken,
@@ -222,8 +260,7 @@ export default function Checkout() {
 
   if (cart.length === 0) return null;
   if (fetchingAddress) return <div className="p-12 text-center text-brand font-bold">Loading details...</div>;
-
-  return (
+    return (
     <div className="max-w-3xl mx-auto px-4 py-8 pb-24">
       <h1 className="text-3xl font-bold text-dark mb-6">Checkout</h1>
 
@@ -273,15 +310,43 @@ export default function Checkout() {
           </div>
         </div>
 
+        {/* CUSTOMIZATION NOTES DISPLAY */}
+        {cart.some((item: any) => item.customizationNote) && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 space-y-3">
+            <h2 className="font-bold text-lg text-dark flex items-center gap-2"><Sparkles size={20} className="text-brand"/> Personalization Details</h2>
+            <p className="text-xs text-gray-600 mb-2">You provided the following customization details for your items:</p>
+            {cart.filter((i: any) => i.customizationNote).map((item: any, idx: number) => (
+              <div key={idx} className="bg-white p-3 rounded-lg border border-blue-100">
+                <p className="font-semibold text-sm text-dark">{item.title}</p>
+                <p className="text-sm text-brand mt-1 italic">"{item.customizationNote}"</p>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <h2 className="font-bold text-lg text-dark mb-4">Payment Method</h2>
           <div className="space-y-3">
-            {['COD', 'JazzCash', 'Easypaisa'].map(method => (
-              <label key={method} className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === method ? 'border-brand bg-brand/5' : 'border-gray-200'}`}>
-                <input type="radio" name="payment" value={method} checked={paymentMethod === method} onChange={() => setPaymentMethod(method)} className="text-brand focus:ring-brand" />
-                <span className="font-semibold text-dark">{method === 'COD' ? 'Cash on Delivery' : method}</span>
-              </label>
-            ))}
+            {['COD', 'JazzCash', 'Easypaisa'].map(method => {
+              // Disable COD if any seller in the cart disabled it
+              const isDisabled = method === 'COD' && !isCodAllowed;
+
+              return (
+                <label key={method} className={`flex items-center gap-3 p-4 rounded-xl border transition-colors ${isDisabled ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50' : paymentMethod === method ? 'border-brand bg-brand/5 cursor-pointer' : 'border-gray-200 cursor-pointer'}`}>
+                  <input 
+                    type="radio" 
+                    name="payment" 
+                    value={method} 
+                    checked={paymentMethod === method} 
+                    onChange={() => setPaymentMethod(method)} 
+                    disabled={isDisabled}
+                    className="text-brand focus:ring-brand disabled:cursor-not-allowed" 
+                  />
+                  <span className="font-semibold text-dark">{method === 'COD' ? 'Cash on Delivery' : method}</span>
+                  {isDisabled && <span className="text-xs text-alert ml-auto font-semibold">Unavailable for this seller</span>}
+                </label>
+              );
+            })}
           </div>
         </div>
 
@@ -419,4 +484,4 @@ export default function Checkout() {
       )}
     </div>
   );
-                              }
+                      }
