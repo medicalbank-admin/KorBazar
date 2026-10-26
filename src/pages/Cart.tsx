@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { Trash2, ChevronLeft, Plus, Minus } from 'lucide-react';
+import { Trash2, ChevronLeft, Plus, Minus, Sparkles } from 'lucide-react';
 
 export default function Cart() {
   const { cart, removeFromCart, updateQuantity, cartTotal, cartDeliveryFee, cartItemCount } = useCart();
@@ -33,14 +33,22 @@ export default function Cart() {
                 
                 {/* SHOW SELECTED VARIANTS */}
                 {(item.selectedSize || item.selectedColor) && (
-                  <p className="text-xs font-semibold text-gray-600 mt-1 bg-gray-100 inline-block px-2 py-0.5 rounded">
+                  <p className="text-xs font-semibold text-gray-600 mt-1 bg-gray-100 inline-block px-2 py-0.5 rounded mr-2">
                     {item.selectedSize && `Size: ${item.selectedSize}`}
                     {item.selectedSize && item.selectedColor && ` | `}
                     {item.selectedColor && `Color: ${item.selectedColor}`}
                   </p>
                 )}
+
+                {/* NEW: SHOW CUSTOMIZATION NOTE */}
+                {item.customizationNote && (
+                  <p className="text-xs font-bold text-brand mt-1 bg-brand/5 border border-brand/20 inline-flex items-center gap-1 px-2 py-1 rounded max-w-full truncate">
+                    <Sparkles size={12} className="flex-shrink-0" />
+                    Note: "{item.customizationNote}"
+                  </p>
+                )}
                 
-                <p className="font-semibold text-brand mt-1">Rs. {item.price}</p>
+                <p className="font-semibold text-brand mt-1 block">Rs. {item.price}</p>
               </div>
             </div>
             
@@ -92,4 +100,4 @@ export default function Cart() {
       </button>
     </div>
   );
-                    }
+}
