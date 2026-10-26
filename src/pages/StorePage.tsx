@@ -3,14 +3,14 @@ import { useParams } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import ProductCard from '../components/ProductCard';
-import { CheckCircle2, MapPin, Facebook, Instagram, Globe, ShieldCheck, ShieldAlert, Crown, Calendar, Truck } from 'lucide-react';
+import { CheckCircle2, MapPin, Facebook, Instagram, Globe, ShieldCheck, ShieldAlert, Crown, Calendar, Truck, Store } from 'lucide-react';
 import ReportModal from '../components/ReportModal';
 
 export default function StorePage() {
   const { id } = useParams();
   const [store, setStore] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
-  const [stats, setStats] = useState({ delivered: 0, cancelled: 0 });
+  const [stats, setStats] = useState({ delivered: 0, cancelled: 0, returned: 0 });
   const [loading, setLoading] = useState(true);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   
@@ -29,12 +29,14 @@ export default function StorePage() {
       const orderSnap = await getDocs(orderQ);
       let delivered = 0;
       let cancelled = 0;
+      let returned = 0;
       orderSnap.forEach(doc => {
         const status = doc.data().status;
         if (status === 'delivered') delivered++;
         if (status === 'cancelled' || status === 'rejected') cancelled++;
+        if (status === 'returned') returned++;
       });
-      setStats({ delivered, cancelled });
+      setStats({ delivered, cancelled, returned });
 
       setLoading(false);
     };
@@ -68,22 +70,41 @@ export default function StorePage() {
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-8">
         
         {/* Cover Banner (Gradient) */}
-        <div className="h-32 md:h-48 bg-gradient-to-r from-brand/80 to-green-700 relative">
-          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+        <div className="h-40 md:h-56 bg-gradient-to-r from-brand to-green-700 relative flex items-center justify-end px-6 md:px-12 overflow-hidden">
+          {/* Dot Pattern Overlay */}
+          <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+          
+          {/* Watermark Text */}
+          <div className="text-right z-10 hidden sm:block">
+            <div className="flex items-center justify-end gap-3 mb-1">
+              <Store className="text-white/30" size={40} />
+              <h1 className="text-3xl md:text-5xl font-extrabold text-white/40 tracking-tight drop-shadow-sm">
+                Khpal Kor, <br className="hidden md:block"/>
+                <span className="text-white/30">Khpal Bazar.</span>
+              </h1>
+            </div>
+            <p className="text-white/40 font-medium text-sm md:text-lg">
+              Discover authentic local crafts.
+            </p>
+          </div>
         </div>
 
-        <div className="px-6 md:px-10 pb-8 relative">
-          <div className="flex flex-col md:flex-row items-center md:items-end gap-6 -mt-16 md:-mt-20 mb-6">
+        <div className="px-4 md:px-10 pb-8 relative">
+          <div className="flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-6 -mt-12 md:-mt-16 mb-6">
             
-            {/* Avatar */}
-            <div className="w-32 h-32 bg-white rounded-full p-1 shadow-lg flex-shrink-0 z-10">
-              <div className="w-full h-full bg-brand/10 rounded-full flex items-center justify-center text-brand font-black text-5xl">
-                {store.storeName.charAt(0).toUpperCase()}
+            {/* Avatar / Logo */}
+            <div className="w-28 h-28 md:w-32 md:h-32 bg-white rounded-2xl p-1.5 shadow-lg flex-shrink-0 z-10">
+              <div className="w-full h-full bg-green-50 rounded-xl flex items-center justify-center text-brand overflow-hidden border border-gray-100">
+                {store.logoUrl ? (
+                  <img src={store.logoUrl} alt={store.storeName} className="w-full h-full object-cover" />
+                ) : (
+                  <Store size={48} />
+                )}
               </div>
             </div>
 
             {/* Store Name & Badges */}
-            <div className="flex-grow text-center md:text-left z-10">
+            <div className="flex-grow text-center md:text-left z-10 mb-2 md:mb-4">
               <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-3 mb-2">
                 <h1 className="text-3xl md:text-4xl font-extrabold text-dark tracking-tight">{store.storeName}</h1>
                 
@@ -105,49 +126,57 @@ export default function StorePage() {
               </div>
             </div>
 
-            {/* Action Button */}
-            <div className="z-10 md:self-end mt-4 md:mt-0">
-               <button onClick={() => setIsReportModalOpen(true)} className="text-gray-400 hover:text-alert text-xs font-semibold underline bg-white px-3 py-1 rounded-full shadow-sm border border-gray-100">
+            {/* Action Button (Report Store) */}
+            <div className="z-10 md:self-center mt-2 md:mt-0">
+               <button 
+                 onClick={() => setIsReportModalOpen(true)} 
+                 className="text-alert hover:text-red-700 text-xs font-bold underline bg-white px-3 py-1.5 rounded-full shadow-sm border border-red-100 transition-colors"
+               >
                  Report Store
                </button>
             </div>
           </div>
 
-          <div className="flex flex-col md:flex-row gap-8 border-t border-gray-100 pt-6">
+          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 border-t border-gray-100 pt-6">
+            
             {/* Bio & Socials */}
             <div className="flex-grow">
-              <p className="text-gray-600 leading-relaxed mb-6 max-w-3xl">
+              <p className="text-gray-600 leading-relaxed mb-4 max-w-3xl">
                 {store.bio || "Welcome to my store! Discover unique handmade products crafted with love."}
               </p>
               
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-2 md:gap-3">
                 {store.socialLinks?.facebook && (
-                  <a href={store.socialLinks.facebook} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-xl hover:bg-blue-100 transition-colors text-sm font-semibold">
-                    <Facebook size={16}/> Facebook
+                  <a href={store.socialLinks.facebook} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors text-xs font-semibold">
+                    <Facebook size={14}/> Facebook
                   </a>
                 )}
                 {store.socialLinks?.instagram && (
-                  <a href={store.socialLinks.instagram} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-pink-50 text-pink-600 px-4 py-2 rounded-xl hover:bg-pink-100 transition-colors text-sm font-semibold">
-                    <Instagram size={16}/> Instagram
+                  <a href={store.socialLinks.instagram} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-pink-50 text-pink-600 px-3 py-1.5 rounded-lg hover:bg-pink-100 transition-colors text-xs font-semibold">
+                    <Instagram size={14}/> Instagram
                   </a>
                 )}
                 {store.socialLinks?.tiktok && (
-                  <a href={store.socialLinks.tiktok} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-gray-100 text-dark px-4 py-2 rounded-xl hover:bg-gray-200 transition-colors text-sm font-semibold">
-                    <Globe size={16}/> TikTok
+                  <a href={store.socialLinks.tiktok} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-gray-100 text-dark px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors text-xs font-semibold">
+                    <Globe size={14}/> TikTok
                   </a>
                 )}
               </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="flex gap-4 shrink-0">
-              <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 text-center min-w-[100px] shadow-sm">
-                <p className="text-3xl font-black text-brand">{stats.delivered}</p>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-1">Delivered</p>
+            {/* Compact Stats Cards */}
+            <div className="flex items-center gap-2 md:gap-3 shrink-0 mt-2 lg:mt-0">
+              <div className="bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-center min-w-[70px] md:min-w-[80px]">
+                <p className="text-xl md:text-2xl font-black text-dark">{stats.delivered}</p>
+                <p className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-wider">Delivered</p>
               </div>
-              <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-center min-w-[100px] shadow-sm">
-                <p className="text-3xl font-black text-alert">{stats.cancelled}</p>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-1">Cancelled</p>
+              <div className="bg-orange-50 border border-orange-100 rounded-xl p-2.5 text-center min-w-[70px] md:min-w-[80px]">
+                <p className="text-xl md:text-2xl font-black text-orange-600">{stats.returned}</p>
+                <p className="text-[9px] md:text-[10px] text-orange-500 font-bold uppercase tracking-wider">Returned</p>
+              </div>
+              <div className="bg-red-50 border border-red-100 rounded-xl p-2.5 text-center min-w-[70px] md:min-w-[80px]">
+                <p className="text-xl md:text-2xl font-black text-alert">{stats.cancelled}</p>
+                <p className="text-[9px] md:text-[10px] text-alert font-bold uppercase tracking-wider">Cancelled</p>
               </div>
             </div>
           </div>
