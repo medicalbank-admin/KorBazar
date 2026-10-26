@@ -10,9 +10,10 @@ export type CartItem = {
   quantity: number;
   deliveryFee?: number;
   description?: string;
-  selectedSize?: string;  // NEW
-  selectedColor?: string; // NEW
-  cartItemId: string;     // NEW: Unique ID for this specific variant in the cart
+  selectedSize?: string;
+  selectedColor?: string;
+  customizationNote?: string; // <--- NEW: To store personalization details
+  cartItemId: string;
 };
 
 type CartContextType = {
@@ -23,7 +24,7 @@ type CartContextType = {
   clearCart: () => void;
   cartTotal: number;
   cartDeliveryFee: number;
-  cartItemCount: number; // NEW: For the Navbar badge
+  cartItemCount: number;
 };
 
 const CartContext = createContext<CartContextType>({} as CartContextType);
@@ -40,10 +41,12 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
   const addToCart = (item: Omit<CartItem, 'quantity' | 'cartItemId'>) => {
     setCart(prev => {
-      // Create a unique ID based on product ID + size + color
-      const uniqueId = `${item.productId}-${item.selectedSize || 'nosize'}-${item.selectedColor || 'nocolor'}`;
+      // Create a unique ID based on product ID + size + color + customization note
+      // We use encodeURIComponent for the note to ensure the ID string remains safe
+      const safeNote = item.customizationNote ? encodeURIComponent(item.customizationNote) : 'nocustom';
+      const uniqueId = `${item.productId}-${item.selectedSize || 'nosize'}-${item.selectedColor || 'nocolor'}-${safeNote}`;
       
-      // Check if this exact variant is already in the cart
+      // Check if this exact variant AND customization is already in the cart
       const existing = prev.find(i => i.cartItemId === uniqueId);
       
       if (existing) {
@@ -68,7 +71,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartDeliveryFee = cart.reduce((sum, item) => sum + (item.deliveryFee || 0) * item.quantity, 0);
-  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0); // Total physical items
+  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, cartDeliveryFee, cartItemCount }}>
