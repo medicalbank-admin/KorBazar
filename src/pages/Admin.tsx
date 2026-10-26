@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, setDoc, getDoc, query, where, limit, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 
-import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket, TrendingUp, Banknote, Settings, Flag, Megaphone, ArrowLeft, History, Wallet } from 'lucide-react';
+import { X, ShieldAlert, Users, ShoppingBag, Package, LayoutDashboard, Star, Edit3, Trash2, CheckCircle, Save, ExternalLink, Tag, Plus, Ticket, TrendingUp, Banknote, Settings, Flag, Megaphone, ArrowLeft, History, Wallet, RotateCcw } from 'lucide-react';
 
 export default function Admin() {
   const [sellers, setSellers] = useState<any[]>([]);
@@ -19,7 +19,8 @@ export default function Admin() {
   const [paymentModal, setPaymentModal] = useState({ isOpen: false, amount: '', type: 'order_fee' });
   const [loading, setLoading] = useState(true);
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'promotions' | 'orders' | 'products' | 'categories' | 'coupons' | 'verification' | 'finance' | 'reports' | 'ads'>('overview');
+  // ADDED 'returns' TO activeTab TYPE
+  const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'promotions' | 'orders' | 'products' | 'categories' | 'coupons' | 'verification' | 'finance' | 'reports' | 'ads' | 'returns'>('overview');
   
   const [viewImage, setViewImage] = useState<string | null>(null);
   const [editingSeller, setEditingSeller] = useState<any>(null);
@@ -31,7 +32,6 @@ export default function Admin() {
   const [newCoupon, setNewCoupon] = useState({ code: '', discount: '', minAmount: '' });
   const [couponMsg, setCouponMsg] = useState('');
   
-  // ADDED position to newAd state
   const [newAd, setNewAd] = useState({ title: '', productId: '', imageBase64: '', link: '/explore', position: 'Main Banner' });
   const [isUploadingAd, setIsUploadingAd] = useState(false);
 
@@ -212,10 +212,10 @@ export default function Admin() {
         productId: newAd.productId,
         imageBase64: newAd.imageBase64,
         link: newAd.link,
-        position: newAd.position, // <--- SAVING POSITION HERE
+        position: newAd.position,
         createdAt: new Date().toISOString()
       });
-      setNewAd({ title: '', productId: '', imageBase64: '', link: '/explore', position: 'Main Banner' }); // <--- RESET
+      setNewAd({ title: '', productId: '', imageBase64: '', link: '/explore', position: 'Main Banner' });
       fetchData();
       alert("Ad created successfully!");
     } catch (error) { alert("Failed to create ad."); } finally { setIsUploadingAd(false); }
@@ -310,6 +310,7 @@ export default function Admin() {
   const expectedMonthlyRevenue = (standardSellers.length * fees.standard) + (premiumSellers.length * fees.premium);
   const paidSellersCount = approvedSellers.filter(s => s.feeStatus === 'paid').length;
   const unpaidSellersCount = approvedSellers.length - paidSellersCount;
+
   return (
   <div className="max-w-7xl mx-auto px-4 py-8 pb-24 relative">
     <h1 className="text-3xl font-bold text-dark mb-8">Admin Master Control</h1>
@@ -501,23 +502,79 @@ export default function Admin() {
       <button onClick={() => setActiveTab('ads')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'ads' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Megaphone size={18}/> Ads Manager</button>
       <button onClick={() => setActiveTab('categories')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'categories' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Tag size={18}/> Categories</button>
       <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'orders' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShoppingBag size={18}/> Orders</button>
+      
+      {/* NEW RETURNS TAB BUTTON */}
+      <button onClick={() => setActiveTab('returns')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'returns' ? 'bg-orange-500 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
+        <RotateCcw size={18}/> Returns
+      </button>
+
       <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'products' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Package size={18}/> Products</button>
       <button onClick={() => setActiveTab('reports')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'reports' ? 'bg-alert text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Flag size={18}/> Reports ({reports.length})</button>
       <button onClick={() => setActiveTab('verification')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'verification' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShieldAlert size={18}/> Pending ({pendingSellers.length})</button>
     </div>
+
     {loading ? (
       <div className="p-8 text-center text-gray-500">Loading platform data...</div>
     ) : (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         
+        {/* PROFESSIONAL OVERVIEW TAB */}
         {activeTab === 'overview' && (
           <div>
-            <h2 className="text-xl font-bold text-dark mb-6">Platform Overview</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center"><p className="text-3xl font-extrabold text-dark">{approvedSellers.length}</p><p className="text-sm font-semibold text-gray-500 uppercase mt-1">Active Stores</p></div>
-              <div className="bg-yellow-50 p-6 rounded-2xl border border-yellow-100 text-center"><p className="text-3xl font-extrabold text-yellow-600">{premiumSellers.length}</p><p className="text-sm font-semibold text-gray-500 uppercase mt-1">Premium Stores</p></div>
-              <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center"><p className="text-3xl font-extrabold text-blue-600">{orders.length}</p><p className="text-sm font-semibold text-gray-500 uppercase mt-1">Total Orders</p></div>
-              <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center"><p className="text-3xl font-extrabold text-brand">Rs. {actualEarnedRevenue}</p><p className="text-sm font-semibold text-gray-500 uppercase mt-1">Earned Revenue</p></div>
+            <h2 className="text-2xl font-bold text-dark mb-6">Platform Overview</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Users size={24} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-500 uppercase">Active Stores</p>
+                  <p className="text-3xl font-extrabold text-dark">{approvedSellers.length}</p>
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-yellow-50 text-yellow-600 flex items-center justify-center">
+                  <Star size={24} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-500 uppercase">Premium Stores</p>
+                  <p className="text-3xl font-extrabold text-dark">{premiumSellers.length}</p>
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-brand/10 text-brand flex items-center justify-center">
+                  <ShoppingBag size={24} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-500 uppercase">Total Orders</p>
+                  <p className="text-3xl font-extrabold text-dark">{orders.length}</p>
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-green-50 text-green-600 flex items-center justify-center">
+                  <Banknote size={24} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-500 uppercase">Earned Revenue</p>
+                  <p className="text-3xl font-extrabold text-dark">Rs. {actualEarnedRevenue}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
+              <h3 className="font-bold text-dark mb-4">Quick Actions</h3>
+              <div className="flex flex-wrap gap-3">
+                <button onClick={() => setActiveTab('verification')} className="bg-white border border-gray-200 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm hover:border-brand hover:text-brand transition-colors">
+                  Verify Pending Sellers ({pendingSellers.length})
+                </button>
+                <button onClick={() => setActiveTab('returns')} className="bg-white border border-gray-200 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm hover:border-orange-500 hover:text-orange-500 transition-colors">
+                  Handle Returns ({orders.filter(o => o.status === 'returned').length})
+                </button>
+                <button onClick={() => setActiveTab('reports')} className="bg-white border border-gray-200 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm hover:border-alert hover:text-alert transition-colors">
+                  Review Reports ({reports.filter(r => r.status !== 'resolved').length})
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -585,7 +642,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* ADS MANAGER WITH POSITION DROPDOWN */}
         {activeTab === 'ads' && (
           <div>
             <h2 className="text-xl font-bold text-dark mb-6">Manage Advertisements</h2>
@@ -767,8 +823,61 @@ export default function Admin() {
                   <div className="flex items-center gap-4">
                     <p className="font-bold text-brand">Rs. {order.total}</p>
                     <select value={order.status} onChange={(e) => updateOrderStatus(order.id, e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-semibold focus:outline-none focus:border-brand">
-                      <option value="new">New</option><option value="accepted">Accepted</option><option value="dispatched">Dispatched</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option><option value="rejected">Rejected</option>
+                      <option value="new">New</option>
+                      <option value="accepted">Accepted</option>
+                      <option value="dispatched">Dispatched</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="returned">Returned</option> {/* <--- ADDED HERE */}
+                      <option value="cancelled">Cancelled</option>
+                      <option value="rejected">Rejected</option>
                     </select>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* NEW RETURNS TAB CONTENT */}
+        {activeTab === 'returns' && (
+          <div>
+            <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2">
+              <RotateCcw className="text-orange-500" /> Returned Orders
+            </h2>
+            <p className="text-sm text-gray-500 mb-6">Manage items returned by buyers. Refunds should be processed outside the platform.</p>
+            
+            <div className="space-y-4">
+              {orders.filter(o => o.status === 'returned').length === 0 ? (
+                <div className="bg-gray-50 p-8 text-center rounded-xl border border-gray-200 text-gray-500">
+                  No returned orders found.
+                </div>
+              ) : orders.filter(o => o.status === 'returned').map(order => (
+                <div key={order.id} className="bg-orange-50 border border-orange-200 p-4 rounded-xl flex flex-col md:flex-row justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-bold text-dark">Order #{order.trackingToken.slice(0,6).toUpperCase()}</h3>
+                      <span className="text-xs font-bold px-2 py-1 rounded bg-orange-200 text-orange-800 uppercase">RETURNED</span>
+                    </div>
+                    <p className="text-sm text-gray-700"><span className="font-semibold">Store:</span> {order.storeName}</p>
+                    <p className="text-sm text-gray-700"><span className="font-semibold">Buyer:</span> {order.buyerName} ({order.buyerPhone})</p>
+                    <p className="text-sm text-gray-700 mt-1"><span className="font-semibold">Total Value:</span> Rs. {order.total}</p>
+                    {order.trackingNumber && (
+                      <p className="text-xs text-gray-500 mt-2">Original Tracking: {order.trackingNumber} ({order.courierName})</p>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={async () => {
+                        if(window.confirm("Mark this return as resolved/restocked?")) {
+                          await updateDoc(doc(db, 'orders', order.id), { status: 'return_resolved' });
+                          fetchData();
+                        }
+                      }} 
+                      className="px-4 py-2 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 shadow-sm flex items-center gap-2"
+                    >
+                      <CheckCircle size={16}/> Mark Resolved
+                    </button>
                   </div>
                 </div>
               ))}
