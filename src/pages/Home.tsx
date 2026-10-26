@@ -14,8 +14,8 @@ import SellerCTA from '../components/SellerCTA';
 import RecentlyViewed from '../components/RecentlyViewed';
 import NewsletterSignup from '../components/NewsletterSignup';
 import FAQ from '../components/FAQ';
-// Added Category Icons
-import { Menu, ChevronRight, Shirt, Utensils, Home, Sparkles, ShoppingBag, Gem, Heart, Baby, Footprints } from 'lucide-react';
+// Renamed Home to HomeIcon to prevent conflict with the component name
+import { Menu, ChevronRight, Shirt, Utensils, Home as HomeIcon, Sparkles, ShoppingBag, Gem, Heart, Baby, Footprints } from 'lucide-react';
 
 type CategoryNode = {
   id: string;
@@ -29,13 +29,13 @@ const getCategoryIcon = (name: string) => {
   const n = name.toLowerCase();
   if (n.includes('fashion') || n.includes('cloth') || n.includes('wear') || n.includes('suit')) return <Shirt size={16} />;
   if (n.includes('food') || n.includes('sweet') || n.includes('cake') || n.includes('bak')) return <Utensils size={16} />;
-  if (n.includes('home') || n.includes('decor') || n.includes('furniture')) return <Home size={16} />;
+  if (n.includes('home') || n.includes('decor') || n.includes('furniture')) return <HomeIcon size={16} />;
   if (n.includes('jewel') || n.includes('ring') || n.includes('necklace')) return <Gem size={16} />;
   if (n.includes('beauty') || n.includes('care') || n.includes('skin')) return <Sparkles size={16} />;
   if (n.includes('kid') || n.includes('baby')) return <Baby size={16} />;
   if (n.includes('shoe') || n.includes('footwear')) return <Footprints size={16} />;
   if (n.includes('art') || n.includes('craft')) return <Heart size={16} />;
-  return <ShoppingBag size={16} />; // Default icon
+  return <ShoppingBag size={16} />;
 };
 
 const buildCategoryTree = (categoryList: CategoryNode[]): any[] => {
@@ -85,8 +85,9 @@ export default function Home() {
   const fetchData = async () => {
     try {
       const catSnap = await getDocs(collection(db, 'categories'));
-      const categoryDocs = catSnap.docs.map((d) => ({
+      const categoryDocs = catSnap.docs.map((d: any) => ({
         id: d.id,
+        name: d.data().name || '',
         ...d.data(),
         parentId: d.data().parentId ?? null,
       }));
@@ -169,8 +170,7 @@ export default function Home() {
         </div>
 
         <div className="flex flex-col md:flex-row gap-4 mb-6">
-          
-          {/* 1. DESKTOP SIDEBAR (Main Categories Only with Icons) */}
+          {/* 1. DESKTOP SIDEBAR */}
           <div className="hidden md:block w-64 bg-white rounded-xl shadow-sm border border-gray-100 p-4 h-max shrink-0">
             <h3 className="font-bold text-dark mb-4 px-2">All Categories</h3>
             <ul className="space-y-2">
@@ -183,7 +183,7 @@ export default function Home() {
                 </Link>
               </li>
 
-              {/* ONLY RENDER ROOT CATEGORIES (Where parentId is null) */}
+              {/* ONLY RENDER MAIN CATEGORIES */}
               {categoryTree.filter(c => !c.parentId).map((main: any) => (
                 <li key={main.id}>
                   <Link
@@ -256,7 +256,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 2. MOBILE CATEGORY PILLS (Main Categories Only with Icons) */}
+        {/* 2. MOBILE CATEGORY PILLS */}
         <div className="md:hidden">
           <TrustBadges />
           <section className="px-4 mb-6">
@@ -349,4 +349,4 @@ export default function Home() {
       </div>
     </div>
   );
-        }
+}
