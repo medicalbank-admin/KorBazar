@@ -171,12 +171,12 @@ export default function Home() {
       <div className="max-w-7xl mx-auto px-0 md:px-4 pt-0 md:pt-6">
         
         {/* MAIN LAYOUT: Sidebar (Desktop) + Ads (Both) */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="flex flex-col md:flex-row gap-4 mb-4">
           
           {/* 1. DESKTOP SIDEBAR */}
           <div className="hidden md:block w-64 bg-white rounded-xl shadow-sm border border-gray-100 p-4 h-max shrink-0">
             <h3 className="font-bold text-dark mb-4 px-2">All Categories</h3>
-            <ul className="space-y-2">
+            <ul className="space-y-1">
               <li>
                 <Link to="/explore" className="flex items-center gap-3 px-3 py-2 text-brand bg-brand/5 rounded-lg font-bold text-sm transition-colors">
                   <Menu size={16} /> All Categories
@@ -203,36 +203,34 @@ export default function Home() {
             <HeroCarousel />
           </div>
         </div>
-                {/* 3. MOBILE CATEGORIES & TRUST BADGES */}
-        <div className="md:hidden">
-          <section className="px-4 mb-6">
-            <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide">
-              {categoryTree.filter(c => !c.parentId).map((main: any) => (
-                <Link
-                  to={`/explore?cat=${encodeURIComponent(main.name)}`}
-                  key={main.id}
-                  className="whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 text-sm font-medium text-gray-700 shadow-sm"
-                >
-                  <span className="text-gray-400">{getCategoryIcon(main.name)}</span>
-                  {main.name}
-                </Link>
-              ))}
-            </div>
-          </section>
+
+        {/* 3. MOBILE CATEGORIES */}
+        <div className="md:hidden px-4 mb-4">
+          <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide">
+            {categoryTree.filter(c => !c.parentId).map((main: any) => (
+              <Link
+                to={`/explore?cat=${encodeURIComponent(main.name)}`}
+                key={main.id}
+                className="whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 text-sm font-medium text-gray-700 shadow-sm"
+              >
+                <span className="text-gray-400">{getCategoryIcon(main.name)}</span>
+                {main.name}
+              </Link>
+            ))}
+          </div>
         </div>
 
+        {/* 4. TINY TRUST BADGES (Visible on both desktop and mobile) */}
+        <TrustBadges />
+
+        {/* 5. COMPACT COMPONENTS */}
         <div className="px-4 md:px-0">
           <TrendingProducts />
           <DiscountDeals />
           <ShopByCategory />
         </div>
 
-        {/* 4. DESKTOP TRUST BADGES (Moved here to show below ads) */}
-        <div className="hidden md:block mt-6">
-          <TrustBadges />
-        </div>
-
-        {/* 5. PRODUCTS LIST */}
+        {/* 6. PRODUCTS LIST */}
         <div className="px-4 md:px-0 space-y-6 md:space-y-8 mt-6">
           {premiumProducts.length > 0 && (
             <section className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row p-4">
@@ -290,6 +288,7 @@ export default function Home() {
           </section>
         </div>
 
+        {/* 7. BOTTOM SECTIONS */}
         <div className="px-4 md:px-0">
           <NewArrivals />
           <FeaturedStores />
@@ -301,4 +300,4 @@ export default function Home() {
       </div>
     </div>
   );
-                  }
+}
