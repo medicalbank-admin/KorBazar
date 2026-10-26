@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search } from 'lucide-react';
+import { Search, ChevronRight, Shirt, Utensils, Home, Sparkles, ShoppingBag, Gem, Heart, Baby, Footprints, Menu } from 'lucide-react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import ProductCard from '../components/ProductCard';
@@ -10,6 +10,20 @@ type CategoryNode = {
   name: string;
   parentId?: string | null;
   children?: CategoryNode[];
+};
+
+// --- ICON MAPPER ---
+const getCategoryIcon = (name: string) => {
+  const n = name.toLowerCase();
+  if (n.includes('fashion') || n.includes('cloth') || n.includes('wear') || n.includes('suit')) return <Shirt size={16} />;
+  if (n.includes('food') || n.includes('sweet') || n.includes('cake') || n.includes('bak')) return <Utensils size={16} />;
+  if (n.includes('home') || n.includes('decor') || n.includes('furniture')) return <Home size={16} />;
+  if (n.includes('jewel') || n.includes('ring') || n.includes('necklace')) return <Gem size={16} />;
+  if (n.includes('beauty') || n.includes('care') || n.includes('skin')) return <Sparkles size={16} />;
+  if (n.includes('kid') || n.includes('baby')) return <Baby size={16} />;
+  if (n.includes('shoe') || n.includes('footwear')) return <Footprints size={16} />;
+  if (n.includes('art') || n.includes('craft')) return <Heart size={16} />;
+  return <ShoppingBag size={16} />;
 };
 
 const buildCategoryTree = (categoryList: CategoryNode[]): any[] => {
@@ -55,6 +69,9 @@ export default function Explore() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCat);
   const [loading, setLoading] = useState(true);
+  
+  // State for the accordion (which main category is expanded)
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
   const categoryTree = useMemo(() => buildCategoryTree(categories as CategoryNode[]), [categories]);
 
@@ -83,6 +100,11 @@ export default function Explore() {
         const currentCat = searchParams.get('cat');
         if (currentCat) {
           setSelectedCategory(currentCat);
+          // Auto-expand the parent if a subcategory is selected via URL
+          const catObj = categoryDocs.find(c => c.name === currentCat);
+          if (catObj && catObj.parentId) {
+            setExpandedCategory(catObj.parentId);
+          }
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -168,55 +190,77 @@ export default function Explore() {
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">
+        
+        {/* SIDEBAR WITH ACCORDION */}
         <aside className="w-full md:w-64 flex-shrink-0">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="font-bold text-lg mb-4 text-dark">Categories</h3>
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+            <h3 className="font-bold text-lg mb-4 px-2 text-dark">Categories</h3>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
               <button
                 type="button"
                 onClick={() => handleCategorySelect(null)}
-                className={`w-full text-left text-sm px-3 py-2 rounded-lg ${
-                  selectedCategory === null ? 'bg-brand/10 text-brand font-bold' : 'text-gray-700'
+                className={`w-full flex items-center gap-3 text-left text-sm px-3 py-2 rounded-lg transition-colors ${
+                  selectedCategory === null ? 'bg-brand/10 text-brand font-bold' : 'text-gray-700 hover:bg-gray-50'
                 }`}
               >
+                <Menu size={16} className={selectedCategory === null ? 'text-brand' : 'text-gray-400'} /> 
                 All Categories
               </button>
 
-              {categoryTree.map((main: any) => (
-                <div key={main.id} className="space-y-1">
-                  <button
-                    type="button"
-                    onClick={() => handleCategorySelect(main.name)}
-                    className={`w-full text-left text-sm px-3 py-2 rounded-lg ${
-                      selectedCategory === main.name
-                        ? 'bg-brand/10 text-brand font-bold'
-                        : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {main.name}
-                  </button>
+              {categoryTree.map((main: any) => {
+                const isExpanded = expandedCategory === main.id;
+                const hasChildren = main.children && main.children.length > 0;
+                const isSelected = selectedCategory === main.name;
 
-                  {main.children && main.children.length > 0 && (
-                    <div className="ml-4 space-y-1 border-l border-gray-200 pl-3">
-                      {main.children.map((sub: any) => (
-                        <button
-                          key={sub.id}
-                          type="button"
-                          onClick={() => handleCategorySelect(sub.name)}
-                          className={`block w-full text-left text-xs px-2 py-1.5 rounded-md ${
-                            selectedCategory === sub.name
-                              ? 'bg-brand/10 text-brand font-bold'
-                              : 'text-gray-600 hover:bg-gray-50'
-                          }`}
-                        >
-                          {sub.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+                return (
+                  <div key={main.id} className="flex flex-col">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (hasChildren) {
+                          setExpandedCategory(isExpanded ? null : main.id);
+                        } else {
+                          handleCategorySelect(main.name);
+                        }
+                      }}
+                      className={`w-full flex items-center justify-between text-sm px-3 py-2 rounded-lg transition-colors ${
+                        isSelected ? 'bg-brand/10 text-brand font-bold' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 truncate">
+                        <span className={isSelected ? 'text-brand' : 'text-gray-400'}>
+                          {getCategoryIcon(main.name)}
+                        </span>
+                        <span className="truncate">{main.name}</span>
+                      </div>
+                      {hasChildren && (
+                        <ChevronRight size={16} className={`transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+                      )}
+                    </button>
+
+                    {/* Sub-categories Accordion */}
+                    {isExpanded && hasChildren && (
+                      <div className="ml-5 mt-1 space-y-1 border-l-2 border-gray-100 pl-3">
+                        {main.children.map((sub: any) => (
+                          <button
+                            key={sub.id}
+                            type="button"
+                            onClick={() => handleCategorySelect(sub.name)}
+                            className={`block w-full text-left text-xs px-3 py-2 rounded-md transition-colors ${
+                              selectedCategory === sub.name
+                                ? 'bg-brand/10 text-brand font-bold'
+                                : 'text-gray-500 hover:bg-gray-50 hover:text-brand'
+                            }`}
+                          >
+                            {sub.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </aside>
@@ -243,4 +287,4 @@ export default function Explore() {
       </div>
     </div>
   );
-      }
+  }
