@@ -14,7 +14,13 @@ import SellerCTA from '../components/SellerCTA';
 import RecentlyViewed from '../components/RecentlyViewed';
 import NewsletterSignup from '../components/NewsletterSignup';
 import FAQ from '../components/FAQ';
-import { Menu, ChevronRight, Shirt, Utensils, Home as HomeIcon, Sparkles, ShoppingBag, Gem, Heart, Baby, Footprints } from 'lucide-react';
+import { 
+  Menu, ChevronRight, Shirt, Utensils, Home as HomeIcon, Sparkles, 
+  ShoppingBag, Gem, Heart, Baby, Footprints, Smartphone, Laptop, 
+  Coffee, BookOpen, Palette, Dog, Dumbbell, Car, Briefcase, 
+  Watch, Glasses, Flower, Gift, Cake, Gamepad2, Music, Camera, 
+  Scissors, Wrench, PenTool, Droplet, Leaf 
+} from 'lucide-react';
 
 type CategoryNode = {
   id: string;
@@ -23,16 +29,67 @@ type CategoryNode = {
   children?: CategoryNode[];
 };
 
+// SMART DYNAMIC ICON MAPPER
 const getCategoryIcon = (name: string) => {
   const n = name.toLowerCase();
-  if (n.includes('fashion') || n.includes('cloth') || n.includes('wear') || n.includes('suit')) return <Shirt size={16} />;
-  if (n.includes('food') || n.includes('sweet') || n.includes('cake') || n.includes('bak')) return <Utensils size={16} />;
-  if (n.includes('home') || n.includes('decor') || n.includes('furniture')) return <HomeIcon size={16} />;
-  if (n.includes('jewel') || n.includes('ring') || n.includes('necklace')) return <Gem size={16} />;
-  if (n.includes('beauty') || n.includes('care') || n.includes('skin')) return <Sparkles size={16} />;
-  if (n.includes('kid') || n.includes('baby')) return <Baby size={16} />;
-  if (n.includes('shoe') || n.includes('footwear')) return <Footprints size={16} />;
-  if (n.includes('art') || n.includes('craft')) return <Heart size={16} />;
+
+  // 1. Fashion & Apparel
+  if (n.match(/cloth|wear|suit|shirt|pant|trouser|jean|dress|skirt|jacket|coat|fashion/)) return <Shirt size={16} />;
+  
+  // 2. Shoes & Footwear
+  if (n.match(/shoe|footwear|sandal|sneaker|boot|heel|chappal/)) return <Footprints size={16} />;
+  
+  // 3. Food, Sweets & Drinks
+  if (n.match(/food|sweet|cake|bak|snack|dessert|candy|chocolate|pizza|burger/)) return <Cake size={16} />;
+  if (n.match(/drink|beverage|tea|coffee|juice|water/)) return <Coffee size={16} />;
+  
+  // 4. Technology & Electronics
+  if (n.match(/phone|mobile|smart|tablet|gadget|tech/)) return <Smartphone size={16} />;
+  if (n.match(/computer|laptop|pc|mac|screen|monitor/)) return <Laptop size={16} />;
+  if (n.match(/camera|photo|video|lens/)) return <Camera size={16} />;
+  if (n.match(/audio|music|speaker|headphone|sound/)) return <Music size={16} />;
+  
+  // 5. Jewelry & Accessories
+  if (n.match(/jewel|ring|necklace|bracelet|earring|gold|silver|gem|diamond/)) return <Gem size={16} />;
+  if (n.match(/watch|clock|time/)) return <Watch size={16} />;
+  if (n.match(/glass|sunglass|eyewear/)) return <Glasses size={16} />;
+  
+  // 6. Home, Decor & Furniture
+  if (n.match(/home|decor|furniture|house|kitchen|bed|pillow|lamp|interior/)) return <HomeIcon size={16} />;
+  if (n.match(/flower|plant|garden|leaf|nature|botanical/)) return <Flower size={16} />;
+  
+  // 7. Beauty, Health & Care
+  if (n.match(/beauty|cosmetic|makeup|skin|hair|perfume|fragrance|care|spa/)) return <Sparkles size={16} />;
+  if (n.match(/health|medical|pill|doctor|pharmacy/)) return <Droplet size={16} />;
+  if (n.match(/soap|wash|clean/)) return <Leaf size={16} />;
+  
+  // 8. Kids, Toys & Games
+  if (n.match(/kid|baby|child|infant|toddler/)) return <Baby size={16} />;
+  if (n.match(/toy|play|game|puzzle|gamepad/)) return <Gamepad2 size={16} />;
+  
+  // 9. Arts, Crafts & Stationery
+  if (n.match(/art|craft|paint|draw|brush|handmade/)) return <Palette size={16} />;
+  if (n.match(/book|read|note|pen|paper|stationery|diary/)) return <BookOpen size={16} />;
+  if (n.match(/pen|write|pencil/)) return <PenTool size={16} />;
+  if (n.match(/scissor|cut|tailor/)) return <Scissors size={16} />;
+  
+  // 10. Gifts & Occasions
+  if (n.match(/gift|hamper|present|souvenir|wedding|birthday/)) return <Gift size={16} />;
+  
+  // 11. Pets & Animals
+  if (n.match(/pet|dog|cat|animal|bird/)) return <Dog size={16} />;
+  
+  // 12. Sports, Fitness & Outdoors
+  if (n.match(/sport|gym|fitness|exercise|workout|yoga/)) return <Dumbbell size={16} />;
+  
+  // 13. Automotive & Tools
+  if (n.match(/car|auto|vehicle|bike|motor/)) return <Car size={16} />;
+  if (n.match(/tool|hardware|fix|repair|hammer/)) return <Wrench size={16} />;
+  
+  // 14. Business & Services
+  if (n.match(/office|business|work|service|corporate/)) return <Briefcase size={16} />;
+
+  // Fallback if no keywords match
   return <ShoppingBag size={16} />;
 };
 
@@ -220,7 +277,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 4. TINY TRUST BADGES (Visible on both desktop and mobile) */}
+        {/* 4. TINY TRUST BADGES */}
         <TrustBadges />
 
         {/* 5. COMPACT COMPONENTS */}
