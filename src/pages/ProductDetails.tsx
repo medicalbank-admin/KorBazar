@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CheckCircle2, ChevronLeft, MessageCircle, MessageSquare, ShoppingCart, Truck, Star, Zap } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, MessageCircle, MessageSquare, ShoppingCart, Truck, Star, Zap, Sparkles } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useHistory } from '../context/HistoryContext';
@@ -24,6 +24,9 @@ export default function ProductDetails() {
   // State for selected variant
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
+  
+  // NEW: Customization State
+  const [customizationNote, setCustomizationNote] = useState<string>('');
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -93,6 +96,12 @@ export default function ProductDetails() {
       }
     }
 
+    // NEW: Validate Customization Note
+    if (product.isCustomizable && !customizationNote.trim()) {
+      alert("Please fill in the personalization details before adding to cart.");
+      return null;
+    }
+
     return {
       productId: product.id,
       title: product.title,
@@ -102,7 +111,8 @@ export default function ProductDetails() {
       storeName: product.storeName,
       deliveryFee: product.deliveryFee || 0,
       selectedSize,
-      selectedColor
+      selectedColor,
+      customizationNote: product.isCustomizable ? customizationNote.trim() : null // NEW: Attach to cart item
     } as any;
   };
 
@@ -123,7 +133,6 @@ export default function ProductDetails() {
     const item = validateVariantAndGetItem();
     if (!item) return;
 
-    // Add to cart and immediately go to checkout
     addToCart(item);
     navigate('/checkout');
   };
@@ -171,8 +180,7 @@ export default function ProductDetails() {
 
   const uniqueSizes = hasVariants ? [...new Set(product.variants.filter((v:any) => v.size).map((v:any) => v.size))] : [];
   const uniqueColors = hasVariants ? [...new Set(product.variants.filter((v:any) => v.color).map((v:any) => v.color))] : [];
-
-  return (
+    return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
       <Link to="/explore" className="inline-flex items-center text-gray-500 hover:text-brand mb-6 font-medium">
         <ChevronLeft size={20} /> Back to Explore
@@ -270,6 +278,24 @@ export default function ProductDetails() {
             </div>
           )}
 
+          {/* NEW: CUSTOMIZATION INPUT */}
+          {product.isCustomizable && (
+            <div className="mb-6 bg-blue-50 border border-blue-200 p-4 rounded-xl">
+              <label className="block text-sm font-bold text-blue-900 mb-2 flex items-center gap-2">
+                <Sparkles size={18} className="text-brand" /> Personalize this item
+              </label>
+              <p className="text-xs text-blue-700 mb-3">This seller offers customization. Please provide the details below (e.g., name, specific colors, or instructions).</p>
+              <textarea
+                required
+                value={customizationNote}
+                onChange={(e) => setCustomizationNote(e.target.value)}
+                placeholder="Enter your personalization details here..."
+                rows={3}
+                className="w-full px-4 py-3 rounded-xl border border-blue-200 focus:border-brand focus:outline-none bg-white text-sm"
+              />
+            </div>
+          )}
+
           {cartMsg && (
             <div className="bg-green-50 text-brand p-3 rounded-xl mb-4 text-center font-semibold">
               {cartMsg}
@@ -334,4 +360,4 @@ export default function ProductDetails() {
       </div>
     </div>
   );
-                    }
+      }
