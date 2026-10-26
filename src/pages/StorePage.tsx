@@ -1,182 +1,199 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import ProductCard from '../components/ProductCard';
-import { CheckCircle2, MapPin, Facebook, Instagram, Globe, ShieldCheck, ShieldAlert, Crown, Calendar, Truck, Store } from 'lucide-react';
-import ReportModal from '../components/ReportModal';
+import { Store, MapPin, Calendar, Truck, ShieldCheck, Facebook, Instagram, MessageCircle, Wallet, Banknote, Sparkles, AlertCircle } from 'lucide-react';
 
 export default function StorePage() {
   const { id } = useParams();
   const [store, setStore] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
-  const [stats, setStats] = useState({ delivered: 0, cancelled: 0, returned: 0 });
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  
+
   useEffect(() => {
     const fetchStoreData = async () => {
       if (!id) return;
-      
-      const storeSnap = await getDoc(doc(db, 'sellers', id));
-      if (storeSnap.exists()) setStore(storeSnap.data());
+      try {
+        // Fetch Store
+        const storeDoc = await getDoc(doc(db, 'sellers', id));
+        if (storeDoc.exists()) {
+          setStore({ id: storeDoc.id, ...storeDoc.data() });
+        }
 
-      const q = query(collection(db, 'products'), where('sellerId', '==', id));
-      const prodSnap = await getDocs(q);
-      setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        // Fetch Products
+        const prodQ = query(collection(db, 'products'), where('sellerId', '==', id));
+        const prodSnap = await getDocs(prodQ);
+        setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-      const orderQ = query(collection(db, 'orders'), where('sellerId', '==', id));
-      const orderSnap = await getDocs(orderQ);
-      let delivered = 0;
-      let cancelled = 0;
-      let returned = 0;
-      orderSnap.forEach(doc => {
-        const status = doc.data().status;
-        if (status === 'delivered') delivered++;
-        if (status === 'cancelled' || status === 'rejected') cancelled++;
-        if (status === 'returned') returned++;
-      });
-      setStats({ delivered, cancelled, returned });
+        // Fetch Orders (for stats)
+        const orderQ = query(collection(db, 'orders'), where('sellerId', '==', id));
+        const orderSnap = await getDocs(orderQ);
+        setOrders(orderSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-      setLoading(false);
+      } catch (error) {
+        console.error("Error fetching store data:", error);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchStoreData();
   }, [id]);
 
-  if (loading) return <div className="p-12 text-center text-dark font-bold">Loading store...</div>;
-  if (!store) return <div className="p-12 text-center text-dark font-bold">Store not found.</div>;
+  if (loading) return <div className="p-12 text-center text-brand font-bold">Loading store...</div>;
+  if (!store) return <div className="p-12 text-center text-alert font-bold">Store not found.</div>;
 
-  if (store.isFrozen) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4">
-        <div className="bg-red-50 border border-red-200 p-8 rounded-3xl text-center max-w-md">
-          <ShieldAlert size={64} className="text-alert mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-alert mb-2">Store Temporarily Unavailable</h2>
-          <p className="text-gray-700">This store has been temporarily frozen by the administration. Please check back later.</p>
-        </div>
-      </div>
-    );
-  }
+  // Calculate Stats
+  const deliveredCount = orders.filter(o => o.status === 'delivered').length;
+  const cancelledCount = orders.filter(o => o.status === 'cancelled' || o.status === 'rejected').length;
+  const returnedCount = orders.filter(o => o.status === 'returned').length;
 
-  // Format creation date safely
-  const memberSince = store.createdAt 
-    ? new Date(store.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-    : 'Recently';
+  // Check if store has any customizable products
+  const hasCustomizableProducts = products.some(p => p.isCustomizable);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 pb-24">
+    <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
       
-      {/* BEAUTIFUL STORE HEADER */}
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+      {/* STORE HEADER BANNER */}
+      <div className="relative mb-8 rounded-3xl overflow-hidden shadow-sm border border-gray-100 bg-white">
         
-        {/* Cover Banner (Gradient) */}
-        <div className="h-40 md:h-56 bg-gradient-to-r from-brand to-green-700 relative flex items-center justify-end px-6 md:px-12 overflow-hidden">
-          {/* Dot Pattern Overlay */}
-          <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+        {/* Green Gradient Banner with Watermark */}
+        <div className="h-40 md:h-56 bg-gradient-to-r from-brand to-green-700 relative overflow-hidden flex items-center justify-end px-4 md:px-12">
           
-          {/* Watermark Text */}
-          <div className="text-right z-10 hidden sm:block">
-            <div className="flex items-center justify-end gap-3 mb-1">
-              <Store className="text-white/30" size={40} />
-              <h1 className="text-3xl md:text-5xl font-extrabold text-white/40 tracking-tight drop-shadow-sm">
+          {/* Decorative Background Shapes */}
+          <div className="absolute -top-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+          <div className="absolute bottom-0 right-0 w-64 h-64 bg-black/10 rounded-full blur-3xl"></div>
+
+          {/* Watermark Text (Visible on all screens now) */}
+          <div className="text-right z-10 block opacity-40 md:opacity-100">
+            <div className="flex items-center justify-end gap-2 md:gap-3 mb-1">
+              <Store className="text-white hidden md:block" size={40} />
+              <h1 className="text-2xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-md">
                 Khpal Kor, <br className="hidden md:block"/>
-                <span className="text-white/30">Khpal Bazar.</span>
+                <span className="text-white/90">Khpal Bazar.</span>
               </h1>
             </div>
-            <p className="text-white/40 font-medium text-sm md:text-lg">
-              Discover authentic local crafts.
-            </p>
           </div>
         </div>
 
-        <div className="px-4 md:px-10 pb-8 relative">
-          <div className="flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-6 -mt-12 md:-mt-16 mb-6">
-            
-            {/* Avatar / Logo */}
-            <div className="w-28 h-28 md:w-32 md:h-32 bg-white rounded-2xl p-1.5 shadow-lg flex-shrink-0 z-10">
-              <div className="w-full h-full bg-green-50 rounded-xl flex items-center justify-center text-brand overflow-hidden border border-gray-100">
+        {/* Store Details Area */}
+        <div className="px-6 md:px-10 pb-6 relative flex flex-col md:block items-center text-center md:text-left">
+          
+          {/* Profile Avatar overlapping the banner (Centered on mobile) */}
+          <div className="absolute -top-12 md:-top-16 left-1/2 md:left-10 transform -translate-x-1/2 md:translate-x-0">
+            <div className="w-24 h-24 md:w-32 md:h-32 bg-white rounded-2xl p-1 shadow-lg">
+              <div className="w-full h-full bg-green-50 rounded-xl flex items-center justify-center overflow-hidden border border-gray-100">
                 {store.logoUrl ? (
                   <img src={store.logoUrl} alt={store.storeName} className="w-full h-full object-cover" />
                 ) : (
-                  <Store size={48} />
+                  <Store size={48} className="text-brand" />
                 )}
               </div>
-            </div>
-
-            {/* Store Name & Badges */}
-            <div className="flex-grow text-center md:text-left z-10 mb-2 md:mb-4">
-              <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-3 mb-2">
-                <h1 className="text-3xl md:text-4xl font-extrabold text-dark tracking-tight">{store.storeName}</h1>
-                
-                {store.plan === 'premium' ? (
-                  <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 border border-yellow-300 shadow-sm">
-                    <Crown size={14} className="fill-yellow-500 text-yellow-500" /> Premium Seller
-                  </span>
-                ) : store.status === 'approved' ? (
-                  <span className="bg-green-50 text-brand px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 border border-green-200 shadow-sm">
-                    <CheckCircle2 size={14} /> Verified
-                  </span>
-                ) : null}
-              </div>
-              
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-gray-500 font-medium">
-                <span className="flex items-center gap-1"><MapPin size={16}/> {store.area}, {store.city}</span>
-                <span className="flex items-center gap-1"><Calendar size={16}/> Member since {memberSince}</span>
-                <span className="flex items-center gap-1 text-brand"><Truck size={16}/> Nationwide Delivery</span>
-              </div>
-            </div>
-
-            {/* Action Button (Report Store) */}
-            <div className="z-10 md:self-center mt-2 md:mt-0">
-               <button 
-                 onClick={() => setIsReportModalOpen(true)} 
-                 className="text-alert hover:text-red-700 text-xs font-bold underline bg-white px-3 py-1.5 rounded-full shadow-sm border border-red-100 transition-colors"
-               >
-                 Report Store
-               </button>
             </div>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 border-t border-gray-100 pt-6">
-            
-            {/* Bio & Socials */}
-            <div className="flex-grow">
-              <p className="text-gray-600 leading-relaxed mb-4 max-w-3xl">
-                {store.bio || "Welcome to my store! Discover unique handmade products crafted with love."}
-              </p>
+          {/* Name and Action buttons */}
+          <div className="pt-16 md:pt-20 flex flex-col md:flex-row justify-between items-center md:items-end gap-4 w-full">
+            <div className="flex flex-col items-center md:items-start">
+              <div className="flex items-center gap-2 md:gap-3 mb-1">
+                <h2 className="text-2xl md:text-3xl font-extrabold text-dark">{store.storeName}</h2>
+                {store.plan === 'premium' && (
+                  <span className="bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-1 rounded-md border border-yellow-200">
+                    PREMIUM SELLER
+                  </span>
+                )}
+              </div>
               
-              <div className="flex flex-wrap gap-2 md:gap-3">
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 md:gap-4 text-xs md:text-sm text-gray-500 font-medium mt-2">
+                <span className="flex items-center gap-1"><MapPin size={16} /> {store.city || 'Pakistan'}, {store.area}</span>
+                <span className="flex items-center gap-1"><Calendar size={16} /> Member since {new Date(store.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+              </div>
+            </div>
+
+            {/* Report Store Button (Red) */}
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => alert("Report feature coming soon!")} 
+                className="text-alert font-bold text-sm hover:underline flex items-center gap-1 transition-colors bg-red-50 px-3 py-1.5 rounded-lg border border-red-100"
+              >
+                <AlertCircle size={16} /> Report Store
+              </button>
+            </div>
+          </div>
+
+          <hr className="my-6 border-gray-100" />
+
+          {/* Bio, Payment Methods, Stats, and Socials */}
+          <div className="flex flex-col md:flex-row justify-between gap-6 w-full text-center md:text-left">
+            
+            {/* Left Side: Bio, Badges, and Socials */}
+            <div className="flex-grow max-w-2xl">
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-4">
+                {store.bio || "This seller hasn't added a bio yet."}
+              </p>
+
+              {/* BADGES SECTION (Delivery, Customization, Payments) */}
+              <div className="flex flex-wrap justify-center md:justify-start gap-2 mb-6">
+                {/* Nationwide Delivery */}
+                <span className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-brand text-xs font-bold rounded-lg border border-green-100">
+                  <Truck size={14} /> Nationwide Delivery
+                </span>
+
+                {/* Customizable Items */}
+                {hasCustomizableProducts && (
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-lg border border-blue-100">
+                    <Sparkles size={14} /> Customization Available
+                  </span>
+                )}
+
+                {/* Payment Methods */}
+                {store.acceptsCod !== false && (
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-bold rounded-lg border border-gray-200">
+                    <Banknote size={14} /> Cash on Delivery
+                  </span>
+                )}
+                <span className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-bold rounded-lg border border-gray-200">
+                  <Wallet size={14} /> JazzCash / Easypaisa
+                </span>
+                <span className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-bold rounded-lg border border-gray-200">
+                  <Wallet size={14} /> Bank Transfer
+                </span>
+              </div>
+
+              {/* Social Links */}
+              <div className="flex items-center justify-center md:justify-start gap-3">
                 {store.socialLinks?.facebook && (
-                  <a href={store.socialLinks.facebook} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors text-xs font-semibold">
-                    <Facebook size={14}/> Facebook
+                  <a href={store.socialLinks.facebook} target="_blank" rel="noreferrer" className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
+                    <Facebook size={18} />
                   </a>
                 )}
                 {store.socialLinks?.instagram && (
-                  <a href={store.socialLinks.instagram} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-pink-50 text-pink-600 px-3 py-1.5 rounded-lg hover:bg-pink-100 transition-colors text-xs font-semibold">
-                    <Instagram size={14}/> Instagram
+                  <a href={store.socialLinks.instagram} target="_blank" rel="noreferrer" className="p-2 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors">
+                    <Instagram size={18} />
                   </a>
                 )}
-                {store.socialLinks?.tiktok && (
-                  <a href={store.socialLinks.tiktok} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-gray-100 text-dark px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors text-xs font-semibold">
-                    <Globe size={14}/> TikTok
+                {store.whatsappNumber && (
+                  <a href={`https://wa.me/92${store.whatsappNumber.replace(/^0/, '')}`} target="_blank" rel="noreferrer" className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors">
+                    <MessageCircle size={18} />
                   </a>
                 )}
               </div>
             </div>
 
-            {/* Compact Stats Cards */}
-            <div className="flex items-center gap-2 md:gap-3 shrink-0 mt-2 lg:mt-0">
-              <div className="bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-center min-w-[70px] md:min-w-[80px]">
-                <p className="text-xl md:text-2xl font-black text-dark">{stats.delivered}</p>
-                <p className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-wider">Delivered</p>
+            {/* Right Side: Small Stats Boxes */}
+            <div className="flex items-center justify-center md:justify-end gap-2 md:gap-3 shrink-0 mt-4 md:mt-0">
+              <div className="bg-gray-50 border border-gray-100 p-3 rounded-xl text-center min-w-[80px]">
+                <p className="text-xl font-extrabold text-dark">{deliveredCount}</p>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Delivered</p>
               </div>
-              <div className="bg-orange-50 border border-orange-100 rounded-xl p-2.5 text-center min-w-[70px] md:min-w-[80px]">
-                <p className="text-xl md:text-2xl font-black text-orange-600">{stats.returned}</p>
-                <p className="text-[9px] md:text-[10px] text-orange-500 font-bold uppercase tracking-wider">Returned</p>
+              <div className="bg-orange-50 border border-orange-100 p-3 rounded-xl text-center min-w-[80px]">
+                <p className="text-xl font-extrabold text-orange-600">{returnedCount}</p>
+                <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wider">Returned</p>
               </div>
-              <div className="bg-red-50 border border-red-100 rounded-xl p-2.5 text-center min-w-[70px] md:min-w-[80px]">
-                <p className="text-xl md:text-2xl font-black text-alert">{stats.cancelled}</p>
-                <p className="text-[9px] md:text-[10px] text-alert font-bold uppercase tracking-wider">Cancelled</p>
+              <div className="bg-red-50 border border-red-100 p-3 rounded-xl text-center min-w-[80px]">
+                <p className="text-xl font-extrabold text-alert">{cancelledCount}</p>
+                <p className="text-[10px] font-bold text-alert uppercase tracking-wider">Cancelled</p>
               </div>
             </div>
           </div>
@@ -184,32 +201,30 @@ export default function StorePage() {
       </div>
 
       {/* PRODUCTS SECTION */}
-      <div className="flex justify-between items-end mb-6">
-        <h2 className="text-2xl font-bold text-dark flex items-center gap-2">
-          <ShieldCheck className="text-brand" /> Products from {store.storeName}
-        </h2>
-        <span className="text-sm font-semibold text-gray-500">{products.length} items available</span>
-      </div>
-      
-      {products.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center">
-          <p className="text-gray-500 text-lg">This store hasn't added any products yet.</p>
+      <div className="mt-8">
+        <div className="flex justify-between items-center mb-6 px-2 md:px-0">
+          <h2 className="text-xl md:text-2xl font-bold text-dark flex items-center gap-2">
+            <ShieldCheck className="text-brand" /> Products from {store.storeName}
+          </h2>
+          <span className="text-xs md:text-sm font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-lg">
+            {products.length} items
+          </span>
         </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-          {products.map(product => (
-            <ProductCard key={product.id} product={product} isSellerPremium={store.plan === 'premium'} />
-          ))}
-        </div>
-      )}
 
-      <ReportModal 
-        isOpen={isReportModalOpen} 
-        onClose={() => setIsReportModalOpen(false)} 
-        targetId={id || ''} 
-        targetType="store" 
-        targetName={store.storeName} 
-      />
+        {products.length === 0 ? (
+          <div className="bg-white p-12 text-center rounded-3xl border border-gray-100 shadow-sm">
+            <Store size={48} className="mx-auto text-gray-300 mb-4" />
+            <p className="text-gray-500 font-medium">This store hasn't added any products yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            {products.map(product => (
+              <ProductCard key={product.id} product={product} isSellerPremium={store.plan === 'premium'} />
+            ))}
+          </div>
+        )}
+      </div>
+
     </div>
   );
-}
+            }
