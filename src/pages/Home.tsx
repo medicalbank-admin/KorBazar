@@ -15,8 +15,8 @@ import RecentlyViewed from '../components/RecentlyViewed';
 import NewsletterSignup from '../components/NewsletterSignup';
 import FAQ from '../components/FAQ';
 import { 
-  Menu, ChevronRight, Shirt, Utensils, Home as HomeIcon, Sparkles, 
-  ShoppingBag, Gem, Heart, Baby, Footprints, Smartphone, Laptop, 
+  Menu, ChevronRight, Shirt, Home as HomeIcon, Sparkles, 
+  ShoppingBag, Gem, Baby, Footprints, Smartphone, Laptop, 
   Coffee, BookOpen, Palette, Dog, Dumbbell, Car, Briefcase, 
   Watch, Glasses, Flower, Gift, Cake, Gamepad2, Music, Camera, 
   Scissors, Wrench, PenTool, Droplet, Leaf 
