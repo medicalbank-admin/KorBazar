@@ -71,6 +71,7 @@ export default function ProductDetails() {
 
   const whatsappMessage = `Assalam-o-Alaikum, I have a question about "${product.title}" on KorBazar.`;
   const cleanNumber = seller?.whatsappNumber?.replace(/^0/, '');
+  // This is now used in the UI below
   const whatsappLink = `https://wa.me/92${cleanNumber}?text=${encodeURIComponent(whatsappMessage)}`;
 
   const validateVariantAndGetItem = () => {
@@ -406,7 +407,7 @@ export default function ProductDetails() {
           <button className="bg-[#f85606] text-white px-5 py-1.5 rounded text-sm font-semibold hover:bg-[#d94a05] transition-colors">Visit Store</button>
         </div>
         
-        <div className="grid grid-cols-3 divide-x divide-gray-200 text-center">
+        <div className="grid grid-cols-3 divide-x divide-gray-200 text-center mb-4">
           <div>
             <p className="font-bold text-xl text-gray-800">95%</p>
             <p className="text-xs text-gray-400">Positive Ratings</p>
@@ -420,9 +421,14 @@ export default function ProductDetails() {
             <p className="text-xs text-gray-400">Chat Response Rate</p>
           </div>
         </div>
+
+        {/* WHATSAPP BUTTON (Fixes unused whatsappLink and MessageCircle) */}
+        <a href={whatsappLink} target="_blank" rel="noreferrer" className="w-full bg-white text-[#25D366] border-2 border-[#25D366] font-bold py-2 rounded flex items-center justify-center gap-2 hover:bg-[#25D366]/10 transition-colors text-sm">
+          <MessageCircle size={18} /> Ask Seller on WhatsApp
+        </a>
       </div>
 
-      {/* FIXED MOBILE BOTTOM BAR */}
+      {/* MOBILE STICKY BOTTOM BAR */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-stretch z-50 md:hidden pb-safe">
         <button onClick={() => navigate(`/store/${product.sellerId}`)} className="flex flex-col items-center justify-center w-[60px] text-gray-600 shrink-0">
           <Store size={20} />
@@ -434,9 +440,21 @@ export default function ProductDetails() {
         </button>
         
         <div className="flex flex-1">
-          <button onClick={handleBuyNow} disabled={isOutOfStock} className={`flex-1 font-semibold text-sm text-white flex items-center justify-center ${isOutOfStock ? 'bg-gray-300' : 'bg-[#42b0d5]'}`}>Buy Now</button>
+          <button onClick={handleBuyNow} disabled={isOutOfStock} className={`flex-1 font-semibold text-sm text-white flex items-center justify-center gap-1 ${isOutOfStock ? 'bg-gray-300' : 'bg-[#42b0d5]'}`}>
+            <Zap size={16}/> Buy Now
+          </button>
           <button onClick={handleAddToCart} disabled={isOutOfStock} className={`flex-1 font-semibold text-sm text-white flex items-center justify-center ${isOutOfStock ? 'bg-gray-300' : 'bg-[#f85606]'}`}>Add to Cart</button>
         </div>
+      </div>
+
+      {/* DESKTOP ACTION BUTTONS */}
+      <div className="hidden md:flex gap-4 w-full p-4 max-w-3xl mx-auto">
+        <button onClick={handleAddToCart} disabled={isOutOfStock} className={`flex-1 font-bold text-lg py-3 rounded flex items-center justify-center gap-2 ${isOutOfStock ? 'bg-gray-300 text-gray-500' : 'bg-[#f85606] text-white hover:bg-[#d94a05]'}`}>
+          <ShoppingCart size={20} /> Add to Cart
+        </button>
+        <button onClick={handleBuyNow} disabled={isOutOfStock} className={`flex-1 font-bold text-lg py-3 rounded flex items-center justify-center gap-2 ${isOutOfStock ? 'bg-gray-300 text-gray-500' : 'bg-[#42b0d5] text-white hover:bg-[#369bbd]'}`}>
+          <Zap size={20} /> Buy Now
+        </button>
       </div>
 
       {/* SPECIFICATIONS MODAL (Bottom Sheet) */}
