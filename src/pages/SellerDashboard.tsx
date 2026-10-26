@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where, getDocs, serverTimestamp, limit, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook,Instagram, Globe, ShieldAlert, Star, CreditCard, Box, CheckSquare, X, MessageSquare, Plus, Trash2, FileText } from 'lucide-react';
+import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook, Instagram, Globe, ShieldAlert, Star, CreditCard, Box, CheckSquare, X, MessageSquare, Plus, Trash2, FileText, RotateCcw, Sparkles } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { uploadToCloudinary } from '../utils/Cloudinary';
 import { generateAgreementPDF } from '../utils/generateAgreement';
@@ -25,7 +25,7 @@ export default function SellerDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'store' | 'subscription' | 'profile'>('orders');
-  const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'dispatched' | 'delivered' | 'cancelled'>('all');
+  const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'dispatched' | 'delivered' | 'returned' | 'cancelled'>('all');
 
   // Agreement Modal State
   const [showAgreement, setShowAgreement] = useState(false);
@@ -37,6 +37,7 @@ export default function SellerDashboard() {
   const [paymentAccounts, setPaymentAccounts] = useState('');
   const [socialLinks, setSocialLinks] = useState({ facebook: '', instagram: '', tiktok: '' });
   const [storeMsg, setStoreMsg] = useState('');
+  const [acceptsCod, setAcceptsCod] = useState(true);
 
   // Product Form States
   const [title, setTitle] = useState('');
@@ -46,6 +47,7 @@ export default function SellerDashboard() {
   const [productDescription, setProductDescription] = useState('');
   const [productDeliveryFee, setProductDeliveryFee] = useState('');
   const [category, setCategory] = useState('');
+  const [isCustomizable, setIsCustomizable] = useState(false); // <--- NEW STATE
   const [categoryTree, setCategoryTree] = useState<any[]>([]);
   const [productImages, setProductImages] = useState<FileList | null>(null);
   const [productMsg, setProductMsg] = useState('');
@@ -106,6 +108,7 @@ export default function SellerDashboard() {
         setStoreAddress(data.storeAddress || '');
         setPaymentAccounts(data.paymentAccounts || '');
         setSocialLinks(data.socialLinks || { facebook: '', instagram: '', tiktok: '' });
+        setAcceptsCod(data.acceptsCod !== false);
 
         if (!data.agreementSigned) {
           setShowAgreement(true);
@@ -133,22 +136,22 @@ export default function SellerDashboard() {
       setOrders(ordersData);
 
       const catSnap = await getDocs(collection(db, 'categories'));
-const categoryDocs = catSnap.docs.map((d) => ({
-  id: d.id,
-  ...d.data(),
-  parentId: d.data().parentId ?? null,
-}));
+      const categoryDocs = catSnap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        parentId: d.data().parentId ?? null,
+      }));
 
-const tree = buildCategoryTree(categoryDocs as CategoryNode[]);
-setCategoryTree(tree);
+      const tree = buildCategoryTree(categoryDocs as CategoryNode[]);
+      setCategoryTree(tree);
 
-const finalCats = categoryDocs.length > 0
-  ? categoryDocs.map((cat: any) => cat.name)
-  : defaultCategories;
+      const finalCats = categoryDocs.length > 0
+        ? categoryDocs.map((cat: any) => cat.name)
+        : defaultCategories;
 
-if (finalCats.length > 0 && !category) {
-  setCategory(finalCats[0]);
-}
+      if (finalCats.length > 0 && !category) {
+        setCategory(finalCats[0]);
+      }
       
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -161,89 +164,91 @@ if (finalCats.length > 0 && !category) {
     fetchData();
   }, [currentUser]);
 
-const handleUpdateStore = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!currentUser) return;
-  setStoreMsg('Saving...');
-  await updateDoc(doc(db, 'sellers', currentUser.uid), {
-    bio: storeBio,
-    storeAddress: storeAddress,
-    paymentAccounts: paymentAccounts,
-    socialLinks: socialLinks
-  });
-  setStoreMsg('Store updated successfully!');
-  fetchData();
-  setTimeout(() => setStoreMsg(''), 3000);
-};
-
-const handleSignAgreement = async () => {
-  if (!hasAgreed) return alert("Please check the box to agree to the terms.");
-  if (!currentUser) return;
-  
-  try {
-    await updateDoc(doc(db, 'sellers', currentUser.uid), { 
-      agreementSigned: true,
-      agreementSignedAt: new Date().toISOString()
+  const handleUpdateStore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+    setStoreMsg('Saving...');
+    await updateDoc(doc(db, 'sellers', currentUser.uid), {
+      bio: storeBio,
+      storeAddress: storeAddress,
+      paymentAccounts: paymentAccounts,
+      socialLinks: socialLinks,
+      acceptsCod: acceptsCod
     });
-    setShowAgreement(false);
-  } catch (error) {
-    alert("Failed to save agreement.");
-  }
-};
+    setStoreMsg('Store updated successfully!');
+    fetchData();
+    setTimeout(() => setStoreMsg(''), 3000);
+  };
 
-// Replace handleAddProduct around lines 146–187
-const handleAddProduct = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!currentUser || !store) return;
-  if (!productImages || productImages.length === 0) return setProductMsg('Please select at least 1 image.');
-
-  setUploading(true);
-  try {
-    const imageUrls: string[] = [];
-    for (let i = 0; i < productImages.length; i++) {
-      const url = await uploadToCloudinary(productImages[i]);
-      imageUrls.push(url);
+  const handleSignAgreement = async () => {
+    if (!hasAgreed) return alert("Please check the box to agree to the terms.");
+    if (!currentUser) return;
+    
+    try {
+      await updateDoc(doc(db, 'sellers', currentUser.uid), { 
+        agreementSigned: true,
+        agreementSignedAt: new Date().toISOString()
+      });
+      setShowAgreement(false);
+    } catch (error) {
+      alert("Failed to save agreement.");
     }
+  };
 
-    const newProduct = {
-      sellerId: currentUser.uid,
-      storeName: store.storeName,
-      title,
-      description: productDescription,
-      price: Number(price),
-      stock: Number(stock),
-      discountPercent: Number(discountPercent) || 0,
-      deliveryFee: Number(productDeliveryFee) || 0,
-      category,
-      isPremium: false,
-      images: imageUrls,
-      image: imageUrls[0],
-      variants: variants,
-      createdAt: new Date().toISOString()
-    };
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser || !store) return;
+    if (!productImages || productImages.length === 0) return setProductMsg('Please select at least 1 image.');
 
-    const docRef = await addDoc(collection(db, 'products'), newProduct);
-    setProducts([{ id: docRef.id, ...newProduct }, ...products]);
-    setProductMsg('Product added successfully!');
-    setTitle('');
-    setPrice('');
-    setStock('');
-    setDiscountPercent('');
-    setProductDescription('');
-    setProductDeliveryFee('');
-    setProductImages(null);
-    setVariants([]);
-    (document.getElementById('product-images') as HTMLInputElement).value = '';
-    setTimeout(() => setProductMsg(''), 3000);
-  } catch (error) {
-    setProductMsg('Error adding product.');
-  } finally {
-    setUploading(false);
-  }
-};
+    setUploading(true);
+    try {
+      const imageUrls: string[] = [];
+      for (let i = 0; i < productImages.length; i++) {
+        const url = await uploadToCloudinary(productImages[i]);
+        imageUrls.push(url);
+      }
 
+      const newProduct = {
+        sellerId: currentUser.uid,
+        storeName: store.storeName,
+        title,
+        description: productDescription,
+        price: Number(price),
+        stock: Number(stock),
+        discountPercent: Number(discountPercent) || 0,
+        deliveryFee: Number(productDeliveryFee) || 0,
+        category,
+        isPremium: false,
+        isCustomizable: isCustomizable, // <--- SAVED TO FIRESTORE
+        images: imageUrls,
+        image: imageUrls[0],
+        variants: variants,
+        createdAt: new Date().toISOString()
+      };
 
-const openEditModal = (productId: string, type: 'stock' | 'discount', currentValue: number | undefined) => {
+      const docRef = await addDoc(collection(db, 'products'), newProduct);
+      setProducts([{ id: docRef.id, ...newProduct }, ...products]);
+      setProductMsg('Product added successfully!');
+      
+      // Reset Form
+      setTitle('');
+      setPrice('');
+      setStock('');
+      setDiscountPercent('');
+      setProductDescription('');
+      setProductDeliveryFee('');
+      setIsCustomizable(false); // <--- RESET TOGGLE
+      setProductImages(null);
+      setVariants([]);
+      (document.getElementById('product-images') as HTMLInputElement).value = '';
+      setTimeout(() => setProductMsg(''), 3000);
+    } catch (error) {
+      setProductMsg('Error adding product.');
+    } finally {
+      setUploading(false);
+    }
+  };
+  const openEditModal = (productId: string, type: 'stock' | 'discount', currentValue: number | undefined) => {
   setEditModal({ isOpen: true, productId, type, value: (currentValue || 0).toString() });
 };
 
@@ -261,7 +266,8 @@ const handleEditSubmit = async () => {
   setEditModal({ isOpen: false, productId: '', type: 'stock', value: '' });
   fetchData();
 };
-  const updateOrderStatus = async (orderId: string, newStatus: string, extraData = {}) => {
+
+const updateOrderStatus = async (orderId: string, newStatus: string, extraData = {}) => {
   await updateDoc(doc(db, 'orders', orderId), { status: newStatus, ...extraData });
 
   if (newStatus === 'delivered') {
@@ -395,7 +401,8 @@ const handleWhatsAppNotify = (order: any) => {
     ).catch(err => console.error("Email failed:", err));
   }
 };
-  if (loading) return <div className="p-8 text-center text-dark">Loading dashboard...</div>;
+
+if (loading) return <div className="p-8 text-center text-dark">Loading dashboard...</div>;
 if (!store) return <div className="p-8 text-center text-alert">You are not registered as a seller.</div>;
 
 if (store.isFrozen) {
@@ -421,6 +428,7 @@ const filteredOrders = orders.filter(order => {
   if (orderFilter === 'pending') return order.status === 'new' || (order.status === 'accepted' && !order.paymentVerified && order.paymentMethod !== 'COD');
   if (orderFilter === 'dispatched') return order.status === 'dispatched';
   if (orderFilter === 'delivered') return order.status === 'delivered';
+  if (orderFilter === 'returned') return order.status === 'returned';
   if (orderFilter === 'cancelled') return order.status === 'cancelled' || order.status === 'rejected';
   return true;
 });
@@ -444,7 +452,7 @@ const filteredOrders = orders.filter(order => {
             <ul className="list-disc pl-5 space-y-1">
               <li>Your store details (CNIC & Store Name)</li>
               <li>Platform fees & commissions</li>
-              <li>Guide on using the dashboard</li>
+              <li>Returns & Refunds Policy</li>
               <li>Terms of Service & Privacy Policy</li>
             </ul>
           </div>
@@ -617,11 +625,10 @@ const filteredOrders = orders.filter(order => {
       </div>
     ) : (
       <div>
-        {/* THE REST OF THE TABS HERE (Orders, Products, Store, Subscription, Profile) */}
-                {activeTab === 'orders' && (
+        {activeTab === 'orders' && (
           <div>
             <div className="flex overflow-x-auto gap-2 mb-6 scrollbar-hide">
-              {['all', 'pending', 'dispatched', 'delivered', 'cancelled'].map(tab => (
+              {['all', 'pending', 'dispatched', 'delivered', 'returned', 'cancelled'].map(tab => (
                 <button key={tab} onClick={() => setOrderFilter(tab as any)} className={`px-4 py-2 rounded-lg font-semibold text-sm whitespace-nowrap capitalize transition-colors ${orderFilter === tab ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                   {tab === 'all' ? 'All Orders' : tab}
                 </button>
@@ -636,7 +643,7 @@ const filteredOrders = orders.filter(order => {
                   <div>
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="font-bold text-lg text-dark">Order #{order.trackingToken.slice(0,6).toUpperCase()}</h3>
-                      <span className={`text-xs font-bold px-2 py-1 rounded-full uppercase ${order.status === 'new' ? 'bg-yellow-100 text-yellow-700' : order.status === 'delivered' ? 'bg-green-100 text-brand' : order.status === 'cancelled' || order.status === 'rejected' ? 'bg-red-100 text-alert' : 'bg-blue-100 text-blue-700'}`}>{order.status}</span>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-full uppercase ${order.status === 'new' ? 'bg-yellow-100 text-yellow-700' : order.status === 'delivered' ? 'bg-green-100 text-brand' : order.status === 'returned' ? 'bg-orange-100 text-orange-700' : order.status === 'cancelled' || order.status === 'rejected' ? 'bg-red-100 text-alert' : 'bg-blue-100 text-blue-700'}`}>{order.status}</span>
                       {order.paymentVerified && <span className="text-xs font-bold text-brand bg-green-50 px-2 py-1 rounded-full">PAID</span>}
                     </div>
                     <p className="text-sm text-gray-600"><span className="font-semibold text-dark">Buyer:</span> {order.buyerName} ({order.buyerPhone})</p>
@@ -648,6 +655,7 @@ const filteredOrders = orders.filter(order => {
                           {(i.selectedSize || i.selectedColor) && (
                             <span className="text-xs text-gray-500 ml-1">({i.selectedSize} {i.selectedColor})</span>
                           )}
+                          {i.customizationNote && <div className="text-xs text-brand mt-0.5">Customization: {i.customizationNote}</div>}
                         </div>
                       ))}
                       <div className="mt-1 pt-1 border-t border-gray-200 text-gray-500 text-xs flex justify-between">
@@ -706,258 +714,293 @@ const filteredOrders = orders.filter(order => {
                     {order.status === 'dispatched' && (
                       <button onClick={() => updateOrderStatus(order.id, 'delivered')} className="w-full bg-brand text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-brand/90"><CheckCircle size={18}/> Mark Delivered</button>
                     )}
+                    {order.status === 'delivered' && (
+                      <button onClick={() => updateOrderStatus(order.id, 'returned')} className="w-full bg-orange-100 text-orange-700 font-bold py-2.5 rounded-xl border border-orange-200 hover:bg-orange-200 flex items-center justify-center gap-2">
+                        <RotateCcw size={18}/> Mark Returned
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           </div>
         )}
+                  {activeTab === 'products' && (
+            <div className="grid lg:grid-cols-2 gap-8">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><PlusCircle size={20}/> Add New Product</h2>
+                {productMsg && <div className={`p-3 rounded-lg text-sm mb-4 ${productMsg.includes('Error') ? 'bg-red-50 text-alert' : 'bg-green-50 text-brand'}`}>{productMsg}</div>}
+                
+                <form onSubmit={handleAddProduct} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Product Title</label>
+                    <input type="text" required value={title} onChange={e => setTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Product Description</label>
+                    <textarea required value={productDescription} onChange={e => setProductDescription(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="Describe the item..." />
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Price (Rs.)</label>
+                      <input type="number" required value={price} onChange={e => setPrice(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Stock Qty</label>
+                      <input type="number" required value={stock} onChange={e => setStock(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. 5" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Discount (%)</label>
+                      <input type="number" min="0" max="100" value={discountPercent} onChange={e => setDiscountPercent(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. 10" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Fee (Rs.)</label>
+                      <input type="number" required value={productDeliveryFee} onChange={e => setProductDeliveryFee(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                      <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50"
+                      >
+                        {categoryTree.length === 0 ? (
+                          <option value="">No categories available</option>
+                        ) : (
+                          categoryTree.map((main: any) => {
+                            if (main.children && main.children.length > 0) {
+                              return (
+                                <optgroup key={main.id} label={main.name}>
+                                  {main.children.map((sub: any) => (
+                                    <option key={sub.id} value={sub.name}>
+                                      {sub.name}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              );
+                            }
+                            return (
+                              <option key={main.id} value={main.name}>
+                                {main.name}
+                              </option>
+                            );
+                          })
+                        )}
+                      </select>
+                    </div>
+                  </div>
 
-        {activeTab === 'products' && (
-           <div className="grid lg:grid-cols-2 gap-8">
-             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-               <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2"><PlusCircle size={20}/> Add New Product</h2>
-               {productMsg && <div className={`p-3 rounded-lg text-sm mb-4 ${productMsg.includes('Error') ? 'bg-red-50 text-alert' : 'bg-green-50 text-brand'}`}>{productMsg}</div>}
-               
-               <form onSubmit={handleAddProduct} className="space-y-4">
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Product Title</label>
-                   <input type="text" required value={title} onChange={e => setTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-                 </div>
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Product Description</label>
-                   <textarea required value={productDescription} onChange={e => setProductDescription(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="Describe the item..." />
-                 </div>
-                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">Price (Rs.)</label>
-    <input type="number" required value={price} onChange={e => setPrice(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-  </div>
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">Stock Qty</label>
-    <input type="number" required value={stock} onChange={e => setStock(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. 5" />
-  </div>
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">Discount (%)</label>
-    <input type="number" min="0" max="100" value={discountPercent} onChange={e => setDiscountPercent(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. 10" />
-  </div>
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Fee (Rs.)</label>
-    <input type="number" required value={productDeliveryFee} onChange={e => setProductDeliveryFee(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-  </div>
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-    <select
-      value={category}
-      onChange={(e) => setCategory(e.target.value)}
-      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50"
-    >
-      {categoryTree.length === 0 ? (
-        <option value="">No categories available</option>
-      ) : (
-        categoryTree.map((main: any) => {
-          if (main.children && main.children.length > 0) {
-            return (
-              <optgroup key={main.id} label={main.name}>
-                {main.children.map((sub: any) => (
-                  <option key={sub.id} value={sub.name}>
-                    {sub.name}
-                  </option>
-                ))}
-              </optgroup>
-            );
-          }
+                  {/* PRODUCT CUSTOMIZATION TOGGLE */}
+                  <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-dark text-sm flex items-center gap-2">
+                        <Sparkles size={16} className="text-brand" /> Product Customization
+                      </h3>
+                      <p className="text-xs text-gray-600 mt-1">Allow buyers to request personalization (e.g., names, custom colors) on this item.</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer ml-4">
+                      <input type="checkbox" checked={isCustomizable} onChange={(e) => setIsCustomizable(e.target.checked)} className="sr-only peer" />
+                      <div className="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
+                    </label>
+                  </div>
 
-          return (
-            <option key={main.id} value={main.name}>
-              {main.name}
-            </option>
-          );
-        })
+                  {/* VARIANTS SECTION */}
+                  <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl">
+                    <div className="flex justify-between items-center mb-3">
+                      <label className="block text-sm font-bold text-dark">Product Variants (Sizes/Colors)</label>
+                      <button 
+                        type="button" 
+                        onClick={() => setVariants([...variants, { size: '', color: '', qty: 1 }])}
+                        className="text-xs bg-brand/10 text-brand px-3 py-1.5 rounded-lg font-bold hover:bg-brand/20 transition-colors flex items-center gap-1"
+                      >
+                        <Plus size={14} /> Add Variant
+                      </button>
+                    </div>
+                    
+                    {variants.length === 0 ? (
+                      <p className="text-xs text-gray-500">No variants added. If this product has sizes or colors, add them here.</p>
+                    ) : variants.map((v, index) => (
+                      <div key={index} className="flex gap-2 items-center mb-2">
+                        <input 
+                          type="text" 
+                          placeholder="Size (e.g. M, 42)" 
+                          value={v.size} 
+                          onChange={(e) => {
+                            const newV = [...variants]; newV[index].size = e.target.value; setVariants(newV);
+                          }} 
+                          className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand focus:outline-none" 
+                        />
+                        <input 
+                          type="text" 
+                          placeholder="Color (e.g. Red)" 
+                          value={v.color} 
+                          onChange={(e) => {
+                            const newV = [...variants]; newV[index].color = e.target.value; setVariants(newV);
+                          }} 
+                          className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand focus:outline-none" 
+                        />
+                        <input 
+                          type="number" 
+                          placeholder="Qty" 
+                          value={v.qty} 
+                          onChange={(e) => {
+                            const newV = [...variants]; newV[index].qty = Number(e.target.value); setVariants(newV);
+                          }} 
+                          className="w-20 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand focus:outline-none" 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setVariants(variants.filter((_, i) => i !== index))}
+                          className="p-2 text-alert hover:bg-red-50 rounded-lg"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Product Images (Max 3)</label>
+                    <input id="product-images" type="file" multiple accept="image/*" required onChange={e => setProductImages(e.target.files)} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20" />
+                  </div>
+                  <button type="submit" disabled={uploading} className="w-full bg-brand text-white font-bold py-3.5 rounded-xl hover:bg-brand/90 shadow-md disabled:bg-gray-400">
+                    {uploading ? 'Saving...' : 'Save Product'}
+                  </button>
+                </form>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h2 className="text-xl font-bold text-dark mb-4">Your Listed Products ({products.length})</h2>
+                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                  {products.length === 0 ? <p className="text-gray-500 text-sm">No products listed yet.</p> : products.map(p => (
+                    <div key={p.id} className="flex gap-4 items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
+                      <img src={p.image} alt={p.title} className="w-16 h-16 object-cover rounded-lg" />
+                      <div className="flex-grow">
+                        <h4 className="font-bold text-dark">{p.title}</h4>
+                        <p className="text-sm text-brand font-semibold">Rs. {p.price} <span className="text-gray-400 text-xs ml-2">+ Rs. {p.deliveryFee || 0} Delivery</span></p>
+                        
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded ${Number(p.stock) > 0 ? 'bg-green-100 text-brand' : 'bg-red-100 text-alert'}`}>
+                            Stock: {p.stock !== undefined ? p.stock : 'N/A'}
+                          </span>
+                          <button onClick={() => openEditModal(p.id, 'stock', p.stock)} className="text-blue-600 text-xs font-bold hover:underline mr-2">Edit</button>
+                          
+                          <span className="text-xs font-bold px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">
+                            Disc: {p.discountPercent || 0}%
+                          </span>
+                          <button onClick={() => openEditModal(p.id, 'discount', p.discountPercent)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
+
+                          {p.isCustomizable && (
+                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700 flex items-center gap-1">
+                              <Sparkles size={12} /> Customizable
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'store' && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
+              <h2 className="text-xl font-bold text-dark mb-4">Store Settings</h2>
+              {storeMsg && <div className="bg-green-50 text-brand p-3 rounded-lg text-sm mb-4">{storeMsg}</div>}
+              <form onSubmit={handleUpdateStore} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Store Name (Locked)</label>
+                  <input type="text" disabled value={store.storeName} className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Store Address</label>
+                  <input type="text" value={storeAddress} onChange={e => setStoreAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Store Bio</label>
+                  <textarea value={storeBio} onChange={e => setStoreBio(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Accounts</label>
+                  <input type="text" value={paymentAccounts} onChange={e => setPaymentAccounts(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. JazzCash: 03001234567" />
+                </div>
+
+                <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-dark text-sm">Accept Cash on Delivery (COD)</h3>
+                    <p className="text-xs text-gray-500 mt-1">Allow buyers to pay when they receive the item.</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer ml-4">
+                    <input type="checkbox" checked={acceptsCod} onChange={(e) => setAcceptsCod(e.target.checked)} className="sr-only peer" />
+                    <div className="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
+                  </label>
+                </div>
+
+                <div className="pt-2 border-t border-gray-100">
+                  <h3 className="font-semibold text-dark mb-3">Social Media Links</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Facebook size={20} className="text-blue-600" />
+                      <input type="url" placeholder="Facebook URL" value={socialLinks.facebook} onChange={e => setSocialLinks({...socialLinks, facebook: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Instagram size={20} className="text-pink-600" />
+                      <input type="url" placeholder="Instagram URL" value={socialLinks.instagram} onChange={e => setSocialLinks({...socialLinks, instagram: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Globe size={20} className="text-dark" />
+                      <input type="url" placeholder="TikTok URL" value={socialLinks.tiktok} onChange={e => setSocialLinks({...socialLinks, tiktok: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
+                    </div>
+                  </div>
+                </div>
+                <button type="submit" className="bg-brand text-white font-bold py-3.5 px-8 rounded-xl hover:bg-brand/90 shadow-md mt-4">Save Settings</button>
+              </form>
+            </div>
+          )}
+
+          {activeTab === 'subscription' && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
+              <h2 className="text-xl font-bold text-dark mb-6 flex items-center gap-2"><CreditCard /> Subscription Plan</h2>
+              <div className={`border rounded-2xl p-6 ${store.plan === 'premium' ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-200'}`}>
+                <div className="flex items-center gap-3 mb-2">
+                  <Star size={28} className={store.plan === 'premium' ? 'text-yellow-500 fill-yellow-500' : 'text-gray-400'} />
+                  <h3 className="text-2xl font-bold text-dark capitalize">{store.plan || 'standard'} Plan</h3>
+                </div>
+                {store.plan === 'premium' ? (
+                  <div className="mt-4">
+                    <p className="text-gray-700 text-sm mb-4">Your store is currently featured on the Homepage. Keep providing great service!</p>
+                    <span className="inline-block bg-yellow-500 text-white px-4 py-2 rounded-lg font-bold text-sm">Active Premium Status</span>
+                  </div>
+                ) : (
+                  <div className="mt-4">
+                    <p className="text-gray-700 text-sm mb-4">Upgrade to Premium to feature your products on the Homepage and get more visibility!</p>
+                    <a href={`https://wa.me/923390251147?text=${encodeURIComponent(`Assalam-o-Alaikum, I want to upgrade my store "${store.storeName}" to the Premium plan on KorBazar.`)}`} target="_blank" rel="noreferrer" className="inline-block bg-dark text-white font-bold py-3 px-6 rounded-xl hover:bg-black transition-colors">Contact Admin to Upgrade</a>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'profile' && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
+              <h2 className="text-xl font-bold text-dark mb-4">My Profile</h2>
+              <div className="space-y-4 text-gray-700">
+                <p><span className="font-semibold text-dark">Full Name:</span> {store.fullName}</p>
+                <p><span className="font-semibold text-dark">CNIC:</span> {store.cnicNumber}</p>
+                <p><span className="font-semibold text-dark">Phone:</span> {store.phone}</p>
+                <p><span className="font-semibold text-dark">City:</span> {store.city}, {store.area}</p>
+                
+                <div className="pt-4 border-t border-gray-100 mt-4">
+                  <button onClick={handleContactAdmin} className="w-full bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand/90 shadow-md flex items-center justify-center gap-2">
+                    <MessageSquare size={20} /> Chat with Admin Support
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       )}
-    </select>
-  </div>
-</div>
-
-                 {/* VARIANTS SECTION */}
-                 <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl">
-                   <div className="flex justify-between items-center mb-3">
-                     <label className="block text-sm font-bold text-dark">Product Variants (Sizes/Colors)</label>
-                     <button 
-                       type="button" 
-                       onClick={() => setVariants([...variants, { size: '', color: '', qty: 1 }])}
-                       className="text-xs bg-brand/10 text-brand px-3 py-1.5 rounded-lg font-bold hover:bg-brand/20 transition-colors flex items-center gap-1"
-                     >
-                       <Plus size={14} /> Add Variant
-                     </button>
-                   </div>
-                   
-                   {variants.length === 0 ? (
-                     <p className="text-xs text-gray-500">No variants added. If this product has sizes or colors, add them here.</p>
-                   ) : variants.map((v, index) => (
-                     <div key={index} className="flex gap-2 items-center mb-2">
-                       <input 
-                         type="text" 
-                         placeholder="Size (e.g. M, 42)" 
-                         value={v.size} 
-                         onChange={(e) => {
-                           const newV = [...variants]; newV[index].size = e.target.value; setVariants(newV);
-                         }} 
-                         className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand focus:outline-none" 
-                       />
-                       <input 
-                         type="text" 
-                         placeholder="Color (e.g. Red)" 
-                         value={v.color} 
-                         onChange={(e) => {
-                           const newV = [...variants]; newV[index].color = e.target.value; setVariants(newV);
-                         }} 
-                         className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand focus:outline-none" 
-                       />
-                       <input 
-                         type="number" 
-                         placeholder="Qty" 
-                         value={v.qty} 
-                         onChange={(e) => {
-                           const newV = [...variants]; newV[index].qty = Number(e.target.value); setVariants(newV);
-                         }} 
-                         className="w-20 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand focus:outline-none" 
-                       />
-                       <button 
-                         type="button" 
-                         onClick={() => setVariants(variants.filter((_, i) => i !== index))}
-                         className="p-2 text-alert hover:bg-red-50 rounded-lg"
-                       >
-                         <Trash2 size={16} />
-                       </button>
-                     </div>
-                   ))}
-                 </div>
-
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Product Images (Max 3)</label>
-                   <input id="product-images" type="file" multiple accept="image/*" required onChange={e => setProductImages(e.target.files)} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20" />
-                 </div>
-                 <button type="submit" disabled={uploading} className="w-full bg-brand text-white font-bold py-3.5 rounded-xl hover:bg-brand/90 shadow-md disabled:bg-gray-400">
-                   {uploading ? 'Saving...' : 'Save Product'}
-                 </button>
-               </form>
-             </div>
-
-             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-               <h2 className="text-xl font-bold text-dark mb-4">Your Listed Products ({products.length})</h2>
-               <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                 {products.length === 0 ? <p className="text-gray-500 text-sm">No products listed yet.</p> : products.map(p => (
-                   <div key={p.id} className="flex gap-4 items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
-                     <img src={p.image} alt={p.title} className="w-16 h-16 object-cover rounded-lg" />
-                     <div className="flex-grow">
-                       <h4 className="font-bold text-dark">{p.title}</h4>
-                       <p className="text-sm text-brand font-semibold">Rs. {p.price} <span className="text-gray-400 text-xs ml-2">+ Rs. {p.deliveryFee || 0} Delivery</span></p>
-                       
-                       <div className="flex flex-wrap items-center gap-2 mt-1">
-                         <span className={`text-xs font-bold px-2 py-0.5 rounded ${Number(p.stock) > 0 ? 'bg-green-100 text-brand' : 'bg-red-100 text-alert'}`}>
-                           Stock: {p.stock !== undefined ? p.stock : 'N/A'}
-                         </span>
-                         <button onClick={() => openEditModal(p.id, 'stock', p.stock)} className="text-blue-600 text-xs font-bold hover:underline mr-2">Edit</button>
-                         
-                         <span className="text-xs font-bold px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">
-                           Disc: {p.discountPercent || 0}%
-                         </span>
-                         <button onClick={() => openEditModal(p.id, 'discount', p.discountPercent)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
-                       </div>
-                     </div>
-                   </div>
-                 ))}
-               </div>
-             </div>
-           </div>
-        )}
-
-        {activeTab === 'store' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
-            <h2 className="text-xl font-bold text-dark mb-4">Store Settings</h2>
-            {storeMsg && <div className="bg-green-50 text-brand p-3 rounded-lg text-sm mb-4">{storeMsg}</div>}
-            <form onSubmit={handleUpdateStore} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Store Name (Locked)</label>
-                <input type="text" disabled value={store.storeName} className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Store Address</label>
-                <input type="text" value={storeAddress} onChange={e => setStoreAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Store Bio</label>
-                <textarea value={storeBio} onChange={e => setStoreBio(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Accounts</label>
-                <input type="text" value={paymentAccounts} onChange={e => setPaymentAccounts(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50" placeholder="e.g. JazzCash: 03001234567" />
-              </div>
-              <div className="pt-2 border-t border-gray-100">
-                <h3 className="font-semibold text-dark mb-3">Social Media Links</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Facebook size={20} className="text-blue-600" />
-                    <input type="url" placeholder="Facebook URL" value={socialLinks.facebook} onChange={e => setSocialLinks({...socialLinks, facebook: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Instagram size={20} className="text-pink-600" />
-                    <input type="url" placeholder="Instagram URL" value={socialLinks.instagram} onChange={e => setSocialLinks({...socialLinks, instagram: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Globe size={20} className="text-dark" />
-                    <input type="url" placeholder="TikTok URL" value={socialLinks.tiktok} onChange={e => setSocialLinks({...socialLinks, tiktok: e.target.value})} className="flex-grow px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none text-sm" />
-                  </div>
-                </div>
-              </div>
-              <button type="submit" className="bg-brand text-white font-bold py-3.5 px-8 rounded-xl hover:bg-brand/90 shadow-md mt-4">Save Settings</button>
-            </form>
-          </div>
-        )}
-
-        {activeTab === 'subscription' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
-            <h2 className="text-xl font-bold text-dark mb-6 flex items-center gap-2"><CreditCard /> Subscription Plan</h2>
-            <div className={`border rounded-2xl p-6 ${store.plan === 'premium' ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-200'}`}>
-              <div className="flex items-center gap-3 mb-2">
-                <Star size={28} className={store.plan === 'premium' ? 'text-yellow-500 fill-yellow-500' : 'text-gray-400'} />
-                <h3 className="text-2xl font-bold text-dark capitalize">{store.plan || 'standard'} Plan</h3>
-              </div>
-              {store.plan === 'premium' ? (
-                <div className="mt-4">
-                  <p className="text-gray-700 text-sm mb-4">Your store is currently featured on the Homepage. Keep providing great service!</p>
-                  <span className="inline-block bg-yellow-500 text-white px-4 py-2 rounded-lg font-bold text-sm">Active Premium Status</span>
-                </div>
-              ) : (
-                <div className="mt-4">
-                  <p className="text-gray-700 text-sm mb-4">Upgrade to Premium to feature your products on the Homepage and get more visibility!</p>
-                  <a href={`https://wa.me/923390251147?text=${encodeURIComponent(`Assalam-o-Alaikum, I want to upgrade my store "${store.storeName}" to the Premium plan on KorBazar.`)}`} target="_blank" rel="noreferrer" className="inline-block bg-dark text-white font-bold py-3 px-6 rounded-xl hover:bg-black transition-colors">Contact Admin to Upgrade</a>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'profile' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
-            <h2 className="text-xl font-bold text-dark mb-4">My Profile</h2>
-            <div className="space-y-4 text-gray-700">
-              <p><span className="font-semibold text-dark">Full Name:</span> {store.fullName}</p>
-              <p><span className="font-semibold text-dark">CNIC:</span> {store.cnicNumber}</p>
-              <p><span className="font-semibold text-dark">Phone:</span> {store.phone}</p>
-              <p><span className="font-semibold text-dark">City:</span> {store.city}, {store.area}</p>
-              
-              <div className="pt-4 border-t border-gray-100 mt-4">
-                <button onClick={handleContactAdmin} className="w-full bg-brand text-white font-bold py-3 rounded-xl hover:bg-brand/90 shadow-md flex items-center justify-center gap-2">
-                  <MessageSquare size={20} /> Chat with Admin Support
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    )}
-  </div>
-);
-}
+    </div>
+  );
+                        }
