@@ -12,9 +12,12 @@ export default function SellerCTA() {
             <p className="text-white/90 text-sm mt-1">Open your free KorBazar store in minutes. No listing fees.</p>
           </div>
         </div>
-        <Link to="/register" className="bg-white text-brand font-bold px-6 py-3 rounded-xl hover:bg-gray-100 transition-colors flex items-center gap-2 shrink-0">
+        
+        {/* UPDATED LINK PATH HERE */}
+        <Link to="/sell-with-us" className="bg-white text-brand font-bold px-6 py-3 rounded-xl hover:bg-gray-100 transition-colors flex items-center gap-2 shrink-0">
           Start Selling <ArrowRight size={18} />
         </Link>
+        
       </div>
     </section>
   );
