@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import ProductCard from '../components/ProductCard';
-import { CheckCircle2, MapPin, Facebook, Instagram, Globe, ShieldCheck, ShieldAlert, Crown, Calendar, Truck, Star, Sparkles } from 'lucide-react';
+import { CheckCircle2, MapPin, Facebook, Instagram, Globe, ShieldCheck, ShieldAlert, Crown, Calendar, Truck } from 'lucide-react';
 import ReportModal from '../components/ReportModal';
 
 export default function StorePage() {
