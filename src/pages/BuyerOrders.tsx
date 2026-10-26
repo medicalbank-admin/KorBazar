@@ -11,7 +11,7 @@ export default function BuyerOrders() {
   const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Read the tab from URL (e.g., ?tab=pending) or default to 'all'
+  // Read the tab from URL (e.g., ?tab=returns) or default to 'all'
   const currentTab = searchParams.get('tab') || 'all';
 
   useEffect(() => {
@@ -70,7 +70,10 @@ export default function BuyerOrders() {
     if (currentTab === 'pending') return order.status === 'new';
     if (currentTab === 'shipped') return order.status === 'accepted' || order.status === 'dispatched';
     if (currentTab === 'delivered') return order.status === 'delivered';
-    if (currentTab === 'cancelled') return order.status === 'cancelled' || order.status === 'rejected';
+    
+    // UPDATED: Include 'returned' in the Returns & Cancel tab
+    if (currentTab === 'returns') return order.status === 'cancelled' || order.status === 'rejected' || order.status === 'returned';
+    
     return true;
   });
 
@@ -82,14 +85,14 @@ export default function BuyerOrders() {
     { id: 'pending', label: 'To Pay / Pending', icon: Clock },
     { id: 'shipped', label: 'To Ship / Receive', icon: Truck },
     { id: 'delivered', label: 'Delivered', icon: CheckCircle },
-    { id: 'cancelled', label: 'Returns & Cancel', icon: RotateCcw },
+    { id: 'returns', label: 'Returns & Cancel', icon: RotateCcw }, // UPDATED ID
   ];
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 pb-24">
       <h1 className="text-3xl font-bold text-dark mb-6">My Orders</h1>
 
-      {/* Daraz-style Tabs */}
+      {/* Tabs */}
       <div className="flex overflow-x-auto gap-2 mb-6 border-b border-gray-200 pb-2 scrollbar-hide">
         {tabs.map(tab => {
           const Icon = tab.icon;
@@ -123,9 +126,12 @@ export default function BuyerOrders() {
                   <h3 className="font-bold text-lg text-dark">Order #{order.trackingToken.slice(0,6).toUpperCase()}</h3>
                   <p className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</p>
                 </div>
+                
+                {/* UPDATED BADGE COLORS */}
                 <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase ${
                   order.status === 'new' ? 'bg-yellow-100 text-yellow-700' : 
                   order.status === 'delivered' ? 'bg-green-100 text-brand' : 
+                  order.status === 'returned' ? 'bg-orange-100 text-orange-700' :
                   order.status === 'rejected' || order.status === 'cancelled' ? 'bg-red-100 text-alert' :
                   'bg-blue-100 text-blue-700'
                 }`}>
