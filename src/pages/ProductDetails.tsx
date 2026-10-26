@@ -16,16 +16,16 @@ export default function ProductDetails() {
   const { addToCart } = useCart();
   const { currentUser } = useAuth();
   const { addToHistory } = useHistory();
-  const { toggleFavorite, isFavorite } = useFavorites(); // Fix 2: Heart
+  const { toggleFavorite, isFavorite } = useFavorites();
   const navigate = useNavigate();
   
   const [product, setProduct] = useState<any>(null);
   const [seller, setSeller] = useState<any>(null);
   const [reviews, setReviews] = useState<any[]>([]);
-  const [questions, setQuestions] = useState<any[]>([]); // Fix 4: Q&A
-  const [sellerStats, setSellerStats] = useState({ positive: 100, shipOnTime: 100 }); // Fix 5: Real Stats
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [sellerStats, setSellerStats] = useState({ positive: 100, shipOnTime: 100 });
   const [loading, setLoading] = useState(true);
-  const [activeImage, setActiveImage] = useState(0); // Fix 1: Slider works via onTouch/Click
+  const [activeImage, setActiveImage] = useState(0);
   const [cartMsg, setCartMsg] = useState('');
   
   const [selectedSize, setSelectedSize] = useState<string>('');
@@ -35,8 +35,8 @@ export default function ProductDetails() {
   // Modals
   const [activeTab, setActiveTab] = useState<'overview' | 'ratings' | 'details'>('overview');
   const [showSpecsModal, setShowSpecsModal] = useState(false);
-  const [showReviewModal, setShowReviewModal] = useState(false); // Fix 3: Review Modal
-  const [showQuestionModal, setShowQuestionModal] = useState(false); // Fix 4: Question Modal
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
 
   // Review/Question Form State
   const [reviewRating, setReviewRating] = useState(5);
@@ -46,49 +46,53 @@ export default function ProductDetails() {
   useEffect(() => {
     const fetchProduct = async () => {
       if (!id) return;
-      const docRef = doc(db, 'products', id);
-      const docSnap = await getDoc(docRef);
       
-      if (docSnap.exists()) {
-        const prodData = { id: docSnap.id, ...docSnap.data() } as any;
-        setProduct(prodData);
-        addToHistory(prodData);
+      try {
+        const docRef = doc(db, 'products', id);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const prodData = { id: docSnap.id, ...docSnap.data() } as any;
+          setProduct(prodData);
+          addToHistory(prodData);
 
-        // Fetch Seller & Stats
-        const sellerRef = doc(db, 'sellers', prodData.sellerId);
-        const sellerSnap = await getDoc(sellerRef);
-        if (sellerSnap.exists()) {
-          setSeller(sellerSnap.data());
-          
-          // Calculate Real Stats (Fix 5)
-          const orderQ = query(collection(db, 'orders'), where('sellerId', '==', prodData.sellerId));
-          const orderSnap = await getDocs(orderQ);
-          const allOrders = orderSnap.docs.map(d => d.data());
-          const delivered = allOrders.filter(o => o.status === 'delivered').length;
-          const cancelled = allOrders.filter(o => o.status === 'cancelled' || o.status === 'rejected').length;
-          const total = delivered + cancelled;
-          
-          const positive = total > 0 ? Math.round((delivered / total) * 100) : 100;
-          
-          const shipOnTime = 100; // Assuming 100% for now, can be complex to calculate based on timestamps
-          setSellerStats({ positive, shipOnTime });
+          // Fetch Seller & Stats
+          const sellerRef = doc(db, 'sellers', prodData.sellerId);
+          const sellerSnap = await getDoc(sellerRef);
+          if (sellerSnap.exists()) {
+            setSeller(sellerSnap.data());
+            
+            // Calculate Real Stats
+            const orderQ = query(collection(db, 'orders'), where('sellerId', '==', prodData.sellerId));
+            const orderSnap = await getDocs(orderQ);
+            const allOrders = orderSnap.docs.map(d => d.data());
+            const delivered = allOrders.filter(o => o.status === 'delivered').length;
+            const cancelled = allOrders.filter(o => o.status === 'cancelled' || o.status === 'rejected').length;
+            const total = delivered + cancelled;
+            
+            const positive = total > 0 ? Math.round((delivered / total) * 100) : 100;
+            setSellerStats({ positive, shipOnTime: 100 });
+          }
+
+          // Fetch Reviews
+          const revQ = query(collection(db, 'reviews'), where('productId', '==', prodData.id));
+          const revSnap = await getDocs(revQ);
+          const productReviews = revSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          productReviews.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setReviews(productReviews);
+
+          // Fetch Q&A 
+          const qQ = query(collection(db, 'questions'), where('productId', '==', prodData.id));
+          const qSnap = await getDocs(qQ);
+          const productQuestions = qSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          productQuestions.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setQuestions(productQuestions);
         }
-
-        // Fetch Reviews
-        const revQ = query(collection(db, 'reviews'), where('productId', '==', prodData.id));
-        const revSnap = await getDocs(revQ);
-        const productReviews = revSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        productReviews.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setReviews(productReviews);
-
-        // Fetch Q&A (Fix 4)
-        const qQ = query(collection(db, 'questions'), where('productId', '==', prodData.id));
-        const qSnap = await getDocs(qQ);
-        const productQuestions = qSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        productQuestions.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setQuestions(productQuestions);
+      } catch (error) {
+        console.error("Error fetching product details:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchProduct();
   }, [id, addToHistory]);
@@ -106,7 +110,6 @@ export default function ProductDetails() {
   const whatsappLink = `https://wa.me/92${cleanNumber}?text=${encodeURIComponent(whatsappMessage)}`;
 
   const handleShare = () => {
-    // Fix 2: Share functionality
     if (navigator.share) {
       navigator.share({
         title: product.title,
@@ -135,7 +138,8 @@ export default function ProductDetails() {
       });
       alert("Review submitted successfully!");
       setShowReviewModal(false);
-      // Refresh reviews
+      setReviewText('');
+      
       const revQ = query(collection(db, 'reviews'), where('productId', '==', product.id));
       const revSnap = await getDocs(revQ);
       setReviews(revSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -159,7 +163,6 @@ export default function ProductDetails() {
         createdAt: new Date().toISOString()
       });
       
-      // Notify Seller
       await addDoc(collection(db, 'notifications'), {
         userId: product.sellerId,
         title: 'New Question Asked! ❓',
@@ -173,7 +176,7 @@ export default function ProductDetails() {
       alert("Question submitted! The seller will be notified.");
       setShowQuestionModal(false);
       setNewQuestion('');
-      // Refresh questions
+      
       const qQ = query(collection(db, 'questions'), where('productId', '==', product.id));
       const qSnap = await getDocs(qQ);
       setQuestions(qSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -254,7 +257,7 @@ export default function ProductDetails() {
         </div>
       </div>
 
-      {/* MAIN IMAGE GALLERY (Fix 1: Functional Slider) */}
+      {/* MAIN IMAGE GALLERY */}
       <div className="w-full aspect-square bg-white relative">
         <img 
           src={images[activeImage]} 
@@ -280,7 +283,6 @@ export default function ProductDetails() {
             </>
           )}
           
-          {/* Fix 2: Functional Share & Heart */}
           <div className="ml-auto flex gap-4 text-gray-400 mb-1">
             <button onClick={() => toggleFavorite(product.id)}>
               <Heart size={22} className={isFavorite(product.id) ? "fill-red-500 text-red-500" : ""} />
@@ -478,7 +480,7 @@ export default function ProductDetails() {
         )}
       </div>
 
-      {/* PUBLIC Q&A SECTION (Fix 4) */}
+      {/* PUBLIC Q&A SECTION */}
       <div className="bg-white mb-2 p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg text-gray-800 font-bold text-left">Questions about this Product ({questions.length})</h3>
@@ -508,7 +510,7 @@ export default function ProductDetails() {
         )}
       </div>
 
-      {/* SELLER INFO (Fix 5: Real Stats) */}
+      {/* SELLER INFO */}
       <div className="bg-white p-4 mb-24 md:mb-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -576,7 +578,7 @@ export default function ProductDetails() {
         </div>
       )}
 
-      {/* REVIEW MODAL (Fix 3) */}
+      {/* REVIEW MODAL */}
       {showReviewModal && (
         <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md p-6 relative">
@@ -606,7 +608,7 @@ export default function ProductDetails() {
         </div>
       )}
 
-      {/* QUESTION MODAL (Fix 4) */}
+      {/* QUESTION MODAL */}
       {showQuestionModal && (
         <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md p-6 relative">
