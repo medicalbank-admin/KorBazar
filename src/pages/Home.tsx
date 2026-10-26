@@ -171,6 +171,7 @@ export default function Home() {
         </div>
 
         <div className="flex flex-col md:flex-row gap-4 mb-6">
+          
           {/* 1. DESKTOP SIDEBAR */}
           <div className="hidden md:block w-64 bg-white rounded-xl shadow-sm border border-gray-100 p-4 h-max shrink-0">
             <h3 className="font-bold text-dark mb-4 px-2">All Categories</h3>
@@ -209,36 +210,13 @@ export default function Home() {
               </li>
             </ul>
           </div>
-
+                    {/* 2. THE HERO SECTION (Ads + Seller Banner) */}
           <div className="w-full flex flex-col md:flex-row gap-4 h-[250px] md:h-[350px] px-4 md:px-0">
-            <div className="flex-grow bg-[#c2e8f8] rounded-2xl relative overflow-hidden flex items-center p-6 md:p-8">
-              <div className="z-10 w-3/4 md:w-1/2">
-                <h2 className="text-2xl md:text-4xl font-extrabold text-dark mb-2 leading-tight tracking-tight">
-                  Khpal Kor,<br />
-                  <span className="text-brand">Khpal Bazar.</span>
-                </h2>
-                <p className="text-sm text-gray-700 mb-4 hidden md:block">
-                  Discover unique, handmade goods from the talented creators of Charsadda.
-                </p>
-                <Link
-                  to="/explore"
-                  className="bg-brand text-white px-6 py-2.5 rounded-lg font-bold shadow-md hover:bg-brand/90 inline-flex items-center gap-2 text-sm transition-all"
-                >
-                  Shop Now <ChevronRight size={16} />
-                </Link>
-              </div>
+            
+            {/* 🚀 NEW AD CAROUSEL */}
+            <HeroCarousel />
 
-              <img
-                src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=800&auto=format&fit=crop"
-                alt="Hero"
-                className="absolute right-0 bottom-0 h-full object-cover opacity-40 hidden md:block"
-                style={{
-                  maskImage: 'linear-gradient(to right, transparent, black 40%)',
-                  WebkitMaskImage: 'linear-gradient(to right, transparent, black 40%)',
-                }}
-              />
-            </div>
-
+            {/* "Become a Seller" banner */}
             <div className="w-72 bg-dark rounded-2xl relative overflow-hidden hidden md:flex flex-col justify-center p-6 text-white border border-gray-800">
               <h3 className="font-bold text-xl mb-2 leading-tight z-10">Become a Seller today</h3>
               <p className="text-xs text-gray-300 mb-4 z-10">Join the community and start earning.</p>
@@ -257,7 +235,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 2. MOBILE CATEGORY PILLS */}
+        {/* 3. MOBILE CATEGORY PILLS */}
         <div className="md:hidden">
           <TrustBadges />
           <section className="px-4 mb-6">
