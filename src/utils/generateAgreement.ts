@@ -59,11 +59,9 @@ export async function generateAgreementPDF(store: any) {
   };
 
   // ---------- WHITE HEADER + LOGO ----------
-  // White background header strip (explicit fill)
   doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, pageWidth, 110, 'F');
 
-  // Try to load the logo; if it fails, skip silently so PDF still generates
   try {
     const logoUrl = `${window.location.origin}/logo.png`;
     const img = await loadImage(logoUrl);
@@ -74,7 +72,6 @@ export async function generateAgreementPDF(store: any) {
     console.warn('Logo not added to PDF:', e);
   }
 
-  // Title on the right of header
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
   doc.setTextColor(20, 20, 20);
@@ -85,7 +82,6 @@ export async function generateAgreementPDF(store: any) {
   doc.text('KorBazar Marketplace', pageWidth - margin, 66, { align: 'right' });
   doc.text(`Issued: ${new Date().toLocaleDateString()}`, pageWidth - margin, 80, { align: 'right' });
 
-  // Divider under header
   doc.setDrawColor(220);
   doc.setLineWidth(0.8);
   doc.line(margin, 100, pageWidth - margin, 100);
@@ -139,10 +135,16 @@ export async function generateAgreementPDF(store: any) {
   addBullet('KorBazar is not responsible for any bank, wallet, or payment-gateway charges incurred by the Seller.');
   addBullet('Sellers are responsible for their own income tax and any other applicable taxes under Pakistani law.');
 
+  // ---------- UPDATED RETURNS SECTION ----------
   addHeading('2.7. Returns, Refunds, and Disputes', 2);
   addParagraph(
-    'Sellers must honor the returns policy displayed on their listing and on KorBazar generally. If a Buyer receives a damaged, incorrect, or materially misdescribed item, the Seller is obligated to offer replacement or refund in accordance with the policy. KorBazar may mediate disputes between Sellers and Buyers but is not a party to the sale contract. Repeated valid disputes against a Seller may result in account review or suspension.'
+    'Sellers must honor the returns policy displayed on their listing and on KorBazar generally. If a Buyer receives a damaged, incorrect, or materially misdescribed item, the Seller is obligated to offer a replacement or refund within forty-eight (48) hours of delivery.'
   );
+  addBullet('If the item is returned due to Seller fault (damaged, wrong item, or not as described), the Seller bears the return delivery cost.');
+  addBullet('If the Buyer changes their mind or refuses the item, the Buyer may bear the return delivery cost.');
+  addBullet('Sellers must mark returned orders in their dashboard to trigger the refund process and clear the platform fee liability.');
+  addBullet('KorBazar may mediate disputes between Sellers and Buyers but is not a party to the sale contract.');
+  addBullet('Repeated valid disputes against a Seller may result in account review or suspension.');
 
   addHeading('2.8. Prohibited Conduct', 2);
   addBullet('Engaging in fraudulent, deceptive, or misleading behavior.');
@@ -273,4 +275,4 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     img.onerror = reject;
     img.src = src;
   });
-    }
+             }
