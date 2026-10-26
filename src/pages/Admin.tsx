@@ -157,22 +157,30 @@ export default function Admin() {
     }
   };
 
+  // --- FIXED: INSTANT UPDATE FOR CATEGORIES ---
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCategoryName.trim()) return;
     try {
-      await addDoc(collection(db, 'categories'), {
+      const newCatData = {
         name: newCategoryName.trim(),
         parentId: newCategoryParentId || null,
         createdAt: new Date().toISOString()
-      });
-      setNewCategoryName(''); setNewCategoryParentId('');
-      fetchData();
+      };
+      const docRef = await addDoc(collection(db, 'categories'), newCatData);
+      setCategories([...categories, { id: docRef.id, ...newCatData }]);
+      setNewCategoryName(''); 
+      setNewCategoryParentId('');
     } catch (error) { alert("Failed to add category."); }
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if(window.confirm("Are you sure?")) { await deleteDoc(doc(db, 'categories', id)); fetchData(); }
+    if(window.confirm("Are you sure?")) { 
+      try {
+        await deleteDoc(doc(db, 'categories', id)); 
+        setCategories(categories.filter(c => c.id !== id)); 
+      } catch (error) { alert("Failed to delete category."); }
+    }
   };
 
   const handleAddCoupon = async (e: React.FormEvent) => {
@@ -310,7 +318,6 @@ export default function Admin() {
   const expectedMonthlyRevenue = (standardSellers.length * fees.standard) + (premiumSellers.length * fees.premium);
   const paidSellersCount = approvedSellers.filter(s => s.feeStatus === 'paid').length;
   const unpaidSellersCount = approvedSellers.length - paidSellersCount;
-
   return (
   <div className="max-w-7xl mx-auto px-4 py-8 pb-24 relative">
     <h1 className="text-3xl font-bold text-dark mb-8">Admin Master Control</h1>
@@ -503,7 +510,7 @@ export default function Admin() {
       <button onClick={() => setActiveTab('categories')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'categories' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Tag size={18}/> Categories</button>
       <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'orders' ? 'bg-dark text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShoppingBag size={18}/> Orders</button>
       
-      {/* NEW RETURNS TAB BUTTON */}
+      {/* RETURNS TAB BUTTON */}
       <button onClick={() => setActiveTab('returns')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'returns' ? 'bg-orange-500 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
         <RotateCcw size={18}/> Returns
       </button>
@@ -512,7 +519,6 @@ export default function Admin() {
       <button onClick={() => setActiveTab('reports')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'reports' ? 'bg-alert text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Flag size={18}/> Reports ({reports.length})</button>
       <button onClick={() => setActiveTab('verification')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold whitespace-nowrap ${activeTab === 'verification' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-100'}`}><ShieldAlert size={18}/> Pending ({pendingSellers.length})</button>
     </div>
-
     {loading ? (
       <div className="p-8 text-center text-gray-500">Loading platform data...</div>
     ) : (
@@ -827,7 +833,7 @@ export default function Admin() {
                       <option value="accepted">Accepted</option>
                       <option value="dispatched">Dispatched</option>
                       <option value="delivered">Delivered</option>
-                      <option value="returned">Returned</option> {/* <--- ADDED HERE */}
+                      <option value="returned">Returned</option>
                       <option value="cancelled">Cancelled</option>
                       <option value="rejected">Rejected</option>
                     </select>
