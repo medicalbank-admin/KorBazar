@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { CheckCircle2, Star, Heart, Crown } from 'lucide-react';
+import { CheckCircle2, Star, Heart, Crown, Sparkles } from 'lucide-react';
 import { useFavorites } from '../context/FavoritesContext';
 
 export default function ProductCard({ product, isSellerPremium }: { product: any, isSellerPremium?: boolean }) {
@@ -39,6 +39,13 @@ export default function ProductCard({ product, isSellerPremium }: { product: any
         {isSellerPremium && !isOutOfStock && discount === 0 && (
           <span className="absolute top-3 left-3 bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-1 border border-yellow-200 z-10">
             <Crown size={12} className="fill-yellow-500 text-yellow-500" /> Premium
+          </span>
+        )}
+
+        {/* NEW: CUSTOMIZABLE BADGE */}
+        {product.isCustomizable && !isOutOfStock && (
+          <span className="absolute bottom-3 left-3 bg-blue-500 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-sm flex items-center gap-1 z-10">
+            <Sparkles size={12} /> Customizable
           </span>
         )}
 
