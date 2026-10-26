@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, ChevronRight, Shirt, Utensils, Home, Sparkles, ShoppingBag, Gem, Heart, Baby, Footprints, Menu } from 'lucide-react';
+import { Search, ChevronRight, Shirt, Utensils, Home as HomeIcon, Sparkles, ShoppingBag, Gem, Heart, Baby, Footprints, Menu } from 'lucide-react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import ProductCard from '../components/ProductCard';
@@ -12,12 +12,11 @@ type CategoryNode = {
   children?: CategoryNode[];
 };
 
-// --- ICON MAPPER ---
 const getCategoryIcon = (name: string) => {
   const n = name.toLowerCase();
   if (n.includes('fashion') || n.includes('cloth') || n.includes('wear') || n.includes('suit')) return <Shirt size={16} />;
   if (n.includes('food') || n.includes('sweet') || n.includes('cake') || n.includes('bak')) return <Utensils size={16} />;
-  if (n.includes('home') || n.includes('decor') || n.includes('furniture')) return <Home size={16} />;
+  if (n.includes('home') || n.includes('decor') || n.includes('furniture')) return <HomeIcon size={16} />;
   if (n.includes('jewel') || n.includes('ring') || n.includes('necklace')) return <Gem size={16} />;
   if (n.includes('beauty') || n.includes('care') || n.includes('skin')) return <Sparkles size={16} />;
   if (n.includes('kid') || n.includes('baby')) return <Baby size={16} />;
@@ -69,8 +68,6 @@ export default function Explore() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCat);
   const [loading, setLoading] = useState(true);
-  
-  // State for the accordion (which main category is expanded)
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
   const categoryTree = useMemo(() => buildCategoryTree(categories as CategoryNode[]), [categories]);
@@ -83,8 +80,10 @@ export default function Explore() {
           getDocs(collection(db, 'sellers')),
         ]);
 
-        const categoryDocs = catSnap.docs.map((d) => ({
+        // Added type 'any' and included 'name' to fix the TypeScript error
+        const categoryDocs = catSnap.docs.map((d: any) => ({
           id: d.id,
+          name: d.data().name || '',
           ...d.data(),
           parentId: d.data().parentId ?? null,
         }));
@@ -100,7 +99,6 @@ export default function Explore() {
         const currentCat = searchParams.get('cat');
         if (currentCat) {
           setSelectedCategory(currentCat);
-          // Auto-expand the parent if a subcategory is selected via URL
           const catObj = categoryDocs.find(c => c.name === currentCat);
           if (catObj && catObj.parentId) {
             setExpandedCategory(catObj.parentId);
@@ -117,7 +115,6 @@ export default function Explore() {
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
-
       try {
         const sellersSnap = await getDocs(collection(db, 'sellers'));
         const activeSellerIds = sellersSnap.docs
@@ -132,7 +129,6 @@ export default function Explore() {
         }
 
         const productsSnap = await getDocs(productQuery);
-
         const allProducts = productsSnap.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
@@ -152,26 +148,19 @@ export default function Explore() {
 
   const handleCategorySelect = (name: string | null) => {
     setSelectedCategory(name);
-
     const next = new URLSearchParams(searchParams);
     if (name) {
       next.set('cat', name);
     } else {
       next.delete('cat');
     }
-
     setSearchParams(next);
   };
 
   const filteredProducts = products.filter((p) => {
     const title = p.title?.toLowerCase?.() || '';
     const storeName = p.storeName?.toLowerCase?.() || '';
-
-    const matchesSearch =
-      title.includes(searchTerm.toLowerCase()) ||
-      storeName.includes(searchTerm.toLowerCase());
-
-    return matchesSearch;
+    return title.includes(searchTerm.toLowerCase()) || storeName.includes(searchTerm.toLowerCase());
   });
 
   return (
@@ -190,8 +179,6 @@ export default function Explore() {
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">
-        
-        {/* SIDEBAR WITH ACCORDION */}
         <aside className="w-full md:w-64 flex-shrink-0">
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
             <h3 className="font-bold text-lg mb-4 px-2 text-dark">Categories</h3>
@@ -239,7 +226,6 @@ export default function Explore() {
                       )}
                     </button>
 
-                    {/* Sub-categories Accordion */}
                     {isExpanded && hasChildren && (
                       <div className="ml-5 mt-1 space-y-1 border-l-2 border-gray-100 pl-3">
                         {main.children.map((sub: any) => (
@@ -287,4 +273,4 @@ export default function Explore() {
       </div>
     </div>
   );
-  }
+    }
