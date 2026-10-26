@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { 
-  CheckCircle2, ChevronLeft, MessageCircle, MessageSquare, ShoppingCart, 
-  Truck, Star, Zap, Sparkles, ShieldCheck, HelpCircle, Store, Home, 
-  MoreVertical, Share2, Heart, ChevronRight 
+  Star, ShoppingCart, Sparkles, Home, MoreVertical, Share2, Heart, 
+  ChevronRight, Store, MessageSquare, Zap, MessageCircle, Truck, ShieldCheck 
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -23,6 +22,8 @@ export default function ProductDetails() {
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
+  
+  // This is now used in the UI
   const [cartMsg, setCartMsg] = useState('');
 
   // State for selected variant
@@ -32,7 +33,7 @@ export default function ProductDetails() {
   // Customization State
   const [customizationNote, setCustomizationNote] = useState<string>('');
 
-  // UI Tabs State (Daraz-style)
+  // UI Tabs State
   const [activeTab, setActiveTab] = useState<'overview' | 'ratings' | 'details'>('overview');
 
   useEffect(() => {
@@ -80,6 +81,7 @@ export default function ProductDetails() {
 
   const whatsappMessage = `Assalam-o-Alaikum, I have a question about "${product.title}" (Rs. ${product.price}) on KorBazar.`;
   const cleanNumber = seller?.whatsappNumber?.replace(/^0/, '');
+  // This is now used in the UI below
   const whatsappLink = `https://wa.me/92${cleanNumber}?text=${encodeURIComponent(whatsappMessage)}`;
 
   const validateVariantAndGetItem = () => {
@@ -174,7 +176,6 @@ export default function ProductDetails() {
   const uniqueSizes = hasVariants ? [...new Set(product.variants.filter((v:any) => v.size).map((v:any) => v.size))] : [];
   const uniqueColors = hasVariants ? [...new Set(product.variants.filter((v:any) => v.color).map((v:any) => v.color))] : [];
 
-  // Calculate original price if there's a discount
   const discountPercent = Number(product.discountPercent) || 0;
   const originalPrice = discountPercent > 0 ? Math.round(product.price / (1 - (discountPercent / 100))) : null;
 
@@ -204,7 +205,6 @@ export default function ProductDetails() {
           className={`w-full h-full object-contain ${isOutOfStock ? 'opacity-50' : ''}`} 
         />
         
-        {/* Image Counter */}
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white text-xs px-3 py-1 rounded-full">
           {activeImage + 1} / {images.length}
         </div>
@@ -333,17 +333,14 @@ export default function ProductDetails() {
 
       {/* TAB CONTENT */}
       <div className="bg-white mb-2 p-4">
-        
         {activeTab === 'overview' && (
           <div className="space-y-4">
-            {/* SPECIFICATIONS */}
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
               <span className="text-gray-500 text-sm">Specifications</span>
               <span className="text-gray-800 text-sm font-semibold text-right">Brand, Occasion, Pattern</span>
               <ChevronRight size={16} className="text-gray-400" />
             </div>
             
-            {/* DELIVERY */}
             <div className="flex items-start gap-4 border-b border-gray-100 pb-3">
               <span className="text-gray-500 text-sm mt-1 w-16">Delivery</span>
               <div className="flex-grow">
@@ -351,18 +348,17 @@ export default function ProductDetails() {
                   {seller?.city || 'Pakistan'}, {seller?.area || ''}
                 </p>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-800">Standard Delivery</span>
+                  <span className="text-gray-800 flex items-center gap-1"><Truck size={14}/> Standard Delivery</span>
                   <span className="font-bold">Rs. {product.deliveryFee || 0}</span>
                 </div>
               </div>
             </div>
 
-            {/* SERVICE */}
             <div className="flex items-start gap-4">
               <span className="text-gray-500 text-sm mt-1 w-16">Service</span>
               <div className="flex-grow space-y-1">
-                <p className="text-sm text-gray-800 flex items-center gap-2"><span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span> 14 days easy return</p>
-                <p className="text-xs text-gray-500 ml-3.5">Change of Mind applicable</p>
+                <p className="text-sm text-gray-800 flex items-center gap-2"><ShieldCheck size={14} className="text-brand"/> 14 days easy return</p>
+                <p className="text-xs text-gray-500 ml-5">Change of Mind applicable</p>
                 <p className="text-sm text-gray-800 flex items-center gap-2"><span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span> Warranty not available</p>
               </div>
             </div>
@@ -416,7 +412,7 @@ export default function ProductDetails() {
         <button onClick={handleChatWithSeller} className="text-[#f85606] font-bold text-sm hover:underline mt-4">ASK QUESTIONS</button>
       </div>
 
-      {/* SELLER INFO */}
+      {/* SELLER INFO & WHATSAPP */}
       <div className="bg-white p-4 mb-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -430,10 +426,10 @@ export default function ProductDetails() {
           <button className="border border-[#f85606] text-[#f85606] px-4 py-1.5 rounded text-sm font-semibold hover:bg-orange-50 transition-colors">Follow</button>
         </div>
         
-        <div className="grid grid-cols-3 divide-x divide-gray-200 text-center">
+        <div className="grid grid-cols-3 divide-x divide-gray-200 text-center mb-4">
           <div>
             <p className="font-bold text-xl text-gray-800">95%</p>
-            <p className="text-xs text-gray-500">Positive Seller Ratings</p>
+            <p className="text-xs text-gray-500">Positive Ratings</p>
           </div>
           <div>
             <p className="font-bold text-xl text-gray-800">100%</p>
@@ -441,9 +437,14 @@ export default function ProductDetails() {
           </div>
           <div>
             <p className="font-bold text-xl text-gray-400">--</p>
-            <p className="text-xs text-gray-400">Chat Response Rate</p>
+            <p className="text-xs text-gray-400">Chat Response</p>
           </div>
         </div>
+
+        {/* WHATSAPP BUTTON (Uses whatsappLink) */}
+        <a href={whatsappLink} target="_blank" rel="noreferrer" className="w-full bg-white text-dark border-2 border-[#25D366] font-bold py-2 rounded flex items-center justify-center gap-2 hover:bg-[#25D366]/10 transition-colors text-sm">
+          <MessageCircle size={18} className="text-[#25D366]" /> Ask Seller on WhatsApp
+        </a>
       </div>
 
       {/* MOBILE STICKY BOTTOM BAR */}
@@ -484,6 +485,13 @@ export default function ProductDetails() {
           <Zap size={20} /> Buy Now
         </button>
       </div>
+
+      {/* SUCCESS TOAST MESSAGE (Uses cartMsg) */}
+      {cartMsg && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-brand text-white px-6 py-2 rounded-full shadow-lg z-[100] font-semibold">
+          {cartMsg}
+        </div>
+      )}
 
     </div>
   );
