@@ -14,7 +14,6 @@ import SellerCTA from '../components/SellerCTA';
 import RecentlyViewed from '../components/RecentlyViewed';
 import NewsletterSignup from '../components/NewsletterSignup';
 import FAQ from '../components/FAQ';
-// Renamed Home to HomeIcon to prevent conflict with the component name
 import { Menu, ChevronRight, Shirt, Utensils, Home as HomeIcon, Sparkles, ShoppingBag, Gem, Heart, Baby, Footprints } from 'lucide-react';
 
 type CategoryNode = {
@@ -24,7 +23,6 @@ type CategoryNode = {
   children?: CategoryNode[];
 };
 
-// --- ICON MAPPER ---
 const getCategoryIcon = (name: string) => {
   const n = name.toLowerCase();
   if (n.includes('fashion') || n.includes('cloth') || n.includes('wear') || n.includes('suit')) return <Shirt size={16} />;
@@ -83,7 +81,6 @@ export default function Home() {
   const categoryTree = useMemo(() => buildCategoryTree(categories as CategoryNode[]), [categories]);
 
   const fetchData = async () => {
-    // 1. INSTANT LOAD: Check cache first
     const cachedProducts = sessionStorage.getItem('kb_home_products');
     if (cachedProducts) {
       setProducts(JSON.parse(cachedProducts));
@@ -91,7 +88,6 @@ export default function Home() {
     }
 
     try {
-      // Fetch Categories
       const catSnap = await getDocs(collection(db, 'categories'));
       const categoryDocs = catSnap.docs.map((d: any) => ({
         id: d.id,
@@ -101,7 +97,6 @@ export default function Home() {
       }));
       setCategories(categoryDocs);
 
-      // Fetch Sellers
       const sellersSnap = await getDocs(collection(db, 'sellers'));
       const activeSellerIds: string[] = [];
       const premiumIds: string[] = [];
@@ -116,7 +111,6 @@ export default function Home() {
 
       setPremiumSellerIds(premiumIds);
 
-      // Fetch Products
       const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'), limit(20));
       const querySnapshot = await getDocs(q);
 
@@ -124,9 +118,7 @@ export default function Home() {
       const activeProducts = allProducts.filter((p) => activeSellerIds.includes(p.sellerId));
 
       setProducts(activeProducts);
-      // 2. SAVE TO CACHE
       sessionStorage.setItem('kb_home_products', JSON.stringify(activeProducts));
-
       setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
       setHasMore(querySnapshot.docs.length === 20);
     } catch (error) {
@@ -154,7 +146,6 @@ export default function Home() {
       const querySnapshot = await getDocs(q);
 
       const newProducts = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as any[];
-
       const sellersSnap = await getDocs(collection(db, 'sellers'));
       const activeSellerIds = sellersSnap.docs
         .filter((d) => d.data().status === 'approved' && !d.data().isFrozen)
@@ -179,61 +170,48 @@ export default function Home() {
     <div className="bg-[#f4f5f7] min-h-screen pb-12">
       <div className="max-w-7xl mx-auto px-0 md:px-4 pt-0 md:pt-6">
         
+        {/* MAIN LAYOUT: Sidebar (Desktop) + Ads (Both) */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
+          
           {/* 1. DESKTOP SIDEBAR */}
           <div className="hidden md:block w-64 bg-white rounded-xl shadow-sm border border-gray-100 p-4 h-max shrink-0">
             <h3 className="font-bold text-dark mb-4 px-2">All Categories</h3>
             <ul className="space-y-2">
               <li>
-                <Link
-                  to="/explore"
-                  className="flex items-center gap-3 px-3 py-2 text-brand bg-brand/5 rounded-lg font-bold text-sm transition-colors"
-                >
+                <Link to="/explore" className="flex items-center gap-3 px-3 py-2 text-brand bg-brand/5 rounded-lg font-bold text-sm transition-colors">
                   <Menu size={16} /> All Categories
                 </Link>
               </li>
-
-              {/* ONLY RENDER MAIN CATEGORIES */}
               {categoryTree.filter(c => !c.parentId).map((main: any) => (
                 <li key={main.id}>
-                  <Link
-                    to={`/explore?cat=${encodeURIComponent(main.name)}`}
-                    className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-50 hover:text-brand rounded-lg font-medium text-sm transition-colors"
-                  >
-                    <span className="text-gray-400">
-                      {getCategoryIcon(main.name)}
-                    </span>
+                  <Link to={`/explore?cat=${encodeURIComponent(main.name)}`} className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-50 hover:text-brand rounded-lg font-medium text-sm transition-colors">
+                    <span className="text-gray-400">{getCategoryIcon(main.name)}</span>
                     <span className="truncate">{main.name}</span>
                   </Link>
                 </li>
               ))}
-
               <li>
-                <Link
-                  to="/explore"
-                  className="flex items-center justify-between px-3 py-2 text-brand hover:bg-brand/5 rounded-lg font-bold text-sm mt-2"
-                >
+                <Link to="/explore" className="flex items-center justify-between px-3 py-2 text-brand hover:bg-brand/5 rounded-lg font-bold text-sm mt-2">
                   More category <ChevronRight size={16} />
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* 2. HERO CAROUSEL (Handles Ads) */}
+          {/* 2. HERO ADS */}
           <div className="w-full flex flex-col md:flex-row gap-4 h-[250px] md:h-[350px] px-4 md:px-0">
             <HeroCarousel />
           </div>
         </div>
-                {/* 3. MOBILE CATEGORY PILLS */}
+                {/* 3. MOBILE CATEGORIES & TRUST BADGES */}
         <div className="md:hidden">
-          <TrustBadges />
           <section className="px-4 mb-6">
             <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide">
               {categoryTree.filter(c => !c.parentId).map((main: any) => (
                 <Link
                   to={`/explore?cat=${encodeURIComponent(main.name)}`}
                   key={main.id}
-                  className="whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 text-sm font-medium text-gray-700"
+                  className="whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 text-sm font-medium text-gray-700 shadow-sm"
                 >
                   <span className="text-gray-400">{getCategoryIcon(main.name)}</span>
                   {main.name}
@@ -249,6 +227,12 @@ export default function Home() {
           <ShopByCategory />
         </div>
 
+        {/* 4. DESKTOP TRUST BADGES (Moved here to show below ads) */}
+        <div className="hidden md:block mt-6">
+          <TrustBadges />
+        </div>
+
+        {/* 5. PRODUCTS LIST */}
         <div className="px-4 md:px-0 space-y-6 md:space-y-8 mt-6">
           {premiumProducts.length > 0 && (
             <section className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row p-4">
@@ -317,4 +301,4 @@ export default function Home() {
       </div>
     </div>
   );
-                    }
+                  }
