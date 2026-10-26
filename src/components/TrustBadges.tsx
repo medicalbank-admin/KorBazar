@@ -1,25 +1,20 @@
 import { ShieldCheck, BadgeCheck, Truck, RefreshCw } from 'lucide-react';
 
 const BADGES = [
-  { icon: ShieldCheck, title: 'Secure Payments', sub: 'COD & online' },
-  { icon: BadgeCheck, title: 'Verified Sellers', sub: 'CNIC checked' },
-  { icon: Truck, title: 'Fast Delivery', sub: 'Nationwide' },
-  { icon: RefreshCw, title: 'Easy Returns', sub: 'Buyer protection' },
+  { icon: ShieldCheck, label: 'Secure Payments' },
+  { icon: BadgeCheck, label: 'Verified Sellers' },
+  { icon: Truck, label: 'Fast Delivery' },
+  { icon: RefreshCw, label: 'Easy Returns' },
 ];
 
 export default function TrustBadges() {
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {BADGES.map(({ icon: Icon, title, sub }) => (
-          <div key={title} className="bg-white border border-gray-100 rounded-2xl p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0">
-              <Icon size={20} />
-            </div>
-            <div>
-              <p className="font-bold text-dark text-sm">{title}</p>
-              <p className="text-xs text-gray-500">{sub}</p>
-            </div>
+    <div className="w-full bg-white border-y border-gray-100 py-2 mb-4">
+      <div className="max-w-7xl mx-auto px-4 flex flex-wrap justify-between items-center gap-2">
+        {BADGES.map(({ icon: Icon, label }) => (
+          <div key={label} className="flex items-center gap-1.5 text-gray-600">
+            <Icon size={14} className="text-brand" />
+            <span className="text-[10px] md:text-xs font-bold uppercase tracking-wide">{label}</span>
           </div>
         ))}
       </div>
