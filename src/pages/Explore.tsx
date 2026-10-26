@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  Search, ChevronLeft, Shirt, Utensils, Home as HomeIcon, Sparkles, 
-  ShoppingBag, Gem, Heart, Baby, Footprints, Menu, Smartphone, Laptop, 
+  Search, ChevronLeft, Shirt, Home as HomeIcon, Sparkles, 
+  ShoppingBag, Gem, Baby, Footprints, Menu, Smartphone, Laptop, 
   Coffee, BookOpen, Palette, Dog, Dumbbell, Car, Briefcase, 
   Watch, Glasses, Flower, Gift, Cake, Gamepad2, Music, Camera, 
   Scissors, Wrench, PenTool, Droplet, Leaf 
