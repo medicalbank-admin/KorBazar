@@ -80,13 +80,31 @@ export default function SellWithUs() {
         email: formData.email, mobile: formData.mobile, role: 'seller', createdAt: new Date().toISOString()
       });
 
-      // 4. Save to sellers collection with Base64 strings
+      // 4. Save to sellers collection with Base64 strings AND NEW DEFAULTS
       await setDoc(doc(db, 'sellers', uid), {
-        fullName: formData.fullName, dob: formData.dob, phone: formData.mobile, whatsappNumber: formData.whatsapp,
-        cnicNumber: formData.cnicNumber, cnicFrontUrl: frontBase64, cnicBackUrl: backBase64,
-        storeName: formData.storeName, storeType: formData.storeType, storeAddress: formData.storeAddress,
-        city: formData.city, area: formData.area, bio: formData.bio,
-        status: 'pending_verification', createdAt: new Date().toISOString()
+        fullName: formData.fullName, 
+        dob: formData.dob, 
+        phone: formData.mobile, 
+        whatsappNumber: formData.whatsapp,
+        cnicNumber: formData.cnicNumber, 
+        cnicFrontUrl: frontBase64, 
+        cnicBackUrl: backBase64,
+        storeName: formData.storeName, 
+        storeType: formData.storeType, 
+        storeAddress: formData.storeAddress,
+        city: formData.city, 
+        area: formData.area, 
+        bio: formData.bio,
+        status: 'pending_verification', 
+        createdAt: new Date().toISOString(),
+        
+        // 👇 NEW DEFAULTS FOR PLATFORM FEATURES 👇
+        acceptsCod: true,          
+        isFrozen: false,           
+        plan: 'standard',          
+        feeStatus: 'pending',      
+        orderFeePaid: 0,           
+        agreementSigned: false     
       });
 
       navigate('/sell-with-us/pending');
@@ -215,4 +233,4 @@ export default function SellWithUs() {
       </div>
     </div>
   );
-                }
+}
