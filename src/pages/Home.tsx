@@ -14,13 +14,28 @@ import SellerCTA from '../components/SellerCTA';
 import RecentlyViewed from '../components/RecentlyViewed';
 import NewsletterSignup from '../components/NewsletterSignup';
 import FAQ from '../components/FAQ';
-import { Menu, ChevronRight } from 'lucide-react';
+// Added Category Icons
+import { Menu, ChevronRight, Shirt, Utensils, Home, Sparkles, ShoppingBag, Gem, Heart, Baby, Footprints } from 'lucide-react';
 
 type CategoryNode = {
   id: string;
   name: string;
   parentId?: string | null;
   children?: CategoryNode[];
+};
+
+// --- ICON MAPPER ---
+const getCategoryIcon = (name: string) => {
+  const n = name.toLowerCase();
+  if (n.includes('fashion') || n.includes('cloth') || n.includes('wear') || n.includes('suit')) return <Shirt size={16} />;
+  if (n.includes('food') || n.includes('sweet') || n.includes('cake') || n.includes('bak')) return <Utensils size={16} />;
+  if (n.includes('home') || n.includes('decor') || n.includes('furniture')) return <Home size={16} />;
+  if (n.includes('jewel') || n.includes('ring') || n.includes('necklace')) return <Gem size={16} />;
+  if (n.includes('beauty') || n.includes('care') || n.includes('skin')) return <Sparkles size={16} />;
+  if (n.includes('kid') || n.includes('baby')) return <Baby size={16} />;
+  if (n.includes('shoe') || n.includes('footwear')) return <Footprints size={16} />;
+  if (n.includes('art') || n.includes('craft')) return <Heart size={16} />;
+  return <ShoppingBag size={16} />; // Default icon
 };
 
 const buildCategoryTree = (categoryList: CategoryNode[]): any[] => {
@@ -154,6 +169,8 @@ export default function Home() {
         </div>
 
         <div className="flex flex-col md:flex-row gap-4 mb-6">
+          
+          {/* 1. DESKTOP SIDEBAR (Main Categories Only with Icons) */}
           <div className="hidden md:block w-64 bg-white rounded-xl shadow-sm border border-gray-100 p-4 h-max shrink-0">
             <h3 className="font-bold text-dark mb-4 px-2">All Categories</h3>
             <ul className="space-y-2">
@@ -166,32 +183,18 @@ export default function Home() {
                 </Link>
               </li>
 
-              {categoryTree.map((main: any) => (
+              {/* ONLY RENDER ROOT CATEGORIES (Where parentId is null) */}
+              {categoryTree.filter(c => !c.parentId).map((main: any) => (
                 <li key={main.id}>
-                  <div className="flex items-center gap-3 px-3 py-2 text-gray-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                    <Link
-                      to={`/explore?cat=${encodeURIComponent(main.name)}`}
-                      className="font-medium text-sm hover:text-brand"
-                    >
-                      {main.name}
-                    </Link>
-                  </div>
-
-                  {main.children && main.children.length > 0 && (
-                    <ul className="ml-6 mt-1 space-y-1 border-l border-gray-200 pl-3">
-                      {main.children.map((sub: any) => (
-                        <li key={sub.id}>
-                          <Link
-                            to={`/explore?cat=${encodeURIComponent(sub.name)}`}
-                            className="block px-2 py-1 text-xs text-gray-600 hover:text-brand"
-                          >
-                            {sub.name}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <Link
+                    to={`/explore?cat=${encodeURIComponent(main.name)}`}
+                    className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-50 hover:text-brand rounded-lg font-medium text-sm transition-colors"
+                  >
+                    <span className="text-gray-400">
+                      {getCategoryIcon(main.name)}
+                    </span>
+                    <span className="truncate">{main.name}</span>
+                  </Link>
                 </li>
               ))}
 
@@ -253,16 +256,18 @@ export default function Home() {
           </div>
         </div>
 
+        {/* 2. MOBILE CATEGORY PILLS (Main Categories Only with Icons) */}
         <div className="md:hidden">
           <TrustBadges />
           <section className="px-4 mb-6">
             <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide">
-              {categoryTree.map((main: any) => (
+              {categoryTree.filter(c => !c.parentId).map((main: any) => (
                 <Link
                   to={`/explore?cat=${encodeURIComponent(main.name)}`}
                   key={main.id}
-                  className="whitespace-nowrap px-4 py-2 rounded-full bg-white border border-gray-200 text-sm font-medium text-gray-700"
+                  className="whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 text-sm font-medium text-gray-700"
                 >
+                  <span className="text-gray-400">{getCategoryIcon(main.name)}</span>
                   {main.name}
                 </Link>
               ))}
@@ -344,4 +349,4 @@ export default function Home() {
       </div>
     </div>
   );
-                }
+        }
