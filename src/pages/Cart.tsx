@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { Trash2, ChevronLeft, Plus, Minus, Sparkles, Tag, ArrowRight } from 'lucide-react';
 
 export default function Cart() {
-  const { cart, removeFromCart, updateQuantity, cartDeliveryFee, cartItemCount } = useCart();
+  const { cart, removeFromCart, updateQuantity, cartItemCount } = useCart();
   const navigate = useNavigate();
 
   // State to track selected items (defaults to all items selected)
