@@ -153,15 +153,16 @@ export default function ProductDetails() {
     if (!newQuestion.trim()) return alert("Please type your question.");
     
     try {
-      await addDoc(collection(db, 'questions'), {
-        productId: product.id,
-        sellerId: product.sellerId,
-        buyerId: currentUser.uid,
-        buyerName: currentUser.displayName || currentUser.email || 'Anonymous',
-        question: newQuestion,
-        answer: null,
-        createdAt: new Date().toISOString()
-      });
+await addDoc(collection(db, 'questions'), {
+  productId: product.id,
+  productTitle: product.title, // <--- ADD THIS LINE
+  sellerId: product.sellerId,
+  buyerId: currentUser.uid,
+  buyerName: currentUser.displayName || currentUser.email || 'Anonymous',
+  question: newQuestion,
+  answer: null,
+  createdAt: new Date().toISOString()
+});
       
       await addDoc(collection(db, 'notifications'), {
         userId: product.sellerId,
