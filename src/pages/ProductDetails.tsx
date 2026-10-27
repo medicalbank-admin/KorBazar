@@ -42,6 +42,7 @@ export default function ProductDetails() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewText, setReviewText] = useState('');
   const [newQuestion, setNewQuestion] = useState('');
+  const [questionName, setQuestionName] = useState(''); // <--- NEW STATE
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -150,19 +151,20 @@ export default function ProductDetails() {
 
   const handleSubmitQuestion = async () => {
     if (!currentUser) return alert("Please login to ask a question.");
+    if (!questionName.trim()) return alert("Please enter your name."); // NEW CHECK
     if (!newQuestion.trim()) return alert("Please type your question.");
     
     try {
-await addDoc(collection(db, 'questions'), {
-  productId: product.id,
-  productTitle: product.title, // <--- ADD THIS LINE
-  sellerId: product.sellerId,
-  buyerId: currentUser.uid,
-  buyerName: currentUser.displayName || currentUser.email || 'Anonymous',
-  question: newQuestion,
-  answer: null,
-  createdAt: new Date().toISOString()
-});
+      await addDoc(collection(db, 'questions'), {
+        productId: product.id,
+        productTitle: product.title, 
+        sellerId: product.sellerId,
+        buyerId: currentUser.uid,
+        buyerName: questionName.trim(), // SAVE TYPED NAME
+        question: newQuestion,
+        answer: null,
+        createdAt: new Date().toISOString()
+      });
       
       await addDoc(collection(db, 'notifications'), {
         userId: product.sellerId,
@@ -177,6 +179,7 @@ await addDoc(collection(db, 'questions'), {
       alert("Question submitted! The seller will be notified.");
       setShowQuestionModal(false);
       setNewQuestion('');
+      setQuestionName(''); // RESET NAME
       
       const qQ = query(collection(db, 'questions'), where('productId', '==', product.id));
       const qSnap = await getDocs(qQ);
@@ -257,8 +260,7 @@ await addDoc(collection(db, 'questions'), {
   const uniqueSizes = hasVariants ? [...new Set(product.variants.filter((v:any) => v.size).map((v:any) => v.size))] : [];
   const uniqueColors = hasVariants ? [...new Set(product.variants.filter((v:any) => v.color).map((v:any) => v.color))] : [];
   const highlightsArray = product.highlights ? product.highlights.split('\n').filter((h: string) => h.trim() !== '') : [];
-
-return (
+  return (
   <div className="max-w-3xl mx-auto bg-gray-100 min-h-screen pb-24 md:pb-8 relative">
     
     {/* FLOATING TOP BAR */}
@@ -400,7 +402,6 @@ return (
       <button onClick={() => setActiveTab('ratings')} className={`flex-1 py-3 text-sm font-semibold whitespace-nowrap px-4 ${activeTab === 'ratings' ? 'text-[#f85606] border-b-2 border-[#f85606]' : 'text-gray-600'}`}>Ratings</button>
       <button onClick={() => setActiveTab('details')} className={`flex-1 py-3 text-sm font-semibold whitespace-nowrap px-4 ${activeTab === 'details' ? 'text-[#f85606] border-b-2 border-[#f85606]' : 'text-gray-600'}`}>Product details</button>
     </div>
-
           {/* TAB CONTENT */}
       <div className="mb-2">
         {activeTab === 'overview' && (
@@ -631,6 +632,14 @@ return (
             <h2 className="text-xl font-bold text-gray-800 mb-2 text-center">Ask a Public Question</h2>
             <p className="text-xs text-gray-500 text-center mb-4">This question and the seller's answer will be visible to everyone.</p>
 
+            <input 
+              type="text"
+              value={questionName}
+              onChange={(e) => setQuestionName(e.target.value)}
+              placeholder="Your Name (e.g. Ahmed)"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50 mb-3 text-sm"
+            />
+
             <textarea 
               value={newQuestion}
               onChange={(e) => setNewQuestion(e.target.value)}
@@ -647,4 +656,4 @@ return (
       {cartMsg && <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-brand text-white px-6 py-2 rounded-full shadow-lg z-[100] font-semibold">{cartMsg}</div>}
     </div>
   );
-        }
+                  }
