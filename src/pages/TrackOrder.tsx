@@ -4,29 +4,6 @@ import { collection, query, where, getDocs, doc, getDoc, addDoc } from 'firebase
 import { db } from '../firebase';
 import { CheckCircle2, Clock, Package, Truck, MessageCircle, Star, Box, CheckSquare, RotateCcw, MapPin } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-
-// Fix for missing default marker icons in Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
-// Custom Icons for Map
-const sellerIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-});
-const buyerIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-});
 
 export default function TrackOrder() {
   const { token } = useParams();
@@ -35,29 +12,13 @@ export default function TrackOrder() {
   const [premiumProducts, setPremiumProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Map Coordinates State
-  const [sellerCoords, setSellerCoords] = useState<[number, number] | null>(null);
-  const [buyerCoords, setBuyerCoords] = useState<[number, number] | null>(null);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([34.1453, 71.7308]); // Default Charsadda
+  // Map Address State
+  const [buyerAddress, setBuyerAddress] = useState('');
 
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
-
-  // Geocoding function to convert text address to Lat/Lng
-  const getCoordinates = async (address: string) => {
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ', Pakistan')}`);
-      const data = await res.json();
-      if (data && data.length > 0) {
-        return [parseFloat(data[0].lat), parseFloat(data[0].lon)] as [number, number];
-      }
-    } catch (e) {
-      console.error("Geocoding error:", e);
-    }
-    return null;
-  };
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -67,28 +28,10 @@ export default function TrackOrder() {
       if (!snap.empty) {
         const orderData = { id: snap.docs[0].id, ...snap.docs[0].data() } as any;
         setOrder(orderData);
+        setBuyerAddress(orderData.buyerAddress || 'Charsadda, Pakistan');
         
         const sellerSnap = await getDoc(doc(db, 'sellers', orderData.sellerId));
-        if (sellerSnap.exists()) {
-          const sellerData = sellerSnap.data();
-          setSeller(sellerData);
-
-          // Fetch Seller Coordinates (using storeAddress or city)
-          const sAddress = `${sellerData.storeAddress || ''} ${sellerData.city || 'Charsadda'}`;
-          const sCoords = await getCoordinates(sAddress);
-          if (sCoords) setSellerCoords(sCoords);
-
-          // Fetch Buyer Coordinates
-          const bCoords = await getCoordinates(orderData.buyerAddress);
-          if (bCoords) setBuyerCoords(bCoords);
-
-          // Set map center to midpoint if both exist
-          if (sCoords && bCoords) {
-            setMapCenter([(sCoords[0] + bCoords[0]) / 2, (sCoords[1] + bCoords[1]) / 2]);
-          } else if (sCoords) {
-            setMapCenter(sCoords);
-          }
-        }
+        if (sellerSnap.exists()) setSeller(sellerSnap.data());
 
         const reviewQ = query(collection(db, 'reviews'), where('orderId', '==', orderData.id));
         const reviewSnap = await getDocs(reviewQ);
@@ -114,22 +57,25 @@ export default function TrackOrder() {
     fetchPremiumProducts();
   }, [token]);
 
+  // FIXED: Loop through items to save individual productId for reviews
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (rating === 0) return alert('Please select a star rating.');
     setSubmittingReview(true);
 
     try {
-      await addDoc(collection(db, 'reviews'), {
-        orderId: order.id,
-        sellerId: order.sellerId,
-        storeName: order.storeName,
-        productIds: order.items.map((i: any) => i.productId),
-        buyerName: order.buyerName,
-        rating,
-        text: reviewText,
-        createdAt: new Date().toISOString()
-      });
+      for (const item of order.items) {
+        await addDoc(collection(db, 'reviews'), {
+          orderId: order.id,
+          productId: item.productId, // <--- This is the critical fix
+          sellerId: order.sellerId,
+          storeName: order.storeName,
+          buyerName: order.buyerName,
+          rating: rating,
+          text: reviewText,
+          createdAt: new Date().toISOString()
+        });
+      }
       setReviewSubmitted(true);
     } catch (error) {
       console.error(error);
@@ -157,61 +103,29 @@ export default function TrackOrder() {
   const cleanNumber = seller?.whatsappNumber?.replace(/^0/, '');
   const waLink = `https://wa.me/92${cleanNumber}?text=${encodeURIComponent(whatsappText)}`;
 
+  // Google Maps Iframe URL (No API key needed)
+  const mapUrl = `https://maps.google.com/maps?q=${encodeURIComponent(buyerAddress)}&t=&z=13&ie=UTF8&iwloc=&output=embed`;
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 pb-24">
       
       {/* --- LIVE MAP SECTION --- */}
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-4 mb-8">
         <h2 className="text-xl font-bold text-dark mb-4 flex items-center gap-2 px-2">
-          <MapPin className="text-brand" /> Live Tracking Map
+          <MapPin className="text-brand" /> Delivery Location
         </h2>
         
-        <div className="h-[350px] w-full rounded-2xl overflow-hidden relative z-0">
-          {sellerCoords || buyerCoords ? (
-            <MapContainer center={mapCenter} zoom={12} scrollWheelZoom={false} className="w-full h-full">
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              
-              {/* Seller Marker */}
-              {sellerCoords && (
-                <Marker position={sellerCoords} icon={sellerIcon}>
-                  <Popup>
-                    <strong>Seller Store</strong><br/>
-                    {seller?.storeName}<br/>
-                    {seller?.storeAddress}
-                  </Popup>
-                </Marker>
-              )}
-
-              {/* Buyer Marker */}
-              {buyerCoords && (
-                <Marker position={buyerCoords} icon={buyerIcon}>
-                  <Popup>
-                    <strong>Delivery Address</strong><br/>
-                    {order.buyerName}<br/>
-                    {order.buyerAddress}
-                  </Popup>
-                </Marker>
-              )}
-
-              {/* Route Line connecting them */}
-              {sellerCoords && buyerCoords && (
-                <Polyline 
-                  positions={[sellerCoords, buyerCoords]} 
-                  color="#10b981" 
-                  weight={4} 
-                  dashArray="10, 10" 
-                />
-              )}
-            </MapContainer>
-          ) : (
-            <div className="w-full h-full bg-gray-100 flex flex-col items-center justify-center text-gray-500">
-              <MapPin size={48} className="mb-2 opacity-50" />
-              <p>Map coordinates not available yet.</p>
-            </div>
-          )}
+        <div className="h-[350px] w-full rounded-2xl overflow-hidden relative z-0 border border-gray-200">
+          <iframe
+            width="100%"
+            height="100%"
+            frameBorder="0"
+            scrolling="no"
+            marginHeight={0}
+            marginWidth={0}
+            src={mapUrl}
+            title="Order Delivery Location"
+          ></iframe>
         </div>
       </div>
 
@@ -386,4 +300,4 @@ export default function TrackOrder() {
       )}
     </div>
   );
-                                                          }
+                                                                                                                                                                     }
