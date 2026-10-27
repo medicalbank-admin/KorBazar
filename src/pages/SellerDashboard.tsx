@@ -135,18 +135,16 @@ export default function SellerDashboard() {
       const prodSnap = await getDocs(prodQ);
       setProducts(prodSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
 
-    
-      // 3. Fetch Orders (Bulletproof Method)
+    // 3. Fetch Orders (Safe from Index Errors)
 const orderQ = query(
   collection(db, 'orders'),
   where('sellerId', '==', currentUser.uid),
   limit(100)
 );
 const orderSnap = await getDocs(orderQ);
+const ordersData = orderSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-const ordersData = orderSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
-
-// Sort manually in JavaScript so it NEVER fails if 'createdAt' is missing
+// Sort manually in JavaScript instead of Firestore
 ordersData.sort((a: any, b: any) => {
   const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
   const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -154,6 +152,7 @@ ordersData.sort((a: any, b: any) => {
 });
 
 setOrders(ordersData);
+      console.log("Fetched Orders:", ordersData);
 
     } catch (error) {
       console.error('Error fetching store, products, or orders:', error);
