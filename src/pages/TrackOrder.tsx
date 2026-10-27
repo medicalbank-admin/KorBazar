@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { collection, query, where, getDocs, doc, getDoc, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CheckCircle2, Clock, Package, Truck, MessageCircle, Star, Box, CheckSquare, RotateCcw, MapPin } from 'lucide-react';
+import { CheckCircle2, Clock, Package, Truck, MessageCircle, Star, Box, CheckSquare, RotateCcw, MapPin, Image as ImageIcon } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
+import { uploadToCloudinary } from '../utils/Cloudinary';
 
 export default function TrackOrder() {
   const { token } = useParams();
@@ -17,6 +18,8 @@ export default function TrackOrder() {
 
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
+  const [reviewName, setReviewName] = useState('');
+  const [reviewImage, setReviewImage] = useState<File | null>(null);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
 
@@ -57,26 +60,38 @@ export default function TrackOrder() {
     fetchPremiumProducts();
   }, [token]);
 
-  // FIXED: Loop through items to save individual productId for reviews
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (rating === 0) return alert('Please select a star rating.');
+    if (!reviewName.trim()) return alert('Please enter your name.');
     setSubmittingReview(true);
 
     try {
+      let imageUrl = null;
+
+      // Upload image if selected
+      if (reviewImage) {
+        imageUrl = await uploadToCloudinary(reviewImage);
+      }
+
+      // Loop through items to save individual productId for reviews
       for (const item of order.items) {
         await addDoc(collection(db, 'reviews'), {
           orderId: order.id,
-          productId: item.productId, // <--- This is the critical fix
+          productId: item.productId,
           sellerId: order.sellerId,
           storeName: order.storeName,
-          buyerName: order.buyerName,
+          buyerName: reviewName.trim(),
           rating: rating,
           text: reviewText,
+          image: imageUrl,
           createdAt: new Date().toISOString()
         });
       }
       setReviewSubmitted(true);
+      setReviewImage(null);
+      setReviewName('');
+      setReviewText('');
     } catch (error) {
       console.error(error);
       alert('Failed to submit review.');
@@ -270,6 +285,16 @@ export default function TrackOrder() {
                     </button>
                   ))}
                 </div>
+
+                {/* NEW: Name Input */}
+                <input 
+                  type="text"
+                  value={reviewName}
+                  onChange={(e) => setReviewName(e.target.value)}
+                  placeholder="Your Name (e.g. Ahmed)"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none mb-3"
+                />
+
                 <textarea 
                   placeholder="How was the quality, delivery, and service?" 
                   value={reviewText}
@@ -277,6 +302,26 @@ export default function TrackOrder() {
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand focus:outline-none"
                   rows={3}
                 />
+
+                {/* NEW: Image Upload */}
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors text-sm font-semibold text-gray-700">
+                    <ImageIcon size={18} />
+                    {reviewImage ? reviewImage.name : 'Add Photo'}
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={(e) => setReviewImage(e.target.files?.[0] || null)} 
+                    />
+                  </label>
+                  {reviewImage && (
+                    <button type="button" onClick={() => setReviewImage(null)} className="text-red-500 text-xs font-bold">
+                      Remove
+                    </button>
+                  )}
+                </div>
+
                 <button type="submit" disabled={submittingReview} className="w-full bg-dark text-white font-bold py-3 rounded-xl hover:bg-black transition-colors">
                   {submittingReview ? 'Submitting...' : 'Submit Review'}
                 </button>
@@ -300,4 +345,4 @@ export default function TrackOrder() {
       )}
     </div>
   );
-                                                                                                                                                                     }
+    }
