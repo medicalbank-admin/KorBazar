@@ -14,6 +14,7 @@ import SellerCTA from '../components/SellerCTA';
 import RecentlyViewed from '../components/RecentlyViewed';
 import NewsletterSignup from '../components/NewsletterSignup';
 import FAQ from '../components/FAQ';
+import OfferPopup from '../components/OfferPopup'; // <-- NEW IMPORT
 import { 
   Menu, ChevronRight, Shirt, Home as HomeIcon, Sparkles, 
   ShoppingBag, Gem, Baby, Footprints, Smartphone, Laptop, 
@@ -225,6 +226,10 @@ export default function Home() {
 
   return (
     <div className="bg-[#f4f5f7] min-h-screen pb-12">
+      
+      {/* NEW: OFFER POPUP */}
+      <OfferPopup />
+
       <div className="max-w-7xl mx-auto px-0 md:px-4 pt-0 md:pt-6">
         
         {/* MAIN LAYOUT: Sidebar (Desktop) + Ads (Both) */}
@@ -357,4 +362,4 @@ export default function Home() {
       </div>
     </div>
   );
-}
+  }
