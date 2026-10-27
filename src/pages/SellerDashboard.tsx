@@ -770,9 +770,10 @@ return (
         ) : (
           <div className="space-y-4">
             {questions.map((q) => (
-              <div key={q.id} className="border border-gray-100 rounded-xl p-4">
-                <p className="font-bold text-dark text-sm mb-1">Q: {q.question}</p>
-                <p className="text-xs text-gray-500 mb-3">Asked by {q.buyerName}</p>
+  <div key={q.id} className="border border-gray-100 rounded-xl p-4">
+    <p className="text-xs text-brand font-bold mb-1">Product: {q.productTitle || 'Unknown Product'}</p>
+    <p className="font-bold text-dark text-sm mb-1">Q: {q.question}</p>
+    <p className="text-xs text-gray-500 mb-3">Asked by {q.buyerName}</p>
                 
                 {q.answer ? (
                   <div className="bg-green-50 p-3 rounded-lg border border-green-100">
