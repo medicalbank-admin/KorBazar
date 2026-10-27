@@ -185,6 +185,13 @@ export default function ProductDetails() {
     }
   };
 
+  // --- FIXED PRICE CALCULATION LOGIC ---
+  const discountPercent = Number(product.discountPercent) || 0;
+  const originalPrice = Number(product.price);
+  const finalPrice = discountPercent > 0 
+    ? Math.round(originalPrice - (originalPrice * (discountPercent / 100))) 
+    : originalPrice;
+
   const validateVariantAndGetItem = () => {
     if (hasVariants) {
       if (product.variants.some((v: any) => v.size) && !selectedSize) { alert("Please select a size."); return null; }
@@ -195,9 +202,17 @@ export default function ProductDetails() {
     if (product.isCustomizable && !customizationNote.trim()) { alert("Please fill in the personalization details."); return null; }
 
     return {
-      productId: product.id, title: product.title, price: product.price, image: images[0],
-      sellerId: product.sellerId, storeName: product.storeName, deliveryFee: product.deliveryFee || 0,
-      selectedSize, selectedColor, customizationNote: product.isCustomizable ? customizationNote.trim() : null
+      productId: product.id, 
+      title: product.title, 
+      price: originalPrice, // Save the original price to the cart
+      discountPercent: discountPercent, // Save the discount to the cart
+      image: images[0],
+      sellerId: product.sellerId, 
+      storeName: product.storeName, 
+      deliveryFee: product.deliveryFee || 0,
+      selectedSize, 
+      selectedColor, 
+      customizationNote: product.isCustomizable ? customizationNote.trim() : null
     } as any;
   };
 
@@ -240,155 +255,152 @@ export default function ProductDetails() {
   const averageRating = reviews.length > 0 ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) : '0.0';
   const uniqueSizes = hasVariants ? [...new Set(product.variants.filter((v:any) => v.size).map((v:any) => v.size))] : [];
   const uniqueColors = hasVariants ? [...new Set(product.variants.filter((v:any) => v.color).map((v:any) => v.color))] : [];
-  
-  const discountPercent = Number(product.discountPercent) || 0;
-  const originalPrice = discountPercent > 0 ? Math.round(product.price / (1 - (discountPercent / 100))) : null;
   const highlightsArray = product.highlights ? product.highlights.split('\n').filter((h: string) => h.trim() !== '') : [];
 
-  return (
-    <div className="max-w-3xl mx-auto bg-gray-100 min-h-screen pb-24 md:pb-8 relative">
-      
-      {/* FLOATING TOP BAR */}
-      <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-50 md:hidden">
-        <button onClick={() => navigate(-1)} className="bg-white/80 backdrop-blur-md p-2 rounded-full shadow-sm text-gray-700"><Home size={20} /></button>
-        <div className="flex gap-2">
-          <button onClick={() => navigate('/cart')} className="bg-white/80 backdrop-blur-md p-2 rounded-full shadow-sm text-gray-700"><ShoppingCart size={20} /></button>
-          <button className="bg-white/80 backdrop-blur-md p-2 rounded-full shadow-sm text-gray-700"><MoreVertical size={20} /></button>
-        </div>
+return (
+  <div className="max-w-3xl mx-auto bg-gray-100 min-h-screen pb-24 md:pb-8 relative">
+    
+    {/* FLOATING TOP BAR */}
+    <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-50 md:hidden">
+      <button onClick={() => navigate(-1)} className="bg-white/80 backdrop-blur-md p-2 rounded-full shadow-sm text-gray-700"><Home size={20} /></button>
+      <div className="flex gap-2">
+        <button onClick={() => navigate('/cart')} className="bg-white/80 backdrop-blur-md p-2 rounded-full shadow-sm text-gray-700"><ShoppingCart size={20} /></button>
+        <button className="bg-white/80 backdrop-blur-md p-2 rounded-full shadow-sm text-gray-700"><MoreVertical size={20} /></button>
       </div>
+    </div>
 
-      {/* MAIN IMAGE GALLERY */}
-      <div className="w-full aspect-square bg-white relative">
-        <img 
-          src={images[activeImage]} 
-          alt={product.title} 
-          onClick={() => setActiveImage((prev) => (prev + 1) % images.length)} 
-          className={`w-full h-full object-contain cursor-pointer ${isOutOfStock ? 'opacity-50' : ''}`} 
-        />
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white text-xs px-3 py-1 rounded-full">
-          {activeImage + 1} / {images.length} (Tap to change)
-        </div>
+    {/* MAIN IMAGE GALLERY */}
+    <div className="w-full aspect-square bg-white relative">
+      <img 
+        src={images[activeImage]} 
+        alt={product.title} 
+        onClick={() => setActiveImage((prev) => (prev + 1) % images.length)} 
+        className={`w-full h-full object-contain cursor-pointer ${isOutOfStock ? 'opacity-50' : ''}`} 
+      />
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white text-xs px-3 py-1 rounded-full">
+        {activeImage + 1} / {images.length} (Tap to change)
       </div>
+    </div>
 
-      {/* PRICE & TITLE SECTION */}
-      <div className="bg-white p-4 mb-2">
-        {discountPercent > 0 && <p className="text-pink-600 text-sm font-semibold mb-1">Rs. {originalPrice! - product.price} off with Promo</p>}
-        
-        <div className="flex items-end gap-3 mb-2">
-          <h1 className="text-3xl font-bold text-[#f85606]">Rs. {product.price}</h1>
-          {originalPrice && (
-            <>
-              <span className="text-gray-400 line-through text-base mb-0.5">Rs. {originalPrice}</span>
-              <span className="bg-pink-100 text-pink-600 text-sm font-bold px-2 py-0.5 rounded border border-pink-200 mb-0.5">-{discountPercent}%</span>
-            </>
-          )}
-          
-          <div className="ml-auto flex gap-4 text-gray-400 mb-1">
-            <button onClick={() => toggleFavorite(product.id)}>
-              <Heart size={22} className={isFavorite(product.id) ? "fill-red-500 text-red-500" : ""} />
-            </button>
-            <button onClick={handleShare}>
-              <Share2 size={22} />
-            </button>
-          </div>
-        </div>
-        
-        <h2 className="text-lg text-gray-800 leading-tight mb-2">{product.title}</h2>
-        
-        <div className="flex items-center gap-2">
-          <div className="flex text-yellow-400">
-            {[1,2,3,4,5].map(star => <Star key={star} size={16} className={star <= Math.round(Number(averageRating)) ? "fill-yellow-400" : "text-gray-300"} />)}
-          </div>
-          <span className="text-sm text-gray-600">{averageRating} ({reviews.length})</span>
-        </div>
-      </div>
-
-      {/* VARIANTS & THUMBNAILS */}
-      {(hasVariants || product.isCustomizable) && (
-        <div className="bg-white p-4 mb-2">
-          {uniqueSizes.length > 0 && (
-            <div className="mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <p className="text-sm text-gray-500">Product Options <span className="text-gray-800 ml-1">Size: {selectedSize || 'Select'}</span></p>
-                <ChevronRight size={16} className="text-gray-400" />
-              </div>
-              <p className="text-[#f85606] text-xs font-semibold mb-2 flex items-center gap-1"><Ruler size={14}/> Size Guide</p>
-              <div className="flex flex-wrap gap-2">
-                {uniqueSizes.map((size: any) => (
-                  <button key={size} onClick={() => setSelectedSize(size)} className={`px-4 py-1.5 rounded border text-sm ${selectedSize === size ? 'border-[#f85606] text-[#f85606] bg-orange-50' : 'border-gray-200 text-gray-700'}`}>{size}</button>
-                ))}
-              </div>
-            </div>
-          )}
-          {uniqueColors.length > 0 && (
-            <div className="mb-4">
-              <p className="text-sm text-gray-500 mb-2">Color: <span className="text-gray-800">{selectedColor || 'Select'}</span></p>
-              <div className="flex flex-wrap gap-2">
-                {uniqueColors.map((color: any) => (
-                  <button key={color} onClick={() => setSelectedColor(color)} className={`px-4 py-1.5 rounded border text-sm ${selectedColor === color ? 'border-[#f85606] text-[#f85606] bg-orange-50' : 'border-gray-200 text-gray-700'}`}>{color}</button>
-                ))}
-              </div>
-            </div>
-          )}
-          {product.isCustomizable && (
-            <div className="mt-2 bg-blue-50 border border-blue-100 p-3 rounded-lg mb-4">
-              <label className="block text-sm font-bold text-blue-900 mb-1 flex items-center gap-1"><Sparkles size={14} className="text-brand" /> Personalization Required</label>
-              <textarea required value={customizationNote} onChange={(e) => setCustomizationNote(e.target.value)} placeholder="Enter your personalization details here..." rows={2} className="w-full px-3 py-2 rounded border border-blue-200 focus:border-brand focus:outline-none bg-white text-sm" />
-            </div>
-          )}
-          
-          {/* Thumbnails */}
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-            {images.map((img: string, i: number) => (
-              <button key={i} onClick={() => setActiveImage(i)} className={`w-16 h-16 flex-shrink-0 rounded border-2 overflow-hidden ${activeImage === i ? 'border-[#f85606]' : 'border-transparent'}`}><img src={img} className="w-full h-full object-cover" /></button>
-            ))}
-          </div>
-        </div>
+    {/* PRICE & TITLE SECTION */}
+    <div className="bg-white p-4 mb-2">
+      {discountPercent > 0 && (
+        <p className="text-pink-600 text-sm font-semibold mb-1">Rs. {originalPrice - finalPrice} off with Promo</p>
       )}
-
-      {/* QUICK INFO ROWS */}
-      <div className="bg-white mb-2">
-        <div onClick={() => setShowSpecsModal(true)} className="flex items-center justify-between p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors">
-          <span className="text-gray-500 text-sm w-24">Specificatio...</span>
-          <span className="text-gray-800 text-sm flex-grow truncate pr-4">
-            {[product.brand, product.style, product.material].filter(Boolean).join(', ') || 'Brand, Material, etc'}
-          </span>
-          <ChevronRight size={16} className="text-gray-400" />
+      
+      <div className="flex items-end gap-3 mb-2">
+        <h1 className="text-3xl font-bold text-[#f85606]">Rs. {finalPrice}</h1>
+        {discountPercent > 0 && (
+          <>
+            <span className="text-gray-400 line-through text-base mb-0.5">Rs. {originalPrice}</span>
+            <span className="bg-pink-100 text-pink-600 text-sm font-bold px-2 py-0.5 rounded border border-pink-200 mb-0.5">-{discountPercent}%</span>
+          </>
+        )}
+        <div className="ml-auto flex gap-4 text-gray-400 mb-1">
+          <button onClick={() => toggleFavorite(product.id)}>
+            <Heart size={22} className={isFavorite(product.id) ? "fill-red-500 text-red-500" : ""} />
+          </button>
+          <button onClick={handleShare}>
+            <Share2 size={22} />
+          </button>
         </div>
+      </div>
+      
+      <h2 className="text-lg text-gray-800 leading-tight mb-2">{product.title}</h2>
+      <div className="flex items-center gap-2">
+        <div className="flex text-yellow-400">
+          {[1,2,3,4,5].map(star => <Star key={star} size={16} className={star <= Math.round(Number(averageRating)) ? "fill-yellow-400" : "text-gray-300"} />)}
+        </div>
+        <span className="text-sm text-gray-600">{averageRating} ({reviews.length})</span>
+      </div>
+    </div>
 
-        <div className="flex items-start justify-between p-4 border-b border-gray-100">
-          <span className="text-gray-500 text-sm w-24">Delivery</span>
-          <div className="flex-grow pr-4">
-            <p className="text-[#f85606] text-sm font-medium mb-1 flex items-center gap-1">
-              {seller?.city || 'Pakistan'}, {seller?.area || ''} <MapPin size={14} />
-            </p>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-800">Standard Delivery</span>
-              <span className="font-bold text-gray-800">Rs. {product.deliveryFee || 0}</span>
+    {/* VARIANTS & THUMBNAILS */}
+    {(hasVariants || product.isCustomizable) && (
+      <div className="bg-white p-4 mb-2">
+        {uniqueSizes.length > 0 && (
+          <div className="mb-4">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-sm text-gray-500">Product Options <span className="text-gray-800 ml-1">Size: {selectedSize || 'Select'}</span></p>
+              <ChevronRight size={16} className="text-gray-400" />
+            </div>
+            <p className="text-[#f85606] text-xs font-semibold mb-2 flex items-center gap-1"><Ruler size={14}/> Size Guide</p>
+            <div className="flex flex-wrap gap-2">
+              {uniqueSizes.map((size: any) => (
+                <button key={size} onClick={() => setSelectedSize(size)} className={`px-4 py-1.5 rounded border text-sm ${selectedSize === size ? 'border-[#f85606] text-[#f85606] bg-orange-50' : 'border-gray-200 text-gray-700'}`}>{size}</button>
+              ))}
             </div>
           </div>
-          <ChevronRight size={16} className="text-gray-400 mt-1" />
-        </div>
-
-        <div className="flex items-start justify-between p-4">
-          <span className="text-gray-500 text-sm w-24">Service</span>
-          <div className="flex-grow pr-4 space-y-1">
-            <p className="text-sm text-gray-800 flex items-start gap-2"><span className="mt-1.5 w-1 h-1 bg-black rounded-full shrink-0"></span> 14 days easy return</p>
-            <p className="text-xs text-gray-500 ml-3">Change of Mind applicable</p>
-            <p className="text-sm text-gray-800 flex items-start gap-2 mt-2"><span className="mt-1.5 w-1 h-1 bg-black rounded-full shrink-0"></span> Warranty not available</p>
+        )}
+        {uniqueColors.length > 0 && (
+          <div className="mb-4">
+            <p className="text-sm text-gray-500 mb-2">Color: <span className="text-gray-800">{selectedColor || 'Select'}</span></p>
+            <div className="flex flex-wrap gap-2">
+              {uniqueColors.map((color: any) => (
+                <button key={color} onClick={() => setSelectedColor(color)} className={`px-4 py-1.5 rounded border text-sm ${selectedColor === color ? 'border-[#f85606] text-[#f85606] bg-orange-50' : 'border-gray-200 text-gray-700'}`}>{color}</button>
+              ))}
+            </div>
           </div>
-          <ChevronRight size={16} className="text-gray-400 mt-1" />
+        )}
+        {product.isCustomizable && (
+          <div className="mt-2 bg-blue-50 border border-blue-100 p-3 rounded-lg mb-4">
+            <label className="block text-sm font-bold text-blue-900 mb-1 flex items-center gap-1"><Sparkles size={14} className="text-brand" /> Personalization Required</label>
+            <textarea required value={customizationNote} onChange={(e) => setCustomizationNote(e.target.value)} placeholder="Enter your personalization details here..." rows={2} className="w-full px-3 py-2 rounded border border-blue-200 focus:border-brand focus:outline-none bg-white text-sm" />
+          </div>
+        )}
+        
+        {/* Thumbnails */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+          {images.map((img: string, i: number) => (
+            <button key={i} onClick={() => setActiveImage(i)} className={`w-16 h-16 flex-shrink-0 rounded border-2 overflow-hidden ${activeImage === i ? 'border-[#f85606]' : 'border-transparent'}`}><img src={img} className="w-full h-full object-cover" /></button>
+          ))}
         </div>
       </div>
+    )}
 
-      {/* STICKY TABS */}
-      <div className="bg-white sticky top-0 z-40 border-b border-gray-200 flex overflow-x-auto scrollbar-hide shadow-sm">
-        <button onClick={() => setActiveTab('overview')} className={`flex-1 py-3 text-sm font-semibold whitespace-nowrap px-4 ${activeTab === 'overview' ? 'text-[#f85606] border-b-2 border-[#f85606]' : 'text-gray-600'}`}>Overview</button>
-        <button onClick={() => setActiveTab('ratings')} className={`flex-1 py-3 text-sm font-semibold whitespace-nowrap px-4 ${activeTab === 'ratings' ? 'text-[#f85606] border-b-2 border-[#f85606]' : 'text-gray-600'}`}>Ratings</button>
-        <button onClick={() => setActiveTab('details')} className={`flex-1 py-3 text-sm font-semibold whitespace-nowrap px-4 ${activeTab === 'details' ? 'text-[#f85606] border-b-2 border-[#f85606]' : 'text-gray-600'}`}>Product details</button>
+    {/* QUICK INFO ROWS */}
+    <div className="bg-white mb-2">
+      <div onClick={() => setShowSpecsModal(true)} className="flex items-center justify-between p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors">
+        <span className="text-gray-500 text-sm w-24">Specificatio...</span>
+        <span className="text-gray-800 text-sm flex-grow truncate pr-4">
+          {[product.brand, product.style, product.material].filter(Boolean).join(', ') || 'Brand, Material, etc'}
+        </span>
+        <ChevronRight size={16} className="text-gray-400" />
       </div>
 
-      {/* TAB CONTENT */}
+      <div className="flex items-start justify-between p-4 border-b border-gray-100">
+        <span className="text-gray-500 text-sm w-24">Delivery</span>
+        <div className="flex-grow pr-4">
+          <p className="text-[#f85606] text-sm font-medium mb-1 flex items-center gap-1">
+            {seller?.city || 'Pakistan'}, {seller?.area || ''} <MapPin size={14} />
+          </p>
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-800">Standard Delivery</span>
+            <span className="font-bold text-gray-800">Rs. {product.deliveryFee || 0}</span>
+          </div>
+        </div>
+        <ChevronRight size={16} className="text-gray-400 mt-1" />
+      </div>
+
+      <div className="flex items-start justify-between p-4">
+        <span className="text-gray-500 text-sm w-24">Service</span>
+        <div className="flex-grow pr-4 space-y-1">
+          <p className="text-sm text-gray-800 flex items-start gap-2"><span className="mt-1.5 w-1 h-1 bg-black rounded-full shrink-0"></span> 14 days easy return</p>
+          <p className="text-xs text-gray-500 ml-3">Change of Mind applicable</p>
+          <p className="text-sm text-gray-800 flex items-start gap-2 mt-2"><span className="mt-1.5 w-1 h-1 bg-black rounded-full shrink-0"></span> Warranty not available</p>
+        </div>
+        <ChevronRight size={16} className="text-gray-400 mt-1" />
+      </div>
+    </div>
+
+    {/* STICKY TABS */}
+    <div className="bg-white sticky top-0 z-40 border-b border-gray-200 flex overflow-x-auto scrollbar-hide shadow-sm">
+      <button onClick={() => setActiveTab('overview')} className={`flex-1 py-3 text-sm font-semibold whitespace-nowrap px-4 ${activeTab === 'overview' ? 'text-[#f85606] border-b-2 border-[#f85606]' : 'text-gray-600'}`}>Overview</button>
+      <button onClick={() => setActiveTab('ratings')} className={`flex-1 py-3 text-sm font-semibold whitespace-nowrap px-4 ${activeTab === 'ratings' ? 'text-[#f85606] border-b-2 border-[#f85606]' : 'text-gray-600'}`}>Ratings</button>
+      <button onClick={() => setActiveTab('details')} className={`flex-1 py-3 text-sm font-semibold whitespace-nowrap px-4 ${activeTab === 'details' ? 'text-[#f85606] border-b-2 border-[#f85606]' : 'text-gray-600'}`}>Product details</button>
+    </div>
+
+          {/* TAB CONTENT */}
       <div className="mb-2">
         {activeTab === 'overview' && (
           <div>
@@ -634,4 +646,4 @@ export default function ProductDetails() {
       {cartMsg && <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-brand text-white px-6 py-2 rounded-full shadow-lg z-[100] font-semibold">{cartMsg}</div>}
     </div>
   );
-}
+        }
