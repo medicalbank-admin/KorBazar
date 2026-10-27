@@ -42,7 +42,11 @@ export default function ProductDetails() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewText, setReviewText] = useState('');
   const [newQuestion, setNewQuestion] = useState('');
-  const [questionName, setQuestionName] = useState(''); // <--- NEW STATE
+  const [questionName, setQuestionName] = useState('');
+  
+  // NEW: Loading States for Buttons
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [questionSubmitting, setQuestionSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -127,6 +131,8 @@ export default function ProductDetails() {
     if (!currentUser) return alert("Please login to write a review.");
     if (!reviewText.trim()) return alert("Please write your review.");
     
+    setReviewSubmitting(true);
+    
     try {
       await addDoc(collection(db, 'reviews'), {
         productId: product.id,
@@ -146,13 +152,17 @@ export default function ProductDetails() {
       setReviews(revSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (e) {
       alert("Error submitting review.");
+    } finally {
+      setReviewSubmitting(false);
     }
   };
 
   const handleSubmitQuestion = async () => {
     if (!currentUser) return alert("Please login to ask a question.");
-    if (!questionName.trim()) return alert("Please enter your name."); // NEW CHECK
+    if (!questionName.trim()) return alert("Please enter your name."); 
     if (!newQuestion.trim()) return alert("Please type your question.");
+    
+    setQuestionSubmitting(true);
     
     try {
       await addDoc(collection(db, 'questions'), {
@@ -160,7 +170,7 @@ export default function ProductDetails() {
         productTitle: product.title, 
         sellerId: product.sellerId,
         buyerId: currentUser.uid,
-        buyerName: questionName.trim(), // SAVE TYPED NAME
+        buyerName: questionName.trim(),
         question: newQuestion,
         answer: null,
         createdAt: new Date().toISOString()
@@ -179,17 +189,18 @@ export default function ProductDetails() {
       alert("Question submitted! The seller will be notified.");
       setShowQuestionModal(false);
       setNewQuestion('');
-      setQuestionName(''); // RESET NAME
+      setQuestionName('');
       
       const qQ = query(collection(db, 'questions'), where('productId', '==', product.id));
       const qSnap = await getDocs(qQ);
       setQuestions(qSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (e) {
       alert("Error submitting question.");
+    } finally {
+      setQuestionSubmitting(false);
     }
   };
 
-  // --- FIXED PRICE CALCULATION LOGIC ---
   const discountPercent = Number(product.discountPercent) || 0;
   const originalPrice = Number(product.price);
   const finalPrice = discountPercent > 0 
@@ -208,8 +219,8 @@ export default function ProductDetails() {
     return {
       productId: product.id, 
       title: product.title, 
-      price: originalPrice, // Save the original price to the cart
-      discountPercent: discountPercent, // Save the discount to the cart
+      price: originalPrice,
+      discountPercent: discountPercent,
       image: images[0],
       sellerId: product.sellerId, 
       storeName: product.storeName, 
@@ -260,7 +271,8 @@ export default function ProductDetails() {
   const uniqueSizes = hasVariants ? [...new Set(product.variants.filter((v:any) => v.size).map((v:any) => v.size))] : [];
   const uniqueColors = hasVariants ? [...new Set(product.variants.filter((v:any) => v.color).map((v:any) => v.color))] : [];
   const highlightsArray = product.highlights ? product.highlights.split('\n').filter((h: string) => h.trim() !== '') : [];
-  return (
+
+return (
   <div className="max-w-3xl mx-auto bg-gray-100 min-h-screen pb-24 md:pb-8 relative">
     
     {/* FLOATING TOP BAR */}
@@ -352,7 +364,6 @@ export default function ProductDetails() {
           </div>
         )}
         
-        {/* Thumbnails */}
         <div className="flex gap-2 overflow-x-auto scrollbar-hide">
           {images.map((img: string, i: number) => (
             <button key={i} onClick={() => setActiveImage(i)} className={`w-16 h-16 flex-shrink-0 rounded border-2 overflow-hidden ${activeImage === i ? 'border-[#f85606]' : 'border-transparent'}`}><img src={img} className="w-full h-full object-cover" /></button>
@@ -402,6 +413,7 @@ export default function ProductDetails() {
       <button onClick={() => setActiveTab('ratings')} className={`flex-1 py-3 text-sm font-semibold whitespace-nowrap px-4 ${activeTab === 'ratings' ? 'text-[#f85606] border-b-2 border-[#f85606]' : 'text-gray-600'}`}>Ratings</button>
       <button onClick={() => setActiveTab('details')} className={`flex-1 py-3 text-sm font-semibold whitespace-nowrap px-4 ${activeTab === 'details' ? 'text-[#f85606] border-b-2 border-[#f85606]' : 'text-gray-600'}`}>Product details</button>
     </div>
+
           {/* TAB CONTENT */}
       <div className="mb-2">
         {activeTab === 'overview' && (
@@ -617,7 +629,14 @@ export default function ProductDetails() {
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50 mb-4"
             />
 
-            <button onClick={handleSubmitReview} className="w-full bg-[#f85606] text-white font-bold py-3 rounded-xl hover:bg-[#d94a05]">Submit Review</button>
+            {/* UPDATED BUTTON */}
+            <button 
+              onClick={handleSubmitReview} 
+              disabled={reviewSubmitting}
+              className="w-full bg-[#f85606] text-white font-bold py-3 rounded-xl hover:bg-[#d94a05] disabled:bg-gray-400"
+            >
+              {reviewSubmitting ? 'Submitting...' : 'Submit Review'}
+            </button>
           </div>
         </div>
       )}
@@ -648,7 +667,14 @@ export default function ProductDetails() {
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:outline-none bg-gray-50 mb-4"
             />
 
-            <button onClick={handleSubmitQuestion} className="w-full bg-[#1da1f2] text-white font-bold py-3 rounded-xl hover:bg-[#1a8cd8]">Submit Question</button>
+            {/* UPDATED BUTTON */}
+            <button 
+              onClick={handleSubmitQuestion} 
+              disabled={questionSubmitting}
+              className="w-full bg-[#1da1f2] text-white font-bold py-3 rounded-xl hover:bg-[#1a8cd8] disabled:bg-gray-400"
+            >
+              {questionSubmitting ? 'Submitting...' : 'Submit Question'}
+            </button>
           </div>
         </div>
       )}
@@ -656,4 +682,4 @@ export default function ProductDetails() {
       {cartMsg && <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-brand text-white px-6 py-2 rounded-full shadow-lg z-[100] font-semibold">{cartMsg}</div>}
     </div>
   );
-                  }
+            }
