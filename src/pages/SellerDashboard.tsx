@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook, Instagram, Globe, ShieldAlert, Star, CreditCard, CheckSquare, X, MessageSquare, Plus, Trash2, FileText, RotateCcw, Sparkles, LayoutDashboard, Menu, Wallet, Banknote, History } from 'lucide-react';
+import { Package, Store, User, PlusCircle, CheckCircle, XCircle, MessageCircle, Truck, Facebook, Instagram, Globe, ShieldAlert, Star, CreditCard, Box, CheckSquare, X, MessageSquare, Plus, Trash2, FileText, RotateCcw, Sparkles, LayoutDashboard, Menu, Wallet, Banknote, History } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { uploadToCloudinary } from '../utils/Cloudinary';
 import { generateAgreementPDF } from '../utils/generateAgreement';
@@ -30,7 +30,6 @@ export default function SellerDashboard() {
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'store' | 'subscription' | 'profile' | 'qa' | 'finances'>('orders');
   const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'dispatched' | 'delivered' | 'returned' | 'cancelled'>('all');
 
-  // NEW: Finance Date Filter
   const [financeFilter, setFinanceFilter] = useState<'all' | 'week' | 'month' | 'year'>('all');
 
   const [showAgreement, setShowAgreement] = useState(false);
@@ -109,7 +108,6 @@ export default function SellerDashboard() {
     return sortChildren(roots);
   };
 
-  // --- NEW: FILTER ORDERS BY DATE ---
   const filteredOrdersForFinance = useMemo(() => {
     const now = new Date();
     return orders.filter(order => {
@@ -128,30 +126,22 @@ export default function SellerDashboard() {
         const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
         return orderDate >= yearAgo;
       }
-      return true; // 'all'
+      return true;
     });
   }, [orders, financeFilter]);
 
-  // --- NEW: CALCULATE FINANCE STATS ---
   const financeStats = useMemo(() => {
-    // 1. Total Collected (Delivered Orders)
     const deliveredOrders = filteredOrdersForFinance.filter(o => o.status === 'delivered');
     const totalCollected = deliveredOrders.reduce((sum, o) => sum + (o.total || 0), 0);
     
-    // 2. Total Pending (New, Accepted, Dispatched)
-    const pendingOrders = filteredOrdersForFinance.filter(o => ['new', 'accepted', 'dispatched'].includes(o.status));
+    // FIXED: Total Pending now only counts dispatched orders
+    const pendingOrders = filteredOrdersForFinance.filter(o => o.status === 'dispatched');
     const totalPending = pendingOrders.reduce((sum, o) => sum + (o.total || 0), 0);
     
-    // 3. Total Returned
     const returnedOrders = filteredOrdersForFinance.filter(o => o.status === 'returned');
     const totalReturned = returnedOrders.reduce((sum, o) => sum + (o.total || 0), 0);
     
-    // 4. Total to Pay (Platform Fee: Rs. 10 per delivered order)
     const totalToPay = deliveredOrders.length * 10;
-    
-    // 5. Total Paid (from Seller Document, since it's an accumulated total)
-    // Note: We can't filter this by date accurately unless we store payment history dates. 
-    // For now, we show the total paid to date.
     const totalPaid = store?.orderFeePaid || 0;
 
     return {
@@ -165,7 +155,7 @@ export default function SellerDashboard() {
       returnedCount: returnedOrders.length
     };
   }, [filteredOrdersForFinance, store]);
-  const fetchData = async () => {
+const fetchData = async () => {
   if (!currentUser) return;
 
   try {
@@ -538,7 +528,6 @@ const NavItem = ({ icon: Icon, label, tab, badge }: any) => {
 return (
   <div className="min-h-screen bg-[#f4f5f7] flex relative font-sans">
     
-    {/* MOBILE OVERLAY */}
     {isSidebarOpen && (
       <div 
         className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity" 
@@ -546,7 +535,6 @@ return (
       />
     )}
 
-    {/* --- LEFT SIDEBAR --- */}
     <aside 
       className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out flex flex-col shadow-xl
@@ -555,7 +543,6 @@ return (
       `}
     >
       
-      {/* LOGO AREA + CLOSE BUTTON */}
       <div className="p-5 border-b border-gray-100 flex flex-col items-start justify-center bg-white relative">
         <button 
           onClick={() => setIsSidebarOpen(false)} 
@@ -570,7 +557,6 @@ return (
         </span>
       </div>
 
-      {/* Navigation Menu */}
       <div className="p-3 flex-grow overflow-y-auto space-y-1">
         <p className="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-2">Manage Store</p>
         <NavItem icon={LayoutDashboard} label="Orders" tab="orders" badge={pendingCount} />
@@ -584,25 +570,21 @@ return (
         <NavItem icon={Store} label="Store Profile" tab="store" />
         <NavItem icon={Star} label="Subscription" tab="subscription" />
         <NavItem icon={User} label="My Account" tab="profile" />
-      </div>
 
-      {/* Sidebar Footer - Moved Up */}
-      <div className="p-4 border-t border-gray-100 mt-auto">
-         <button onClick={() => navigate('/inbox')} className="w-full flex items-center gap-2 bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl font-semibold hover:bg-gray-100 transition-colors text-sm mb-2">
-           <MessageSquare size={16} /> My Inbox
-         </button>
-         <a href={`#/store/${currentUser?.uid}`} target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-2 bg-dark text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-black transition-colors text-sm">
-           View Storefront
-         </a>
+        <div className="pt-4 mt-4 border-t border-gray-100 space-y-2">
+          <button onClick={() => navigate('/inbox')} className="w-full flex items-center gap-2 text-gray-600 px-4 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors text-sm">
+            <MessageSquare size={20} className="text-gray-400" /> My Inbox
+          </button>
+          <a href={`#/store/${currentUser?.uid}`} target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-2 bg-dark text-white px-4 py-3 rounded-xl font-semibold hover:bg-black transition-colors text-sm">
+            View Storefront
+          </a>
+        </div>
       </div>
     </aside>
-{/* --- MAIN CONTENT AREA --- */}
-<main className="flex-grow p-4 md:p-8 pb-24 md:pb-8 w-full max-w-7xl mx-auto overflow-hidden">
+    <main className="flex-grow p-4 md:p-8 pb-24 md:pb-8 w-full max-w-7xl mx-auto overflow-hidden">
   
-  {/* TOP HEADER */}
   <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
     <div className="flex items-center gap-3">
-      {/* MOBILE MENU BUTTON */}
       <button 
         onClick={() => setIsSidebarOpen(true)} 
         className="md:hidden p-2.5 bg-white rounded-xl shadow-sm border border-gray-200 text-dark hover:bg-gray-50 transition-colors"
@@ -625,7 +607,6 @@ return (
     </div>
   </div>
 
-  {/* STATS CARDS ROW */}
   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
     <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer hover:border-brand transition-colors" onClick={() => { setActiveTab('orders'); setOrderFilter('pending'); }}>
       <div>
@@ -660,7 +641,6 @@ return (
     </div>
   </div>
 
-  {/* TAB CONTENT AREA */}
   {store.status !== 'approved' ? (
     <div className="bg-white text-yellow-800 p-8 rounded-2xl border border-yellow-200 text-center shadow-sm">
       <ShieldAlert size={48} className="mx-auto mb-4 text-yellow-500" />
@@ -670,7 +650,6 @@ return (
   ) : (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-6 min-h-[500px]">
       
-      {/* --- FINANCES TAB --- */}
       {activeTab === 'finances' && (
         <div className="animate-in fade-in duration-300">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-gray-100 pb-4 gap-4">
@@ -678,7 +657,6 @@ return (
               <Wallet className="text-brand" /> My Finances
             </h2>
             
-            {/* DATE FILTER */}
             <div className="flex bg-gray-100 p-1 rounded-xl">
               {['all', 'week', 'month', 'year'].map((filter) => (
                 <button
@@ -697,7 +675,6 @@ return (
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            {/* Collected */}
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100 shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-white rounded-lg text-brand shadow-sm"><Banknote size={20} /></div>
@@ -707,17 +684,15 @@ return (
               <p className="text-xs text-gray-500 mt-1">From {financeStats.deliveredCount} delivered orders</p>
             </div>
 
-            {/* Pending */}
             <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-6 rounded-2xl border border-yellow-100 shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-white rounded-lg text-yellow-600 shadow-sm"><History size={20} /></div>
                 <p className="text-sm font-semibold text-gray-600">Total Amount Pending</p>
               </div>
               <p className="text-3xl font-extrabold text-yellow-600">Rs. {financeStats.totalPending}</p>
-              <p className="text-xs text-gray-500 mt-1">From {financeStats.pendingCount} undelivered orders</p>
+              <p className="text-xs text-gray-500 mt-1">From {financeStats.pendingCount} dispatched orders</p>
             </div>
 
-            {/* Returned */}
             <div className="bg-gradient-to-br from-red-50 to-rose-50 p-6 rounded-2xl border border-red-100 shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-white rounded-lg text-alert shadow-sm"><RotateCcw size={20} /></div>
@@ -727,7 +702,6 @@ return (
               <p className="text-xs text-gray-500 mt-1">From {financeStats.returnedCount} returned orders</p>
             </div>
 
-            {/* To Pay */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100 shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-white rounded-lg text-blue-600 shadow-sm"><CreditCard size={20} /></div>
@@ -737,7 +711,6 @@ return (
               <p className="text-xs text-gray-500 mt-1">Platform fee (Rs. 10 x {financeStats.deliveredCount} orders)</p>
             </div>
 
-            {/* Paid */}
             <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 shadow-sm md:col-span-2 flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white rounded-lg text-gray-600 shadow-sm"><CheckSquare size={20} /></div>
@@ -756,8 +729,7 @@ return (
           </div>
         </div>
       )}
-      {/* ORDERS TAB */}
-{activeTab === 'orders' && (
+      {activeTab === 'orders' && (
   <div className="animate-in fade-in duration-300">
     <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
       <h2 className="text-xl font-bold text-dark">Manage Orders</h2>
@@ -862,7 +834,6 @@ return (
   </div>
 )}
 
-{/* PRODUCTS TAB */}
 {activeTab === 'products' && (
   <div className="animate-in fade-in duration-300 grid lg:grid-cols-2 gap-8">
     <div>
@@ -1008,8 +979,7 @@ return (
     </div>
   </div>
 )}
-                {/* Q&A TAB */}
-            {activeTab === 'qa' && (
+                  {activeTab === 'qa' && (
               <div className="animate-in fade-in duration-300">
                 <h2 className="text-xl font-bold text-dark mb-6 border-b border-gray-100 pb-4">Customer Questions</h2>
                 
@@ -1055,7 +1025,6 @@ return (
               </div>
             )}
 
-            {/* STORE SETTINGS TAB */}
             {activeTab === 'store' && (
               <div className="animate-in fade-in duration-300 max-w-2xl">
                 <h2 className="text-xl font-bold text-dark mb-6 border-b border-gray-100 pb-4">Store Settings</h2>
@@ -1112,7 +1081,6 @@ return (
               </div>
             )}
 
-            {/* SUBSCRIPTION TAB */}
             {activeTab === 'subscription' && (
               <div className="animate-in fade-in duration-300 max-w-2xl">
                 <h2 className="text-xl font-bold text-dark mb-6 border-b border-gray-100 pb-4">Subscription Plan</h2>
@@ -1136,7 +1104,6 @@ return (
               </div>
             )}
 
-            {/* PROFILE TAB */}
             {activeTab === 'profile' && (
               <div className="animate-in fade-in duration-300 max-w-2xl">
                 <h2 className="text-xl font-bold text-dark mb-6 border-b border-gray-100 pb-4">My Profile</h2>
@@ -1171,8 +1138,6 @@ return (
         )}
       </main>
 
-      {/* --- MODALS --- */}
-      
       {showAgreement && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-xl w-full max-w-lg p-8 relative">
@@ -1314,4 +1279,4 @@ return (
 
     </div>
   );
-                                }
+                }
