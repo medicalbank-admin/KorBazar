@@ -106,84 +106,65 @@ export default function SellerDashboard() {
   };
 
   const fetchData = async () => {
-    if (!currentUser) return;
+  if (!currentUser) return;
 
-    try {
-      // 1. Fetch Store Data
-      const docSnap = await getDoc(doc(db, 'sellers', currentUser.uid));
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setStore(data);
-        setStoreBio(data.bio || '');
-        setStoreAddress(data.storeAddress || '');
-        setPaymentAccounts(data.paymentAccounts || '');
-        setSocialLinks(data.socialLinks || { facebook: '', instagram: '', tiktok: '' });
-        setAcceptsCod(data.acceptsCod !== false);
+  try {
+    // 1. Fetch Store Data
+    const docSnap = await getDoc(doc(db, 'sellers', currentUser.uid));
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      setStore(data);
+      setStoreBio(data.bio || '');
+      setStoreAddress(data.storeAddress || '');
+      setPaymentAccounts(data.paymentAccounts || '');
+      setSocialLinks(data.socialLinks || { facebook: '', instagram: '', tiktok: '' });
+      setAcceptsCod(data.acceptsCod !== false);
 
-        if (!data.agreementSigned) {
-          setShowAgreement(true);
-        }
+      if (!data.agreementSigned) {
+        setShowAgreement(true);
       }
-
-      // 2. Fetch Products
-      const prodQ = query(
-        collection(db, 'products'),
-        where('sellerId', '==', currentUser.uid),
-        orderBy('createdAt', 'desc'),
-        limit(100)
-      );
-      const prodSnap = await getDocs(prodQ);
-      setProducts(prodSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-
-    // 3. Fetch Orders (Safe from Index Errors)
-const orderQ = query(
-  collection(db, 'orders'),
-  where('sellerId', '==', currentUser.uid),
-  limit(100)
-);
-const orderSnap = await getDocs(orderQ);
-const ordersData = orderSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-// Sort manually in JavaScript instead of Firestore
-ordersData.sort((a: any, b: any) => {
-  const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-  const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-  return dateB - dateA;
-});
-
-setOrders(ordersData);
-      console.log("Fetched Orders:", ordersData);
-
-    } catch (error) {
-      console.error('Error fetching store, products, or orders:', error);
-    } 
-
-    // 4. Fetch Categories SEPARATELY (So it always runs even if products/orders fail)
-    try {
-      const catSnap = await getDocs(collection(db, 'categories'));
-      const categoryDocs = catSnap.docs.map((d) => {
-        const data = d.data();
-        return {
-          id: d.id,
-          name: data.name || 'Unnamed',
-          parentId: data.parentId ?? null,
-        };
-      });
-      
-      const tree = buildCategoryTree(categoryDocs as CategoryNode[]);
-      setCategoryTree(tree);
-
-      // Auto-select first category if none selected
-      if (categoryDocs.length > 0 && !category) {
-        setCategory(categoryDocs[0].name);
-      }
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      setCategoryTree([]);
-    } finally {
-      setLoading(false);
     }
-  };
+
+    // 2. Fetch Products
+    const prodQ = query(collection(db, 'products'), where('sellerId', '==', currentUser.uid));
+    const prodSnap = await getDocs(prodQ);
+    const productsData = prodSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    productsData.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    setProducts(productsData);
+
+    // 3. Fetch Orders (Ultimate Safe Mode - No Limits, No Sorting in Query)
+    const orderQ = query(collection(db, 'orders'), where('sellerId', '==', currentUser.uid));
+    const orderSnap = await getDocs(orderQ);
+    const ordersData = orderSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    
+    // Sort manually in JavaScript
+    ordersData.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    setOrders(ordersData);
+
+    // 4. Fetch Categories
+    const catSnap = await getDocs(collection(db, 'categories'));
+    const categoryDocs = catSnap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        name: data.name || 'Unnamed',
+        parentId: data.parentId ?? null,
+      };
+    });
+
+    const tree = buildCategoryTree(categoryDocs as CategoryNode[]);
+    setCategoryTree(tree);
+
+    if (categoryDocs.length > 0 && !category) {
+      setCategory(categoryDocs[0].name);
+    }
+
+  } catch (error) {
+    console.error('Error fetching data:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchData();
@@ -457,14 +438,14 @@ setOrders(ordersData);
   const cancelledCount = orders.filter(o => o.status === 'cancelled' || o.status === 'rejected').length;
 
   const filteredOrders = orders.filter(order => {
-    if (orderFilter === 'all') return true;
-    if (orderFilter === 'pending') return order.status === 'new' || (order.status === 'accepted' && !order.paymentVerified && order.paymentMethod !== 'COD');
-    if (orderFilter === 'dispatched') return order.status === 'dispatched';
-    if (orderFilter === 'delivered') return order.status === 'delivered';
-    if (orderFilter === 'returned') return order.status === 'returned';
-    if (orderFilter === 'cancelled') return order.status === 'cancelled' || order.status === 'rejected';
-    return true;
-  });
+  if (orderFilter === 'all') return true;
+  if (orderFilter === 'pending') return order.status === 'new' || (order.status === 'accepted' && !order.paymentVerified && order.paymentMethod !== 'COD');
+  if (orderFilter === 'dispatched') return order.status === 'dispatched';
+  if (orderFilter === 'delivered') return order.status === 'delivered';
+  if (orderFilter === 'returned') return order.status === 'returned';
+  if (orderFilter === 'cancelled') return order.status === 'cancelled' || order.status === 'rejected';
+  return true;
+});
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
