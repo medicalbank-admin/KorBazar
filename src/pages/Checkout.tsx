@@ -69,26 +69,22 @@ export default function Checkout() {
     const checkCodStatus = async () => {
       if (cart.length === 0) return;
 
-      // Get unique seller IDs from the cart
       const uniqueSellerIds = [...new Set(cart.map((item: any) => item.sellerId))];
-      
       let allSellersAcceptCod = true;
 
       for (const sellerId of uniqueSellerIds) {
         const sellerDoc = await getDoc(doc(db, 'sellers', sellerId));
         if (sellerDoc.exists()) {
           const sellerData = sellerDoc.data();
-          // If seller has explicitly turned off COD, block it
           if (sellerData.acceptsCod === false) {
             allSellersAcceptCod = false;
-            break; // No need to check further, one seller blocked COD
+            break; 
           }
         }
       }
 
       setIsCodAllowed(allSellersAcceptCod);
 
-      // If COD is not allowed, force the payment method to JazzCash
       if (!allSellersAcceptCod && paymentMethod === 'COD') {
         setPaymentMethod('JazzCash');
       }
@@ -188,7 +184,13 @@ export default function Checkout() {
         const sellerItems = groupedBySeller[sellerId];
         const sellerStoreName = sellerItems[0].storeName;
         
-        const sellerSubtotal = sellerItems.reduce((sum: number, i: any) => sum + (i.price * i.quantity), 0);
+        // FIXED: Calculate Subtotal with Discounts
+        const sellerSubtotal = sellerItems.reduce((sum: number, i: any) => {
+          const discount = Number(i.discountPercent) || 0;
+          const finalPrice = discount > 0 ? Math.round(i.price - (i.price * (discount / 100))) : i.price;
+          return sum + (finalPrice * i.quantity);
+        }, 0);
+        
         const sellerDelivery = sellerItems.reduce((sum: number, i: any) => sum + ((i.deliveryFee || 0) * i.quantity), 0);
         
         const proportion = cartTotal > 0 ? (sellerSubtotal / cartTotal) : 0;
@@ -210,17 +212,22 @@ export default function Checkout() {
           notes: formData.notes,
           sellerId: sellerId,
           storeName: sellerStoreName,
-          items: sellerItems.map((i: any) => ({ 
-            productId: i.productId, 
-            title: i.title, 
-            price: i.price, 
-            qty: i.quantity, 
-            deliveryFee: i.deliveryFee || 0,
-            selectedSize: i.selectedSize || null,
-            selectedColor: i.selectedColor || null,
-            // ADDED: Saving customization note to the order
-            customizationNote: i.customizationNote || null 
-          })),
+          items: sellerItems.map((i: any) => {
+             const discount = Number(i.discountPercent) || 0;
+             const finalPrice = discount > 0 ? Math.round(i.price - (i.price * (discount / 100))) : i.price;
+             return {
+               productId: i.productId, 
+               title: i.title, 
+               price: i.price, // Original price saved
+               finalPrice: finalPrice, // Discounted price saved
+               discountPercent: discount,
+               qty: i.quantity, 
+               deliveryFee: i.deliveryFee || 0,
+               selectedSize: i.selectedSize || null,
+               selectedColor: i.selectedColor || null,
+               customizationNote: i.customizationNote || null 
+             };
+          }),
           subtotal: sellerSubtotal,
           deliveryFee: sellerDelivery,
           couponCode: appliedCoupon ? appliedCoupon.code : null,
@@ -328,7 +335,6 @@ export default function Checkout() {
           <h2 className="font-bold text-lg text-dark mb-4">Payment Method</h2>
           <div className="space-y-3">
             {['COD', 'JazzCash', 'Easypaisa'].map(method => {
-              // Disable COD if any seller in the cart disabled it
               const isDisabled = method === 'COD' && !isCodAllowed;
 
               return (
@@ -427,6 +433,7 @@ export default function Checkout() {
         </button>
       </form>
 
+      
       {/* FINAL ORDER CONFIRMATION MODAL */}
       {showConfirmModal && (
         <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
@@ -484,4 +491,4 @@ export default function Checkout() {
       )}
     </div>
   );
-                      }
+      }
