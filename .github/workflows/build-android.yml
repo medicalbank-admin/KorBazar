@@ -30,8 +30,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      # --- REMOVED THE FAILING SDK SETUP STEP HERE ---
 
       - name: Initialize Capacitor Android
         run: |
@@ -49,3 +48,4 @@ jobs:
         with:
           name: KorBazar-Android-App
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          overwrite: true
